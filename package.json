@@ -1,0 +1,18 @@
+{
+  "name": "agicloud",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "typecheck": "tsc -p .",
+    "probe": "tsx packages/bridge/src/probe.ts",
+    "test": "tsx --test 'packages/*/src/**/*.test.ts'"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "@types/node": "^22"
+  },
+  "engines": { "node": ">=22" },
+  "license": "UNLICENSED"
+}
