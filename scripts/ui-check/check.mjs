@@ -35,13 +35,33 @@ export default async function ({ page }) {
   await page.click('.new-btn');
   await page.waitForSelector('dialog[open]');
   await page.click('input[value=demo]');
+  await page.waitForSelector('.dir-btn');
+  await page.click('.dir-btn');
+  await page.waitForFunction(() => document.querySelector('.browser-path')?.textContent.startsWith('/'));
+  await page.$eval('dialog input.mono-input', (el) => { el.value = ''; });
+  await page.type('dialog input.mono-input', '/tmp/proj/demo');
   await shot('dialog');
   await runAxe('dialog');
   await page.click('dialog .btn.primary');
   await page.waitForSelector('.chat');
   await page.waitForFunction(() => document.querySelector('.status')?.textContent.includes('Pronto'), { timeout: 20000 });
   out.steps.push('thread pronto');
-  await page.type('.composer textarea', 'Sistema la configurazione del progetto');
+  // Impostazioni dell'agente e comandi slash
+  await page.waitForSelector('.config-bar select');
+  out.configLabels = await page.$$eval('.config-bar .cfg-name', (els) => els.map((e) => e.textContent));
+  const modelSelect = (await page.$$('.config-bar select'))[1];
+  await modelSelect.select('lento');
+  await page.waitForFunction(() => document.querySelectorAll('.config-bar select')[1]?.value === 'lento');
+  await page.type('.composer textarea', '/pi');
+  await page.waitForSelector('.suggestions [role=option]');
+  out.suggestions = await page.$$eval('.suggestions .suggestion-name', (els) => els.map((e) => e.textContent));
+  await shot('commands');
+  await runAxe('commands');
+  await page.keyboard.press('Escape');
+  await page.$eval('.composer textarea', (el) => { el.focus(); });
+  await page.keyboard.down('Control'); await page.keyboard.press('a'); await page.keyboard.up('Control');
+  await page.keyboard.press('Backspace');
+  await page.type('.composer textarea', 'Crea un file di prova');
   await page.keyboard.press('Enter');
   await page.waitForSelector('.permission:not(.is-resolved) button', { timeout: 20000 });
   out.steps.push('permesso richiesto');
@@ -49,7 +69,7 @@ export default async function ({ page }) {
   await shot('permission');
   await runAxe('permission');
   await page.click('.permission .btn.primary');
-  await page.waitForFunction(() => document.querySelector('.status')?.textContent.includes('Pronto') && document.querySelectorAll('.from-assistant').length >= 3, { timeout: 20000 });
+  await page.waitForFunction(() => document.querySelector('.status')?.textContent.includes('Pronto') && document.querySelectorAll('.from-assistant').length >= 2, { timeout: 20000 });
   out.steps.push('turno completato');
   out.livePolite = await page.evaluate(() => document.querySelector('[aria-live=polite]')?.textContent);
   await page.evaluate(() => document.querySelectorAll('details.tool')[0]?.setAttribute('open',''));
@@ -59,7 +79,7 @@ export default async function ({ page }) {
   // Telefono
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => document.querySelectorAll('.from-assistant').length >= 3, { timeout: 20000 });
+  await page.waitForFunction(() => document.querySelectorAll('.from-assistant').length >= 2, { timeout: 20000 });
   out.mobile = await page.evaluate(() => ({
     scrollW: document.documentElement.scrollWidth, innerW: innerWidth,
     sidebarVisible: getComputedStyle(document.querySelector('.sidebar')).visibility,

@@ -1,4 +1,3 @@
-import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Catalogo degli agenti che sappiamo avviare in modalita' ACP.
@@ -49,15 +48,15 @@ export const AGENTS: Record<string, AgentSpec> = {
   },
 };
 
-// Agente finto dell'SDK ACP (testo, tool call, richiesta di permesso): per prove e test UI
+// Agente finto (demo-agent.ts): opzioni, comandi, permessi, ripresa. Per prove e test UI.
 if (process.env.AGICLOUD_DEMO_AGENT === '1') {
   AGENTS.demo = {
     id: 'demo',
     label: 'Demo (agente finto)',
     command: process.execPath,
-    args: [join(dirname(fileURLToPath(import.meta.resolve('@agentclientprotocol/sdk'))), 'examples', 'agent.js')],
+    args: ['--import', import.meta.resolve('tsx'), fileURLToPath(new URL('./demo-agent.ts', import.meta.url))],
     native: true,
-    note: 'Agente di prova: non usa modelli, risponde sempre con la stessa sequenza',
+    note: 'Agente di prova: non usa modelli. Scrivi "file" per provare i permessi, /piano per un piano',
   };
 }
 

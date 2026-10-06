@@ -805,3 +805,204 @@ legend {
     outline: 2px solid Highlight;
   }
 }
+
+/* ── Impostazioni dell'agente (modalita', modello, effort) ───────────────── */
+.config-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  padding: 8px 16px 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.cfg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+.cfg-name {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.cfg select {
+  min-height: 36px;
+  max-width: 46vw;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.cfg-bool input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.config-bar .form-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+}
+@media (pointer: coarse) {
+  .cfg select {
+    min-height: 44px;
+  }
+}
+
+/* ── Suggerimenti comandi slash ──────────────────────────────────────────── */
+.composer {
+  position: relative;
+}
+.suggestions {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: calc(100% - 4px);
+  z-index: 5;
+  max-height: min(50dvh, 360px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+.suggestion {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.suggestion[aria-selected='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.suggestion-name {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.suggestion-desc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ── Scelta del progetto ─────────────────────────────────────────────────── */
+.mono-input {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+}
+.mini-title {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.chip {
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+@media (pointer: coarse) {
+  .chip {
+    min-height: 44px;
+  }
+}
+.browser {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.browser-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.browser-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.dir-list {
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+}
+.dir-list .hint {
+  padding: 8px 10px;
+}
+.dir-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+.dir-btn:hover {
+  background: var(--surface-2);
+}
+.git-badge {
+  margin-left: auto;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.dialog {
+  width: min(100% - 32px, 560px);
+}
+.chat-meta span[title] {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}

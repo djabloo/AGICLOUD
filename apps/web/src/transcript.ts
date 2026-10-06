@@ -31,8 +31,25 @@ export type Item =
   | { kind: 'plan'; id: string; entries: { content: string; status: string; priority?: string }[] }
   | { kind: 'error'; id: string; message: string };
 
+export interface ConfigOption {
+  id: string;
+  name: string;
+  description?: string | null;
+  type: 'select' | 'boolean';
+  currentValue: string | boolean;
+  options?: ({ value: string; name: string; description?: string | null } | { group: string; name: string; options: { value: string; name: string }[] })[];
+}
+
+export interface SlashCommand {
+  name: string;
+  description: string;
+  hint?: string;
+}
+
 export interface Transcript {
   items: Item[];
+  configOptions: ConfigOption[];
+  commands: SlashCommand[];
   status: ThreadStatus;
   statusMessage?: string;
   running: boolean;
@@ -41,7 +58,7 @@ export interface Transcript {
   usage?: { used: number; size: number };
 }
 
-export const emptyTranscript: Transcript = { items: [], status: 'starting', running: false };
+export const emptyTranscript: Transcript = { items: [], configOptions: [], commands: [], status: 'idle', running: false };
 
 type Ev = BaseEvent & Record<string, any>;
 
@@ -102,6 +119,26 @@ function reduceCustom(state: Transcript, name: string, v: any): Transcript {
   switch (name) {
     case 'agicloud.thread_status':
       return { ...state, status: v.status, statusMessage: v.message, running: v.status === 'running' };
+
+    case 'agicloud.state':
+      return {
+        ...state,
+        status: v.status,
+        running: v.status === 'running',
+        configOptions: v.configOptions ?? [],
+        commands: v.commands ?? [],
+      };
+
+    case 'agicloud.session_opened':
+      return v.lostContext
+        ? {
+            ...state,
+            items: [
+              ...items,
+              { kind: 'error', id: `lost-${items.length}`, message: 'Non e\' stato possibile riprendere la sessione: l\'agente riparte senza ricordare i messaggi precedenti.' },
+            ],
+          }
+        : state;
 
     case 'agicloud.agent_info':
       return { ...state, agentName: v.agentInfo?.title ?? v.agentInfo?.name };

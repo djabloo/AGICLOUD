@@ -1,6 +1,6 @@
 import { useEffect, useId, useReducer, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { api, followEvents, type ThreadSummary } from './api';
-import { emptyTranscript, reduce, type Item } from './transcript';
+import { emptyTranscript, reduce, type ConfigOption, type Item, type SlashCommand } from './transcript';
 import { Markdown } from './markdown';
 import { Icon } from './icons';
 
@@ -11,6 +11,7 @@ interface Props {
 }
 
 const STATUS_TEXT: Record<string, string> = {
+  idle: 'In pausa',
   starting: 'Avvio dell\'agente…',
   ready: 'Pronto',
   running: 'Sta lavorando…',
@@ -80,7 +81,8 @@ export function Chat({ thread, agentLabel, onDelete }: Props) {
     }
   };
 
-  const canSend = state.status === 'ready' && !state.running;
+  // Ad agente in pausa si puo' scrivere: si riaccende e riprende la sessione
+  const canSend = (state.status === 'ready' || state.status === 'idle' || state.status === 'error') && !state.running;
 
   return (
     <section className="chat" aria-labelledby="chat-title">
@@ -90,9 +92,9 @@ export function Chat({ thread, agentLabel, onDelete }: Props) {
           <p className="chat-meta">
             <span>{state.agentName ?? agentLabel}</span>
             <span aria-hidden="true"> · </span>
-            <span>
-              <span className="visually-hidden">Workspace </span>
-              {thread.workspace}
+            <span title={thread.cwd}>
+              <span className="visually-hidden">Progetto </span>
+              {thread.cwd}
             </span>
           </p>
         </div>
@@ -117,6 +119,9 @@ export function Chat({ thread, agentLabel, onDelete }: Props) {
         {state.items.length === 0 && state.status !== 'error' && state.status !== 'auth_required' && (
           <p className="empty">{state.status === 'starting' ? 'Avvio dell\'agente…' : 'Scrivi il primo messaggio.'}</p>
         )}
+        {state.status === 'idle' && state.items.length > 0 && (
+          <p className="empty">Agente in pausa: si riattiva da solo al prossimo messaggio, con la stessa sessione.</p>
+        )}
         {(state.status === 'error' || state.status === 'auth_required') && state.statusMessage && (
           <div className="notice notice-error" role="alert">
             <strong>{STATUS_TEXT[state.status]}</strong>
@@ -137,7 +142,12 @@ export function Chat({ thread, agentLabel, onDelete }: Props) {
         )}
       </div>
 
+      {state.configOptions.length > 0 && (
+        <ConfigBar threadId={thread.id} options={state.configOptions} disabled={state.status === 'starting'} />
+      )}
+
       <Composer
+        commands={state.commands}
         disabled={!canSend}
         running={state.running}
         error={sendError}
@@ -264,7 +274,71 @@ function PermissionView({ item, threadId }: { item: Extract<Item, { kind: 'permi
   );
 }
 
+function ConfigBar({ threadId, options, disabled }: { threadId: string; options: ConfigOption[]; disabled: boolean }) {
+  const id = useId();
+  const [error, setError] = useState('');
+  const change = async (configId: string, value: string | boolean) => {
+    setError('');
+    try {
+      await api.setConfig(threadId, configId, value);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+  return (
+    <div className="config-bar" role="group" aria-label="Impostazioni dell'agente">
+      {options.map((o) =>
+        o.type === 'boolean' ? (
+          <label key={o.id} className="cfg cfg-bool" title={o.description ?? undefined}>
+            <input
+              type="checkbox"
+              checked={o.currentValue === true}
+              disabled={disabled}
+              onChange={(e) => change(o.id, e.target.checked)}
+            />
+            <span>{o.name}</span>
+          </label>
+        ) : (
+          <label key={o.id} className="cfg" htmlFor={`${id}-${o.id}`}>
+            <span className="cfg-name">{o.name}</span>
+            <select
+              id={`${id}-${o.id}`}
+              value={String(o.currentValue)}
+              disabled={disabled}
+              onChange={(e) => change(o.id, e.target.value)}
+            >
+              {(o.options ?? []).map((opt) =>
+                'group' in opt ? (
+                  <optgroup key={opt.group} label={opt.name}>
+                    {opt.options.map((g) => (
+                      <option key={g.value} value={g.value}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.name}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+        ),
+      )}
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+const MAX_SUGGESTIONS = 8;
+
 function Composer({
+  commands,
   disabled,
   running,
   error,
@@ -272,6 +346,7 @@ function Composer({
   onSend,
   onStop,
 }: {
+  commands: SlashCommand[];
   disabled: boolean;
   running: boolean;
   error: string;
@@ -280,6 +355,8 @@ function Composer({
   onStop: () => void;
 }) {
   const [text, setText] = useState('');
+  const [active, setActive] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
   const id = useId();
 
@@ -290,6 +367,24 @@ function Composer({
     el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
   }, [text]);
 
+  // Suggerimenti dei comandi slash: solo mentre si scrive la prima parola che inizia con "/"
+  const query = /^\/(\S*)$/.exec(text)?.[1]?.toLowerCase();
+  const suggestions =
+    query === undefined || dismissed
+      ? []
+      : commands
+          .filter((c) => c.name.toLowerCase().includes(query))
+          .sort((a, b) => Number(!a.name.toLowerCase().startsWith(query)) - Number(!b.name.toLowerCase().startsWith(query)))
+          .slice(0, MAX_SUGGESTIONS);
+  const open = suggestions.length > 0;
+  const activeIndex = Math.min(active, suggestions.length - 1);
+
+  const pick = (c: SlashCommand) => {
+    setText(`/${c.name} `);
+    setActive(0);
+    area.current?.focus();
+  };
+
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
     const value = text.trim();
@@ -298,6 +393,24 @@ function Composer({
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (open) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const n = suggestions.length;
+        setActive((activeIndex + (e.key === 'ArrowDown' ? 1 : n - 1)) % n);
+        return;
+      }
+      if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Tab') {
+        e.preventDefault();
+        pick(suggestions[activeIndex]!);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setDismissed(true);
+        return;
+      }
+    }
     // Invio invia, Maiusc+Invio va a capo (non durante la composizione IME)
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
@@ -305,8 +418,29 @@ function Composer({
     }
   };
 
+  const listId = `${id}-cmds`;
   return (
     <form className="composer" onSubmit={submit}>
+      {open && (
+        <ul id={listId} className="suggestions" role="listbox" aria-label="Comandi">
+          {suggestions.map((c, i) => (
+            <li
+              key={c.name}
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === activeIndex}
+              className="suggestion"
+              onMouseDown={(e) => {
+                e.preventDefault(); // il focus resta nel campo di testo
+                pick(c);
+              }}
+            >
+              <span className="suggestion-name">/{c.name}</span>
+              <span className="suggestion-desc">{c.description}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <label htmlFor={`${id}-msg`} className="visually-hidden">
         Messaggio all'agente
       </label>
@@ -315,9 +449,16 @@ function Composer({
         ref={area}
         rows={1}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          setDismissed(false);
+          setActive(0);
+        }}
         onKeyDown={onKeyDown}
-        placeholder="Scrivi all'agente…"
+        placeholder={commands.length ? 'Scrivi all\'agente… ( / per i comandi)' : 'Scrivi all\'agente…'}
+        aria-controls={open ? listId : undefined}
+        aria-activedescendant={open ? `${listId}-${activeIndex}` : undefined}
+        aria-autocomplete="list"
         aria-describedby={`${id}-hint${error ? ` ${id}-err` : ''}`}
       />
       {running ? (
@@ -333,6 +474,7 @@ function Composer({
       )}
       <p id={`${id}-hint`} className="composer-hint">
         Invio per inviare, Maiusc+Invio per andare a capo
+        {commands.length > 0 && ', / per i comandi'}
         {usage && (
           <span className="usage">
             {' '}
@@ -340,6 +482,9 @@ function Composer({
           </span>
         )}
       </p>
+      <div className="visually-hidden" aria-live="polite">
+        {open ? `${suggestions.length} comandi disponibili, frecce per scegliere` : ''}
+      </div>
       {error && (
         <p id={`${id}-err`} className="form-error" role="alert">
           {error}

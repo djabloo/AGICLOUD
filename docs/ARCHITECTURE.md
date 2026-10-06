@@ -53,9 +53,9 @@ Scelte:
 | Agente | Avvio | Verificato |
 |---|---|---|
 | OpenCode | `opencode acp` | ✅ testo, tool call, file creato |
-| Claude Code | `@agentclientprotocol/claude-agent-acp` | ✅ testo, permesso negato e concesso |
+| Claude Code | `@agentclientprotocol/claude-agent-acp` | ✅ testo, permessi, modalità/modello/effort, comandi `/`, ripresa sessione dopo pausa e dopo riavvio del server |
 | Gemini CLI | `gemini --acp` | ⚠️ ponte ok; serve una chiave API Gemini (l'abbonamento Google non la include) |
-| Demo | esempio dell'SDK ACP | ✅ agente finto per prove (`AGICLOUD_DEMO_AGENT=1`) |
+| Demo | `packages/bridge/src/demo-agent.ts` | ✅ agente finto per prove (`AGICLOUD_DEMO_AGENT=1`): opzioni, comandi, permessi, ripresa |
 | Codex | `@zed-industries/codex-acp` | non provato (API a pagamento) |
 | agy | — | più avanti, come plugin o via terminale |
 
@@ -72,6 +72,15 @@ Ogni conversazione ha un **registro di eventi AG-UI** (anche i messaggi dell'ute
 
 Scelta: **niente `@ag-ui/client` né componenti CopilotKit** per ora. Il client SSE è di 50 righe e il modello a registro (comandi separati dal flusso) regge meglio la ripresa su mobile del modello "POST che risponde in streaming" di HttpAgent. Gli eventi restano AG-UI standard: si potrà aggiungere un endpoint compatibile HttpAgent se servirà.
 
+## Conversazioni e ciclo di vita dell'agente
+
+- Ogni conversazione è salvata in `data/threads/<id>.json` (agente, cartella, titolo, sessione ACP, scelte di modalità/modello) e `<id>.jsonl` (registro eventi AG-UI). Al riavvio del server si ricaricano tutte, con l'agente spento.
+- L'agente si accende alla creazione della conversazione (così modalità, modello e comandi sono subito disponibili) e si spegne dopo `IDLE_MINUTES` (30) di inattività: la conversazione va "in pausa".
+- Al messaggio successivo riparte con `session/resume` (o `session/load`) sulla stessa sessione ACP e riapplica le scelte salvate. Se la ripresa fallisce si apre una sessione nuova e la UI lo dice.
+- Oltre `MAX_SESSIONS` agenti accesi si mette in pausa quello inattivo da più tempo.
+- Stato "vivo" (opzioni, comandi slash, stato) viaggia come evento `agicloud.state` senza id SSE: non entra nel registro.
+- Progetti: qualsiasi cartella dentro `PROJECT_ROOTS` (default `data/workspaces:/home/user:/opt:/var/www`), controllata con il percorso reale (niente symlink per uscire).
+
 ## Accessibilità e responsive
 
 Obiettivo WCAG 2.2 AA. Verificato con axe-core (0 violazioni, tema chiaro e scuro, desktop e 390px) tramite `scripts/ui-check/run.sh`.
@@ -82,5 +91,4 @@ Obiettivo WCAG 2.2 AA. Verificato con axe-core (0 violazioni, tema chiaro e scur
 ## Da decidere
 
 - **[da decidere]** Dove girano gli agenti: un container per workspace (come AgyCloud) dal primo giorno, o prima in locale.
-- **[da decidere]** Persistenza conversazioni: oggi il registro è in memoria (si perde al riavvio del server). Poi: ACP `session/load` dove supportato + registro su SQLite/Postgres.
-- **[da decidere]** Processi agente inattivi: oggi restano accesi (limite `MAX_SESSIONS`). Poi: spegnerli dopo un'inattività e riprenderli con `session/load`.
+- **[da decidere]** Registro su database (SQLite/Postgres) se i file JSONL diventano scomodi (ricerca, multi-utente).

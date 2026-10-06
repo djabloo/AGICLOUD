@@ -9,15 +9,23 @@ export interface AgentInfo {
   note?: string;
 }
 
-export type ThreadStatus = 'starting' | 'ready' | 'running' | 'auth_required' | 'error' | 'closed';
+export type ThreadStatus = 'idle' | 'starting' | 'ready' | 'running' | 'auth_required' | 'error';
 
 export interface ThreadSummary {
   id: string;
   agentId: string;
-  workspace: string;
+  cwd: string;
+  project: string;
   title: string;
   status: ThreadStatus;
   createdAt: number;
+  updatedAt: number;
+}
+
+export interface DirListing {
+  path: string | null;
+  parent: string | null;
+  dirs: { name: string; path: string; git: boolean }[];
 }
 
 const TOKEN_KEY = 'agicloud_token';
@@ -70,10 +78,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 export const api = {
   session: () => request<{ ok: boolean }>('GET', '/session'),
   agents: () => request<AgentInfo[]>('GET', '/agents'),
-  workspaces: () => request<string[]>('GET', '/workspaces'),
+  projects: () => request<{ roots: string[]; recent: string[] }>('GET', '/projects'),
+  dirs: (path?: string) => request<DirListing>('GET', `/dirs${path ? `?path=${encodeURIComponent(path)}` : ''}`),
   threads: () => request<ThreadSummary[]>('GET', '/threads'),
-  createThread: (agentId: string, workspace: string) =>
-    request<ThreadSummary>('POST', '/threads', { agentId, workspace }),
+  createThread: (agentId: string, cwd: string) => request<ThreadSummary>('POST', '/threads', { agentId, cwd }),
+  setConfig: (id: string, configId: string, value: string | boolean) =>
+    request<void>('POST', `/threads/${id}/config`, { configId, value }),
   deleteThread: (id: string) => request<void>('DELETE', `/threads/${id}`),
   run: (id: string, prompt: string) => request<{ runId: string }>('POST', `/threads/${id}/runs`, { prompt }),
   cancel: (id: string) => request<void>('POST', `/threads/${id}/cancel`),

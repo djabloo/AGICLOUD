@@ -22,7 +22,6 @@ export function App() {
   const [auth, setAuth] = useState<Auth>('checking');
   const [authError, setAuthError] = useState<string>();
   const [agents, setAgents] = useState<AgentInfo[]>([]);
-  const [workspaces, setWorkspaces] = useState<string[]>([]);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(threadFromHash);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -34,9 +33,8 @@ export function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [a, w, t] = await Promise.all([api.agents(), api.workspaces(), api.threads()]);
+      const [a, t] = await Promise.all([api.agents(), api.threads()]);
       setAgents(a);
-      setWorkspaces(w);
       setThreads(t);
       setAuth('ok');
     } catch (err) {
@@ -92,13 +90,12 @@ export function App() {
     setDrawerOpen(false);
   };
 
-  const create = async (agentId: string, workspace: string) => {
+  const create = async (agentId: string, cwd: string) => {
     setCreating(true);
     setDialogError(undefined);
     try {
-      const t = await api.createThread(agentId, workspace);
+      const t = await api.createThread(agentId, cwd);
       setThreads((ts) => [t, ...ts]);
-      if (!workspaces.includes(workspace)) setWorkspaces((w) => [...w, workspace].sort());
       setDialogOpen(false);
       select(t.id);
     } catch (err) {
@@ -207,7 +204,7 @@ export function App() {
                 >
                   <span className="thread-title">{t.title}</span>
                   <span className="thread-meta">
-                    {agentLabel(t.agentId)} · {t.workspace}
+                    {agentLabel(t.agentId)} · {t.project}
                     {t.status === 'running' && <span className="thread-running"> · al lavoro</span>}
                   </span>
                 </button>
@@ -225,7 +222,7 @@ export function App() {
         ) : (
           <section className="welcome" aria-labelledby="welcome-title">
             <h1 id="welcome-title">Benvenuto in AgiCloud</h1>
-            <p>Un'unica interfaccia per i tuoi agenti di coding. Scegli un agente e un workspace per iniziare.</p>
+            <p>Un'unica interfaccia per i tuoi agenti di coding. Scegli un agente e la cartella del progetto per iniziare.</p>
             <ul className="agent-list">
               {agents.map((a) => (
                 <li key={a.id}>
@@ -245,7 +242,6 @@ export function App() {
       <NewThreadDialog
         open={dialogOpen}
         agents={agents}
-        workspaces={workspaces}
         error={dialogError}
         busy={creating}
         onClose={() => {

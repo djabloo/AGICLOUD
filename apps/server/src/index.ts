@@ -7,9 +7,11 @@ import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { AGENTS } from '@agicloud/bridge';
 import { config } from './config.js';
-import { HttpError, ThreadStore, listWorkspaces } from './threads.js';
+import { listDirs } from './projects.js';
+import { HttpError, ThreadStore } from './threads.js';
 
 const store = new ThreadStore();
+store.load();
 const app = new Hono<{ Bindings: HttpBindings }>();
 
 app.use('*', async (c, next) => {
@@ -74,14 +76,32 @@ app.get('/api/agents', (c) =>
   c.json(Object.values(AGENTS).map(({ id, label, native, note }) => ({ id, label, native, note }))),
 );
 
-app.get('/api/workspaces', (c) => c.json(listWorkspaces()));
+app.get('/api/projects', (c) => c.json({ roots: config.projectRoots, recent: store.recentProjects() }));
+
+app.get('/api/dirs', (c) => c.json(listDirs(c.req.query('path') || undefined)));
 
 app.get('/api/threads', (c) => c.json(store.list()));
 
 app.post('/api/threads', async (c) => {
   const body = await jsonBody(c);
-  const thread = store.create(String(body.agentId ?? ''), String(body.workspace ?? ''), optString(body.authMethod));
+  const thread = store.create(String(body.agentId ?? ''), String(body.cwd ?? ''));
   return c.json(thread.summary(), 201);
+});
+
+app.post('/api/threads/:id/config', async (c) => {
+  const body = await jsonBody(c);
+  const configId = optString(body.configId);
+  const value = body.value;
+  if (!configId || (typeof value !== 'string' && typeof value !== 'boolean')) {
+    throw new HttpError(400, 'configId e value obbligatori');
+  }
+  await store.get(c.req.param('id')).setConfig(configId, value);
+  return c.body(null, 204);
+});
+
+app.post('/api/threads/:id/sleep', async (c) => {
+  await store.get(c.req.param('id')).sleep();
+  return c.body(null, 204);
 });
 
 app.delete('/api/threads/:id', async (c) => {
@@ -116,14 +136,17 @@ app.get('/api/threads/:id/events', (c) => {
   const after = Math.max(-1, Number(c.req.query('after') ?? -1) || -1);
   return streamSSE(c, async (stream) => {
     let chain = Promise.resolve();
-    const send = (data: unknown, id: number) => {
-      chain = chain.then(() => stream.writeSSE({ id: String(id), data: JSON.stringify(data) })).catch(() => {});
+    // Eventi senza id = stato "vivo" (opzioni, comandi): non spostano il punto di ripresa
+    const send = (data: unknown, id: number | null) => {
+      const message = id === null ? { data: JSON.stringify(data) } : { id: String(id), data: JSON.stringify(data) };
+      chain = chain.then(() => stream.writeSSE(message)).catch(() => {});
     };
     const replayEnd = thread.events.length;
     const unsubscribe = thread.subscribe((event, index) => {
-      if (index >= replayEnd) send(event, index);
+      if (index === null || index >= replayEnd) send(event, index);
     });
     for (let i = after + 1; i < replayEnd; i++) send(thread.events[i], i);
+    send({ type: 'CUSTOM', name: 'agicloud.state', value: thread.state() }, null);
 
     const ping = setInterval(() => {
       chain = chain.then(() => stream.writeSSE({ event: 'ping', data: '' })).catch(() => {});
@@ -160,11 +183,11 @@ function optString(v: unknown): string | undefined {
 }
 
 const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
-  console.log(`AgiCloud su http://${info.address}:${info.port} — workspace in ${config.workspacesRoot}`);
+  console.log(`AgiCloud su http://${info.address}:${info.port} — progetti in ${config.projectRoots.join(', ')}`);
 });
 
 async function shutdown() {
-  await store.closeAll();
+  await store.shutdown();
   server.close();
   process.exit(0);
 }

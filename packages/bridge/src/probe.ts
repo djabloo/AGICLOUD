@@ -36,7 +36,7 @@ try {
   await session.close();
   process.exit(1);
 }
-console.error(`✓ inizializzato in ${Date.now() - t0}ms — ${init.agentInfo?.name ?? '?'} ${init.agentInfo?.version ?? ''}`);
+console.error(`✓ inizializzato in ${Date.now() - t0}ms — ${init.init.agentInfo?.name ?? '?'} ${init.init.agentInfo?.version ?? ''} (${init.origin})`);
 
 let exit = 0;
 for await (const e of session.run(prompt)) {
