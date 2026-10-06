@@ -7,7 +7,7 @@ import { Readable, Writable } from 'node:stream';
 import * as acp from '@agentclientprotocol/sdk';
 import { EventType, type BaseEvent } from '@ag-ui/core';
 import type { AgentSpec } from './agents.js';
-import { AcpToAgui, custom } from './translate.js';
+import { AcpToAgui, custom, ev } from './translate.js';
 import { AsyncQueue } from './queue.js';
 
 export interface PermissionRequest {
@@ -202,10 +202,6 @@ export class AgentSession {
     for (const resolve of this.pendingPermissions.values()) resolve({ outcome: { outcome: 'cancelled' } });
     this.pendingPermissions.clear();
   }
-}
-
-function ev(type: EventType, fields: Record<string, unknown>): BaseEvent {
-  return { type, timestamp: Date.now(), ...fields } as BaseEvent;
 }
 
 // ACP: "auth_required" = -32000; alcuni agenti lo usano anche per credenziali mancanti

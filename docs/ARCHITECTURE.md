@@ -27,8 +27,8 @@ Un'interfaccia web generalista per **più agenti di coding**, organizzata a sezi
 | Pezzo | Stato | Ruolo |
 |---|---|---|
 | `packages/bridge` | ✅ funzionante | Avvia un agente ACP, apre la sessione, traduce gli update in eventi AG-UI, gestisce permessi, cancel e login |
-| `apps/server` | da fare | HTTP: crea sessioni, `POST /runs` → flusso SSE di eventi AG-UI, risposta ai permessi, cancel |
-| `apps/web` | da fare | Interfaccia a sezioni |
+| `apps/server` | ✅ funzionante | HTTP (Hono): conversazioni, registro eventi AG-UI per conversazione, flusso SSE con ripresa, permessi, cancel, token di accesso |
+| `apps/web` | ✅ sezione Chat | React + Vite: chat multi-agente, strumenti, permessi, piano; responsive e accessibile |
 
 ## Traduzione ACP → AG-UI (packages/bridge)
 
@@ -54,7 +54,8 @@ Scelte:
 |---|---|---|
 | OpenCode | `opencode acp` | ✅ testo, tool call, file creato |
 | Claude Code | `@agentclientprotocol/claude-agent-acp` | ✅ testo, permesso negato e concesso |
-| Gemini CLI | `gemini --acp` | ⚠️ ponte ok, ma su questo server Gemini non ha credenziali |
+| Gemini CLI | `gemini --acp` | ⚠️ ponte ok; serve una chiave API Gemini (l'abbonamento Google non la include) |
+| Demo | esempio dell'SDK ACP | ✅ agente finto per prove (`AGICLOUD_DEMO_AGENT=1`) |
 | Codex | `@zed-industries/codex-acp` | non provato (API a pagamento) |
 | agy | — | più avanti, come plugin o via terminale |
 
@@ -63,8 +64,23 @@ Scelte:
 1. **MVP**: Chat (multi-agente: scegli l'agente per conversazione), File/Repo, Terminale.
 2. **Dopo**: Team di agenti (un leader che delega), Attività/Kanban, Spaces/Pagine (idea da OpenDots), Plugin, agy.
 
+## Server ↔ interfaccia
+
+Ogni conversazione ha un **registro di eventi AG-UI** (anche i messaggi dell'utente e i cambi di stato). L'interfaccia:
+- invia comandi via REST (`POST /api/threads/:id/runs`, `.../cancel`, `.../permissions/:requestId`);
+- segue gli eventi con `GET /api/threads/:id/events?after=N` (SSE): prima lo storico da N, poi in diretta. Se la connessione cade (telefono in standby) si ricollega dall'ultimo evento ricevuto e non perde nulla; l'agente intanto continua a lavorare.
+
+Scelta: **niente `@ag-ui/client` né componenti CopilotKit** per ora. Il client SSE è di 50 righe e il modello a registro (comandi separati dal flusso) regge meglio la ripresa su mobile del modello "POST che risponde in streaming" di HttpAgent. Gli eventi restano AG-UI standard: si potrà aggiungere un endpoint compatibile HttpAgent se servirà.
+
+## Accessibilità e responsive
+
+Obiettivo WCAG 2.2 AA. Verificato con axe-core (0 violazioni, tema chiaro e scuro, desktop e 390px) tramite `scripts/ui-check/run.sh`.
+- Annunci per lettori di schermo solo nei momenti utili ("l'agente sta lavorando", "risposta completata", "permesso richiesto": assertivo), non il testo in streaming.
+- Menu mobile: `aria-expanded`, focus dentro all'apertura, Esc chiude e riporta il focus, contenuto dietro `inert`; da chiuso il menu è fuori dall'ordine di tabulazione.
+- Dialogo nativo `<dialog>`; bersagli da 44px; stato mai affidato solo al colore; `prefers-reduced-motion`, `forced-colors`, tema chiaro/scuro da sistema; composer sopra la tastiera virtuale (`100dvh`, safe-area).
+
 ## Da decidere
 
-- **[da decidere]** Frontend: React + Vite con `@ag-ui/client`, riusando dove serve i componenti CopilotKit (MIT) senza il loro backend.
 - **[da decidere]** Dove girano gli agenti: un container per workspace (come AgyCloud) dal primo giorno, o prima in locale.
-- **[da decidere]** Persistenza conversazioni: ACP `session/load` dove supportato + storico nostro in SQLite/Postgres.
+- **[da decidere]** Persistenza conversazioni: oggi il registro è in memoria (si perde al riavvio del server). Poi: ACP `session/load` dove supportato + registro su SQLite/Postgres.
+- **[da decidere]** Processi agente inattivi: oggi restano accesi (limite `MAX_SESSIONS`). Poi: spegnerli dopo un'inattività e riprenderli con `session/load`.

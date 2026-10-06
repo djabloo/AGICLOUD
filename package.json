@@ -2,17 +2,24 @@
   "name": "agicloud",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "typecheck": "tsc -p .",
+    "typecheck": "tsc -p . && tsc -p apps/web",
     "probe": "tsx packages/bridge/src/probe.ts",
-    "test": "tsx --test 'packages/*/src/**/*.test.ts'"
+    "test": "tsx --test 'packages/*/src/**/*.test.ts'",
+    "build": "npm run build -w @agicloud/web",
+    "start": "npm start -w @agicloud/server"
   },
   "devDependencies": {
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "@types/node": "^22"
   },
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "license": "UNLICENSED"
 }

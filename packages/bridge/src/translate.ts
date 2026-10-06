@@ -117,7 +117,7 @@ export class AcpToAgui {
   }
 }
 
-function ev(type: EventType, fields: Record<string, unknown>): BaseEvent {
+export function ev(type: EventType, fields: Record<string, unknown>): BaseEvent {
   return { type, timestamp: Date.now(), ...fields } as BaseEvent;
 }
 
