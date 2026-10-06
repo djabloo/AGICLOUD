@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>AgiCloud — coming soon</title>
+  <meta name="description" content="AgiCloud: one open web workspace for your coding agents — OpenCode, Claude Code, Codex, Gemini CLI and more, built on the open ACP and AG-UI standards.">
+  <style>
+    :root {
+      --bg: #f7f8fb; --surface: #fff; --border: #d5dae3;
+      --text: #121620; --muted: #4a5263; --accent: #0b6bcb;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b0f17; --surface: #121826; --border: #2b3548; --text: #e8ecf3; --muted: #a3adbf; --accent: #5cb1ff; }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100dvh; display: grid; place-items: center;
+      background: var(--bg); color: var(--text);
+      font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main { width: min(100% - 32px, 640px); padding: 48px 0; }
+    .tag { display: inline-block; margin: 0 0 16px; padding: 2px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: .85rem; font-weight: 600; }
+    h1 { margin: 0 0 12px; font-size: clamp(2rem, 6vw, 2.75rem); line-height: 1.15; letter-spacing: -0.02em; }
+    p { margin: 0 0 16px; }
+    .lead { font-size: 1.15rem; color: var(--muted); }
+    ul { margin: 0 0 24px; padding-left: 20px; }
+    li { margin: 4px 0; }
+    .it { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: .95rem; }
+    a { color: var(--accent); }
+    a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="tag">Coming soon</p>
+    <h1>AgiCloud</h1>
+    <p class="lead">One open web workspace for all your coding agents.</p>
+    <p>Chat with OpenCode, Claude Code, Codex, Gemini CLI and other agents from any browser or phone, side by side on the same project. Built on the open standards <strong>ACP</strong> (Agent Client Protocol) and <strong>AG-UI</strong>, so new agents plug in without custom integrations.</p>
+    <ul>
+      <li>Multi-agent: pick the right agent for each task</li>
+      <li>You stay in control: every sensitive action asks for your approval</li>
+      <li>Responsive and accessible (WCAG 2.2 AA) from day one</li>
+    </ul>
+    <p>We are building it right now.</p>
+
+    <section class="it" lang="it" aria-label="In italiano">
+      <p><strong>In arrivo.</strong> Un unico spazio di lavoro web per tutti i tuoi agenti di coding, basato su standard aperti, responsive e accessibile.</p>
+    </section>
+  </main>
+</body>
+</html>
