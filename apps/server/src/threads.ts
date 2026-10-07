@@ -22,6 +22,7 @@ import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
 import { readAttachment, resolveAttachment } from './uploads.js';
 import type { Settings } from './settings.js';
+import type { Notice } from './push.js';
 
 export { HttpError } from './errors.js';
 
@@ -137,14 +138,32 @@ export class Thread {
     }
 
     void (async () => {
+      // Per la notifica di fine turno: esito e inizio della risposta
+      let outcome: { stop?: string; error?: string } = {};
+      let reply = '';
       try {
-        for await (const e of session.run(content, runId)) this.emit(e);
+        for await (const e of session.run(content, runId)) {
+          this.emit(e);
+          const x = e as BaseEvent & Record<string, any>;
+          if (x.type === EventType.TEXT_MESSAGE_CONTENT && reply.length < 300) reply += x.delta ?? '';
+          else if (x.type === EventType.RUN_FINISHED) outcome = { stop: x.result?.stopReason };
+          else if (x.type === EventType.RUN_ERROR) outcome = { error: x.message };
+          else if (x.type === EventType.CUSTOM && x.name === 'agicloud.permission_request') {
+            this.notify(`Permesso richiesto · ${this.meta.title}`, x.value?.toolCall?.title ?? 'L\'agente chiede conferma');
+          }
+        }
       } catch (err) {
-        this.emit(ev(EventType.RUN_ERROR, { message: err instanceof Error ? err.message : String(err) }));
+        outcome = { error: err instanceof Error ? err.message : String(err) };
+        this.emit(ev(EventType.RUN_ERROR, { message: outcome.error }));
       } finally {
         if (this.status === 'running') this.setStatus(this.session ? 'ready' : 'idle');
         this.touch();
         this.scheduleIdle();
+        // Interrotto da te: niente notifica
+        if (outcome.error) this.notify(`Errore · ${this.meta.title}`, outcome.error.split('\n')[0]!);
+        else if (outcome.stop && outcome.stop !== 'cancelled') {
+          this.notify(`Fatto · ${this.meta.title}`, reply.replace(/\s+/g, ' ').trim().slice(0, 140) || 'L\'agente ha finito');
+        }
       }
     })();
     return runId;
@@ -208,6 +227,10 @@ export class Thread {
   /** Accende l'agente subito (alla creazione): opzioni e comandi sono pronti prima del primo messaggio */
   warmUp(): void {
     this.ensureStarted().catch(() => {});
+  }
+
+  private notify(title: string, body: string): void {
+    void this.store.onNotify?.({ title: title.slice(0, 80), body, url: `/#/t/${this.id}`, tag: this.id });
   }
 
   private ensureStarted(): Promise<void> {
@@ -345,6 +368,9 @@ export class Thread {
 
 export class ThreadStore {
   private readonly threads = new Map<string, Thread>();
+
+  /** Notifiche (push sul telefono): impostato dal server */
+  onNotify?: (notice: Notice) => Promise<unknown> | void;
 
   constructor(readonly settings: Settings) {}
 

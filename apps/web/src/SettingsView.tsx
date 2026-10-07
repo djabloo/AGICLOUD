@@ -3,6 +3,7 @@ import { api, setToken, type AgentStatus, type GeneralSettings, type TerminalSum
 import type { ConfigOption } from './transcript';
 import { Icon } from './icons';
 import { VaultSection } from './VaultSection';
+import { NotificationsSection } from './NotificationsSection';
 
 const LOGIN_TEXT: Record<AgentStatus['login']['state'], string> = {
   ok: 'Collegato',
@@ -41,7 +42,7 @@ export function SettingsView({ onOpenTerminal, onLogout }: { onOpenTerminal: (t:
       <header className="chat-header">
         <div className="chat-heading">
           <h1 id="settings-title">Impostazioni</h1>
-          <p className="chat-meta">Login degli agenti, permessi predefiniti, chiavi, cartelle, accesso</p>
+          <p className="chat-meta">Agenti, notifiche, chiavi, cartelle, accesso</p>
         </div>
       </header>
 
@@ -72,6 +73,8 @@ export function SettingsView({ onOpenTerminal, onLogout }: { onOpenTerminal: (t:
             </ul>
           )}
         </section>
+
+        <NotificationsSection />
 
         <VaultSection />
 

@@ -11,6 +11,7 @@ import { config } from './config.js';
 import { listDirs } from './projects.js';
 import { TerminalStore } from './terminals.js';
 import { saveUploads } from './uploads.js';
+import { Push } from './push.js';
 import { LOGIN_COMMANDS, Settings } from './settings.js';
 import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
@@ -18,6 +19,8 @@ import { attachTerminalSockets } from './terminal-socket.js';
 
 const settings = new Settings();
 const store = new ThreadStore(settings);
+const push = new Push();
+store.onNotify = (n) => push.send(n).catch((err) => console.error('[push]', err));
 store.load();
 const terminals = new TerminalStore(() => settings.vaultEnv('terminals'));
 const app = new Hono<{ Bindings: HttpBindings }>();
@@ -228,6 +231,26 @@ app.post('/api/settings/agents/:id/login', (c) => {
   const home = homedir();
   const cwd = config.projectRoots.some((r) => home === r || home.startsWith(r + '/')) ? home : config.projectRoots[0]!;
   return c.json(terminals.create(cwd, command).summary(), 201);
+});
+
+// ── Notifiche push ───────────────────────────────────────────────────────────
+app.get('/api/push', (c) => c.json({ publicKey: push.publicKey, devices: push.devices() }));
+
+app.post('/api/push/subscribe', async (c) => {
+  const body = await jsonBody(c);
+  push.subscribe(body.subscription, String(body.device ?? ''));
+  return c.json({ devices: push.devices() });
+});
+
+app.post('/api/push/unsubscribe', async (c) => {
+  const body = await jsonBody(c);
+  push.unsubscribe(String(body.endpoint ?? ''));
+  return c.json({ devices: push.devices() });
+});
+
+app.post('/api/push/test', async (c) => {
+  const sent = await push.send({ title: 'AgiCloud', body: 'Le notifiche funzionano.', url: '/#/settings', tag: 'test' });
+  return c.json({ sent });
 });
 
 // ── Terminali ────────────────────────────────────────────────────────────────

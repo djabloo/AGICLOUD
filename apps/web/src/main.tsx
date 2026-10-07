@@ -8,3 +8,10 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+// Service worker: serve solo per le notifiche push
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}

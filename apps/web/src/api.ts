@@ -141,6 +141,12 @@ export const api = {
     request<VaultKey[]>('POST', '/settings/vault', k),
   deleteVaultKey: (name: string) => request<VaultKey[]>('DELETE', `/settings/vault/${encodeURIComponent(name)}`),
   agentLogin: (agentId: string) => request<TerminalSummary>('POST', `/settings/agents/${agentId}/login`),
+  push: () => request<{ publicKey: string; devices: { endpoint: string; device: string }[] }>('GET', '/push'),
+  pushSubscribe: (subscription: unknown, device: string) =>
+    request<{ devices: { endpoint: string; device: string }[] }>('POST', '/push/subscribe', { subscription, device }),
+  pushUnsubscribe: (endpoint: string) =>
+    request<{ devices: { endpoint: string; device: string }[] }>('POST', '/push/unsubscribe', { endpoint }),
+  pushTest: () => request<{ sent: number }>('POST', '/push/test', {}),
   terminals: () => request<TerminalSummary[]>('GET', '/terminals'),
   createTerminal: (cwd: string, command?: 'claude') => request<TerminalSummary>('POST', '/terminals', { cwd, command }),
   deleteTerminal: (id: string) => request<void>('DELETE', `/terminals/${id}`),
