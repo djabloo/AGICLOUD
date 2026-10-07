@@ -1,3 +1,4 @@
+import type { Server } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -8,10 +9,13 @@ import { streamSSE } from 'hono/streaming';
 import { AGENTS } from '@agicloud/bridge';
 import { config } from './config.js';
 import { listDirs } from './projects.js';
+import { TerminalStore } from './terminals.js';
 import { HttpError, ThreadStore } from './threads.js';
+import { attachTerminalSockets } from './terminal-socket.js';
 
 const store = new ThreadStore();
 store.load();
+const terminals = new TerminalStore();
 const app = new Hono<{ Bindings: HttpBindings }>();
 
 app.use('*', async (c, next) => {
@@ -20,7 +24,8 @@ app.use('*', async (c, next) => {
   c.header('Referrer-Policy', 'no-referrer');
   c.header(
     'Content-Security-Policy',
-    "default-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    // style 'unsafe-inline': il terminale (xterm.js) crea i suoi stili al volo
+    "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   );
 });
 
@@ -43,23 +48,29 @@ function tokenOk(given: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-app.use('/api/*', async (c, next) => {
-  if (!config.authToken) return next();
-  const ip = clientIp(c);
+type Access = 'ok' | 'missing' | 'denied' | 'blocked';
+
+/** Controllo del token condiviso da API e WebSocket dei terminali */
+function checkAccess(ip: string, given: string): Access {
+  if (!config.authToken) return 'ok';
   const f = failures.get(ip);
-  if (f && f.count >= FAIL_LIMIT && f.until > Date.now()) {
-    return c.json({ error: 'Troppi tentativi: riprova tra qualche minuto' }, 429);
-  }
-  const header = c.req.header('authorization') ?? '';
-  const given = header.startsWith('Bearer ') ? header.slice(7) : '';
-  if (!given) return c.json({ error: 'Accesso negato' }, 401);
+  if (f && f.count >= FAIL_LIMIT && f.until > Date.now()) return 'blocked';
+  if (!given) return 'missing';
   if (!tokenOk(given)) {
     // Contano solo i token sbagliati: le richieste senza token (pagina appena aperta) no
-    const next = f && f.until > Date.now() ? f.count + 1 : 1;
-    failures.set(ip, { count: next, until: Date.now() + FAIL_WINDOW_MS });
-    return c.json({ error: 'Accesso negato' }, 401);
+    const count = f && f.until > Date.now() ? f.count + 1 : 1;
+    failures.set(ip, { count, until: Date.now() + FAIL_WINDOW_MS });
+    return 'denied';
   }
   failures.delete(ip);
+  return 'ok';
+}
+
+app.use('/api/*', async (c, next) => {
+  const header = c.req.header('authorization') ?? '';
+  const access = checkAccess(clientIp(c), header.startsWith('Bearer ') ? header.slice(7) : '');
+  if (access === 'blocked') return c.json({ error: 'Troppi tentativi: riprova tra qualche minuto' }, 429);
+  if (access !== 'ok') return c.json({ error: 'Accesso negato' }, 401);
   return next();
 });
 
@@ -157,6 +168,21 @@ app.get('/api/threads/:id/events', (c) => {
   });
 });
 
+// ── Terminali ────────────────────────────────────────────────────────────────
+app.get('/api/terminals', (c) => c.json(terminals.list()));
+
+app.post('/api/terminals', async (c) => {
+  const body = await jsonBody(c);
+  const command = body.command === 'claude' ? 'claude' : undefined; // solo comandi noti
+  const t = terminals.create(String(body.cwd ?? ''), command);
+  return c.json(t.summary(), 201);
+});
+
+app.delete('/api/terminals/:id', (c) => {
+  terminals.remove(c.req.param('id'));
+  return c.body(null, 204);
+});
+
 app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404));
 
 // ── Interfaccia web ──────────────────────────────────────────────────────────
@@ -186,7 +212,10 @@ const server = serve({ fetch: app.fetch, hostname: config.host, port: config.por
   console.log(`AgiCloud su http://${info.address}:${info.port} — progetti in ${config.projectRoots.join(', ')}`);
 });
 
+attachTerminalSockets(server as Server, terminals, checkAccess);
+
 async function shutdown() {
+  terminals.killAll();
   await store.shutdown();
   server.close();
   process.exit(0);

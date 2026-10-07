@@ -96,6 +96,34 @@ export default async function ({ page }) {
   await page.keyboard.press('Escape');
   await new Promise(r => setTimeout(r, 300));
   out.afterEsc = await page.evaluate(() => ({ expanded: document.querySelector('.menu-btn').getAttribute('aria-expanded'), focused: document.activeElement?.className }));
+  // Terminale
+  await page.setViewport({ width: 1366, height: 860 });
+  await page.goto(BASE + '#/term', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.welcome');
+  await page.click('.new-btn');
+  await page.waitForSelector('dialog[open] input.mono-input');
+  await page.$eval('dialog[open] input.mono-input', (el) => { el.value = ''; });
+  await page.type('dialog[open] input.mono-input', '/tmp/proj/demo');
+  await page.click('dialog[open] .btn.primary');
+  await page.waitForSelector('.term .xterm', { timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector('.term .status')?.textContent.includes('Collegato'), { timeout: 10000 });
+  await page.click('.term-host');
+  await page.keyboard.type('echo CIAO-$((1+1)) && pwd');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('.xterm-rows')?.textContent.includes('CIAO-2'), { timeout: 10000 });
+  out.steps.push('terminale ok');
+  await shot('terminal');
+  await runAxe('terminal');
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.querySelector('.xterm-rows')?.textContent.includes('CIAO-2'), { timeout: 10000 });
+  out.steps.push('terminale ripreso dopo ricarica');
+  out.terminalMobile = await page.evaluate(() => ({
+    keybar: getComputedStyle(document.querySelector('.keybar')).display,
+    scrollW: document.documentElement.scrollWidth,
+  }));
+  await shot('terminal-mobile');
+  await runAxe('terminal-mobile');
   } catch (err) {
     out.error = String(err);
     out.text = await page.evaluate(() => document.body.innerText.slice(0, 800));

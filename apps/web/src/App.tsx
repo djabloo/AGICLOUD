@@ -1,21 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, ApiError, getToken, setToken, type AgentInfo, type ThreadSummary } from './api';
+import { api, ApiError, getToken, setToken, type AgentInfo, type TerminalSummary, type ThreadSummary } from './api';
 import { Chat } from './Chat';
 import { Login } from './Login';
 import { NewThreadDialog } from './NewThread';
+import { NewTerminalDialog } from './NewTerminal';
+import { TerminalView } from './TerminalView';
 import { Icon, type IconName } from './icons';
 
 type Auth = 'checking' | 'ok' | 'needed';
+type Section = 'chat' | 'terminal';
 
-const SECTIONS: { id: string; label: string; icon: IconName; ready: boolean }[] = [
+interface Route {
+  section: Section;
+  id: string | null;
+}
+
+const SECTIONS: { id: Section | 'files'; label: string; icon: IconName; ready: boolean }[] = [
   { id: 'chat', label: 'Chat', icon: 'chat', ready: true },
+  { id: 'terminal', label: 'Terminale', icon: 'terminal', ready: true },
   { id: 'files', label: 'File', icon: 'files', ready: false },
-  { id: 'terminal', label: 'Terminale', icon: 'terminal', ready: false },
 ];
 
-function threadFromHash(): string | null {
-  const m = location.hash.match(/^#\/t\/([\w-]+)$/);
-  return m ? m[1]! : null;
+/** #/t/<id> = conversazione, #/term = terminali, #/term/<id> = un terminale */
+function routeFromHash(): Route {
+  const t = location.hash.match(/^#\/t\/([\w-]+)$/);
+  if (t) return { section: 'chat', id: t[1]! };
+  const term = location.hash.match(/^#\/term(?:\/([\w-]+))?$/);
+  if (term) return { section: 'terminal', id: term[1] ?? null };
+  return { section: 'chat', id: null };
+}
+
+function hashFor(r: Route): string {
+  if (r.section === 'terminal') return r.id ? `#/term/${r.id}` : '#/term';
+  return r.id ? `#/t/${r.id}` : '';
 }
 
 export function App() {
@@ -23,9 +40,11 @@ export function App() {
   const [authError, setAuthError] = useState<string>();
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(threadFromHash);
+  const [terminals, setTerminals] = useState<TerminalSummary[]>([]);
+  const [route, setRoute] = useState<Route>(routeFromHash);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialog, setDialog] = useState<'thread' | 'terminal' | null>(null);
+  const [terminalCwd, setTerminalCwd] = useState<string>();
   const [dialogError, setDialogError] = useState<string>();
   const [creating, setCreating] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
@@ -33,9 +52,10 @@ export function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [a, t] = await Promise.all([api.agents(), api.threads()]);
+      const [a, t, term] = await Promise.all([api.agents(), api.threads(), api.terminals()]);
       setAgents(a);
       setThreads(t);
+      setTerminals(term);
       setAuth('ok');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
@@ -55,15 +75,18 @@ export function App() {
     void refresh();
   }, [refresh]);
 
-  // Titoli e stati delle conversazioni cambiano lato server: aggiornamento leggero
+  // Titoli e stati cambiano lato server: aggiornamento leggero
   useEffect(() => {
     if (auth !== 'ok') return;
-    const t = setInterval(() => api.threads().then(setThreads).catch(() => {}), 5000);
+    const t = setInterval(() => {
+      api.threads().then(setThreads).catch(() => {});
+      api.terminals().then(setTerminals).catch(() => {});
+    }, 5000);
     return () => clearInterval(t);
   }, [auth]);
 
   useEffect(() => {
-    const onHash = () => setActiveId(threadFromHash());
+    const onHash = () => setRoute(routeFromHash());
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -84,20 +107,35 @@ export function App() {
     menuButton.current?.focus();
   };
 
-  const select = (id: string | null) => {
-    location.hash = id ? `#/t/${id}` : '';
-    setActiveId(id);
+  const go = (r: Route) => {
+    const hash = hashFor(r);
+    if (location.hash !== hash) location.hash = hash;
+    setRoute(r);
     setDrawerOpen(false);
   };
 
-  const create = async (agentId: string, cwd: string) => {
+  const closeDialog = () => {
+    setDialog(null);
+    setDialogError(undefined);
+  };
+
+  const openNew = () => {
+    if (route.section === 'terminal') {
+      setTerminalCwd(undefined);
+      setDialog('terminal');
+    } else {
+      setDialog('thread');
+    }
+  };
+
+  const createThread = async (agentId: string, cwd: string) => {
     setCreating(true);
     setDialogError(undefined);
     try {
       const t = await api.createThread(agentId, cwd);
       setThreads((ts) => [t, ...ts]);
-      setDialogOpen(false);
-      select(t.id);
+      closeDialog();
+      go({ section: 'chat', id: t.id });
     } catch (err) {
       setDialogError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -105,10 +143,31 @@ export function App() {
     }
   };
 
-  const remove = async (id: string) => {
+  const createTerminal = async (cwd: string, command?: 'claude') => {
+    setCreating(true);
+    setDialogError(undefined);
+    try {
+      const t = await api.createTerminal(cwd, command);
+      setTerminals((ts) => [t, ...ts]);
+      closeDialog();
+      go({ section: 'terminal', id: t.id });
+    } catch (err) {
+      setDialogError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const removeThread = async (id: string) => {
     await api.deleteThread(id).catch(() => {});
     setThreads((ts) => ts.filter((t) => t.id !== id));
-    if (activeId === id) select(null);
+    if (route.id === id) go({ section: 'chat', id: null });
+  };
+
+  const removeTerminal = async (id: string) => {
+    await api.deleteTerminal(id).catch(() => {});
+    setTerminals((ts) => ts.filter((t) => t.id !== id));
+    if (route.id === id) go({ section: 'terminal', id: null });
   };
 
   if (auth === 'checking') return <p className="boot">Caricamento…</p>;
@@ -125,8 +184,11 @@ export function App() {
     );
   }
 
-  const active = threads.find((t) => t.id === activeId) ?? null;
+  const inTerminals = route.section === 'terminal';
+  const activeThread = !inTerminals ? (threads.find((t) => t.id === route.id) ?? null) : null;
+  const activeTerminal = inTerminals ? (terminals.find((t) => t.id === route.id) ?? null) : null;
   const agentLabel = (id: string) => agents.find((a) => a.id === id)?.label ?? id;
+  const newLabel = inTerminals ? 'Nuovo terminale' : 'Nuova conversazione';
 
   return (
     <div className={`app${drawerOpen ? ' drawer-open' : ''}`}>
@@ -147,9 +209,9 @@ export function App() {
           <span className="visually-hidden">{drawerOpen ? 'Chiudi menu' : 'Apri menu'}</span>
         </button>
         <span className="brand">AgiCloud</span>
-        <button type="button" className="btn icon-btn" onClick={() => setDialogOpen(true)}>
+        <button type="button" className="btn icon-btn" onClick={openNew}>
           <Icon name="plus" />
-          <span className="visually-hidden">Nuova conversazione</span>
+          <span className="visually-hidden">{newLabel}</span>
         </button>
       </header>
 
@@ -169,9 +231,9 @@ export function App() {
                 <button
                   type="button"
                   className="section-btn"
-                  aria-current={s.id === 'chat' ? 'page' : undefined}
+                  aria-current={s.id === route.section ? 'page' : undefined}
                   aria-disabled={!s.ready || undefined}
-                  onClick={() => s.ready && select(null)}
+                  onClick={() => s.ready && s.id !== 'files' && go({ section: s.id, id: null })}
                 >
                   <Icon name={s.icon} />
                   <span>{s.label}</span>
@@ -182,43 +244,98 @@ export function App() {
           </ul>
         </nav>
 
-        <button type="button" className="btn primary new-btn" onClick={() => setDialogOpen(true)}>
+        <button type="button" className="btn primary new-btn" onClick={openNew}>
           <Icon name="plus" />
-          <span>Nuova conversazione</span>
+          <span>{newLabel}</span>
         </button>
 
-        <h2 className="sidebar-title" id="threads-title">
-          Conversazioni
-        </h2>
-        {threads.length === 0 ? (
-          <p className="sidebar-empty">Nessuna conversazione</p>
+        {inTerminals ? (
+          <>
+            <h2 className="sidebar-title" id="list-title">
+              Terminali
+            </h2>
+            {terminals.length === 0 ? (
+              <p className="sidebar-empty">Nessun terminale aperto</p>
+            ) : (
+              <ul className="threads" aria-labelledby="list-title">
+                {terminals.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      className="thread-btn"
+                      aria-current={t.id === route.id ? 'page' : undefined}
+                      onClick={() => go({ section: 'terminal', id: t.id })}
+                    >
+                      <span className="thread-title">{t.title}</span>
+                      <span className="thread-meta">
+                        {t.cwd}
+                        {t.exited && <span> · terminato</span>}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         ) : (
-          <ul className="threads" aria-labelledby="threads-title">
-            {threads.map((t) => (
-              <li key={t.id}>
-                <button
-                  type="button"
-                  className="thread-btn"
-                  aria-current={t.id === activeId ? 'page' : undefined}
-                  onClick={() => select(t.id)}
-                >
-                  <span className="thread-title">{t.title}</span>
-                  <span className="thread-meta">
-                    {agentLabel(t.agentId)} · {t.project}
-                    {t.status === 'running' && <span className="thread-running"> · al lavoro</span>}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <h2 className="sidebar-title" id="list-title">
+              Conversazioni
+            </h2>
+            {threads.length === 0 ? (
+              <p className="sidebar-empty">Nessuna conversazione</p>
+            ) : (
+              <ul className="threads" aria-labelledby="list-title">
+                {threads.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      className="thread-btn"
+                      aria-current={t.id === route.id ? 'page' : undefined}
+                      onClick={() => go({ section: 'chat', id: t.id })}
+                    >
+                      <span className="thread-title">{t.title}</span>
+                      <span className="thread-meta">
+                        {agentLabel(t.agentId)} · {t.project}
+                        {t.status === 'running' && <span className="thread-running"> · al lavoro</span>}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </aside>
 
       <div className="backdrop" hidden={!drawerOpen} onClick={closeDrawer} />
 
       <main id="main" className="main" tabIndex={-1} inert={drawerOpen || undefined}>
-        {active ? (
-          <Chat key={active.id} thread={active} agentLabel={agentLabel(active.agentId)} onDelete={() => remove(active.id)} />
+        {activeThread ? (
+          <Chat
+            key={activeThread.id}
+            thread={activeThread}
+            agentLabel={agentLabel(activeThread.agentId)}
+            onDelete={() => removeThread(activeThread.id)}
+            onOpenTerminal={() => {
+              setTerminalCwd(activeThread.cwd);
+              setDialog('terminal');
+            }}
+          />
+        ) : activeTerminal ? (
+          <TerminalView key={activeTerminal.id} terminal={activeTerminal} onClose={() => removeTerminal(activeTerminal.id)} />
+        ) : inTerminals ? (
+          <section className="welcome" aria-labelledby="welcome-title">
+            <h1 id="welcome-title">Terminali</h1>
+            <p>
+              Shell vere sul server, nella cartella del progetto. Restano aperte anche se chiudi la pagina: ci ritrovi
+              l'output quando torni.
+            </p>
+            <button type="button" className="btn primary" onClick={openNew}>
+              <Icon name="plus" />
+              <span>Nuovo terminale</span>
+            </button>
+          </section>
         ) : (
           <section className="welcome" aria-labelledby="welcome-title">
             <h1 id="welcome-title">Benvenuto in AgiCloud</h1>
@@ -231,7 +348,7 @@ export function App() {
                 </li>
               ))}
             </ul>
-            <button type="button" className="btn primary" onClick={() => setDialogOpen(true)}>
+            <button type="button" className="btn primary" onClick={openNew}>
               <Icon name="plus" />
               <span>Nuova conversazione</span>
             </button>
@@ -240,15 +357,20 @@ export function App() {
       </main>
 
       <NewThreadDialog
-        open={dialogOpen}
+        open={dialog === 'thread'}
         agents={agents}
         error={dialogError}
         busy={creating}
-        onClose={() => {
-          setDialogOpen(false);
-          setDialogError(undefined);
-        }}
-        onCreate={create}
+        onClose={closeDialog}
+        onCreate={createThread}
+      />
+      <NewTerminalDialog
+        open={dialog === 'terminal'}
+        initialCwd={terminalCwd}
+        error={dialogError}
+        busy={creating}
+        onClose={closeDialog}
+        onCreate={createTerminal}
       />
     </div>
   );

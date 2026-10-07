@@ -8,6 +8,7 @@ interface Props {
   thread: ThreadSummary;
   agentLabel: string;
   onDelete: () => void;
+  onOpenTerminal: () => void;
 }
 
 const STATUS_TEXT: Record<string, string> = {
@@ -22,7 +23,7 @@ const STATUS_TEXT: Record<string, string> = {
 
 type Action = { type: 'event'; event: Parameters<typeof reduce>[1] } | { type: 'reset' };
 
-export function Chat({ thread, agentLabel, onDelete }: Props) {
+export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
   const [state, dispatch] = useReducer(
     (s: typeof emptyTranscript, a: Action) => (a.type === 'reset' ? emptyTranscript : reduce(s, a.event)),
     emptyTranscript,
@@ -103,6 +104,10 @@ export function Chat({ thread, agentLabel, onDelete }: Props) {
           {STATUS_TEXT[state.status] ?? state.status}
           {!connected && <span className="status-offline"> — riconnessione…</span>}
         </p>
+        <button type="button" className="btn icon-btn" onClick={onOpenTerminal}>
+          <Icon name="terminal" />
+          <span className="visually-hidden">Apri un terminale in questa cartella</span>
+        </button>
         <button
           type="button"
           className="btn icon-btn"

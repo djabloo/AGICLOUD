@@ -180,6 +180,8 @@ label {
 /* ── Layout ──────────────────────────────────────────────────────────────── */
 .app {
   display: grid;
+  /* minmax(0, ...): contenuti larghi (terminale, codice) non allargano la pagina */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr;
   height: 100dvh;
 }
@@ -248,6 +250,7 @@ label {
 
 .main {
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -257,7 +260,7 @@ label {
 
 @media (min-width: 900px) {
   .app {
-    grid-template-columns: var(--sidebar-w) 1fr;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
     grid-template-rows: 1fr;
   }
   .topbar,
@@ -1005,4 +1008,109 @@ legend {
 .chat-meta span[title] {
   font-family: var(--mono);
   font-size: 0.8rem;
+}
+
+/* ── Terminale ───────────────────────────────────────────────────────────── */
+.term {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0b0f17;
+}
+.term .chat-header {
+  background: var(--surface);
+}
+.term-tools {
+  display: flex;
+  gap: 8px;
+}
+.small-btn {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+}
+.small-btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.term-host {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 6px 0 0 8px;
+}
+.term-host .xterm {
+  height: 100%;
+}
+.keybar {
+  display: none;
+  gap: 6px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  border-top: 1px solid #2b3548;
+  background: #121826;
+}
+.key {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #2b3548;
+  border-radius: 8px;
+  background: #1a2232;
+  color: #e8ecf3;
+  font: 600 0.95rem var(--mono);
+  cursor: pointer;
+}
+.key[aria-pressed='true'] {
+  border-color: #5cb1ff;
+  background: #15283f;
+  color: #8cc8ff;
+}
+.term-hint {
+  margin: 0;
+  padding: 4px 12px;
+  padding-bottom: max(4px, env(safe-area-inset-bottom));
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+/* Barra tasti solo dove serve: schermi touch */
+@media (pointer: coarse) {
+  .keybar {
+    display: flex;
+  }
+  .term-hint {
+    display: none;
+  }
+}
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 500;
+}
+.check-row input {
+  width: 20px;
+  min-height: 0;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.chat-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 599px) {
+  /* Telefono: titolo e percorso su una riga, stato e pulsanti sotto */
+  .term .chat-heading {
+    flex: 1 1 100%;
+  }
+  .term .status {
+    flex: 1;
+  }
 }

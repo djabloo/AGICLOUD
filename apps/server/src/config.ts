@@ -36,6 +36,9 @@ export const config = {
   idleMs: Number(env.IDLE_MINUTES || 30) * 60_000,
 };
 
+// Il token non deve finire nell'ambiente di agenti e terminali
+delete process.env.AUTH_TOKEN;
+
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 if (!LOCAL_HOSTS.has(config.host) && !config.authToken) {
   console.error(`Rifiuto di ascoltare su ${config.host} senza AUTH_TOKEN.`);

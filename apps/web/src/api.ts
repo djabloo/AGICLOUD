@@ -22,6 +22,15 @@ export interface ThreadSummary {
   updatedAt: number;
 }
 
+export interface TerminalSummary {
+  id: string;
+  cwd: string;
+  project: string;
+  title: string;
+  createdAt: number;
+  exited: boolean;
+}
+
 export interface DirListing {
   path: string | null;
   parent: string | null;
@@ -82,6 +91,9 @@ export const api = {
   dirs: (path?: string) => request<DirListing>('GET', `/dirs${path ? `?path=${encodeURIComponent(path)}` : ''}`),
   threads: () => request<ThreadSummary[]>('GET', '/threads'),
   createThread: (agentId: string, cwd: string) => request<ThreadSummary>('POST', '/threads', { agentId, cwd }),
+  terminals: () => request<TerminalSummary[]>('GET', '/terminals'),
+  createTerminal: (cwd: string, command?: 'claude') => request<TerminalSummary>('POST', '/terminals', { cwd, command }),
+  deleteTerminal: (id: string) => request<void>('DELETE', `/terminals/${id}`),
   setConfig: (id: string, configId: string, value: string | boolean) =>
     request<void>('POST', `/threads/${id}/config`, { configId, value }),
   deleteThread: (id: string) => request<void>('DELETE', `/threads/${id}`),
@@ -148,4 +160,9 @@ export function followEvents(
   })();
 
   return () => abort.abort();
+}
+
+/** Token in uso (anche se il browser non permette di salvarlo) */
+export function currentToken(): string {
+  return memoryToken;
 }
