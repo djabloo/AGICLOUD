@@ -2,7 +2,7 @@
 
 Interfaccia web multi-agente per agenti di coding (Claude Code, agy, Cursor, OpenCode, ...), basata sugli standard aperti **ACP** e **AG-UI**.
 
-Stato: in uso quotidiano su app.agicloud.dev (sezione Chat). Architettura in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Stato: in uso quotidiano su app.agicloud.dev (Chat, Terminale, File, Impostazioni, notifiche). Architettura in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Avvio
 

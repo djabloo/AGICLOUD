@@ -69,6 +69,24 @@ export interface GeneralSettings {
   idleMinutes: number;
 }
 
+export interface FileEntry {
+  name: string;
+  path: string;
+  type: 'dir' | 'file' | 'link';
+  size: number;
+  mtime: number;
+}
+
+export interface FileContent {
+  path: string;
+  content: string | null;
+  binary: boolean;
+  tooLarge: boolean;
+  size: number;
+  mtime: number;
+  mime: string;
+}
+
 export interface DirListing {
   path: string | null;
   parent: string | null;
@@ -141,6 +159,35 @@ export const api = {
     request<VaultKey[]>('POST', '/settings/vault', k),
   deleteVaultKey: (name: string) => request<VaultKey[]>('DELETE', `/settings/vault/${encodeURIComponent(name)}`),
   agentLogin: (agentId: string) => request<TerminalSummary>('POST', `/settings/agents/${agentId}/login`),
+  listFiles: (path: string) =>
+    request<{ path: string; parent: string | null; entries: FileEntry[]; truncated: boolean }>('GET', `/files/list?path=${encodeURIComponent(path)}`),
+  readFile: (path: string) => request<FileContent>('GET', `/files/read?path=${encodeURIComponent(path)}`),
+  writeFile: (path: string, content: string, mtime?: number) => request<{ mtime: number }>('PUT', '/files/write', { path, content, mtime }),
+  createFile: (path: string, type: 'file' | 'dir') => request<FileEntry>('POST', '/files/create', { path, type }),
+  renameFile: (path: string, name: string) => request<{ path: string }>('POST', '/files/rename', { path, name }),
+  deleteFile: (path: string) => request<void>('DELETE', `/files?path=${encodeURIComponent(path)}`),
+  /** Contenuto grezzo come Blob (anteprime e download): serve il token, quindi niente <img src> diretto */
+  fileBlob: async (path: string): Promise<Blob> => {
+    const res = await fetch(`/api/files/raw?path=${encodeURIComponent(path)}`, {
+      headers: memoryToken ? { authorization: `Bearer ${memoryToken}` } : {},
+    });
+    if (!res.ok) throw new ApiError(res.status, `Errore ${res.status}`);
+    return res.blob();
+  },
+  uploadFiles: async (dir: string, files: File[]): Promise<FileEntry[]> => {
+    const form = new FormData();
+    for (const f of files) form.append('files', f, f.name);
+    const res = await fetch(`/api/files/upload?dir=${encodeURIComponent(dir)}`, {
+      method: 'POST',
+      headers: memoryToken ? { authorization: `Bearer ${memoryToken}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new ApiError(res.status, data.error ?? `Errore ${res.status}`);
+    }
+    return res.json();
+  },
   push: () => request<{ publicKey: string; devices: { endpoint: string; device: string }[] }>('GET', '/push'),
   pushSubscribe: (subscription: unknown, device: string) =>
     request<{ devices: { endpoint: string; device: string }[] }>('POST', '/push/subscribe', { subscription, device }),

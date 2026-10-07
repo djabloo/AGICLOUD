@@ -6,20 +6,21 @@ import { NewThreadDialog } from './NewThread';
 import { NewTerminalDialog } from './NewTerminal';
 import { TerminalView } from './TerminalView';
 import { SettingsView } from './SettingsView';
+import { FilesView } from './FilesView';
 import { Icon, type IconName } from './icons';
 
 type Auth = 'checking' | 'ok' | 'needed';
-type Section = 'chat' | 'terminal' | 'settings';
+type Section = 'chat' | 'terminal' | 'files' | 'settings';
 
 interface Route {
   section: Section;
   id: string | null;
 }
 
-const SECTIONS: { id: Section | 'files'; label: string; icon: IconName; ready: boolean }[] = [
+const SECTIONS: { id: Section; label: string; icon: IconName; ready: boolean }[] = [
   { id: 'chat', label: 'Chat', icon: 'chat', ready: true },
   { id: 'terminal', label: 'Terminale', icon: 'terminal', ready: true },
-  { id: 'files', label: 'File', icon: 'files', ready: false },
+  { id: 'files', label: 'File', icon: 'files', ready: true },
   { id: 'settings', label: 'Impostazioni', icon: 'settings', ready: true },
 ];
 
@@ -30,12 +31,15 @@ function routeFromHash(): Route {
   const term = location.hash.match(/^#\/term(?:\/([\w-]+))?$/);
   if (term) return { section: 'terminal', id: term[1] ?? null };
   if (location.hash === '#/settings') return { section: 'settings', id: null };
+  const files = location.hash.match(/^#\/files(?:\/(.+))?$/);
+  if (files) return { section: 'files', id: files[1] ? decodeURIComponent(files[1]) : null };
   return { section: 'chat', id: null };
 }
 
 function hashFor(r: Route): string {
   if (r.section === 'terminal') return r.id ? `#/term/${r.id}` : '#/term';
   if (r.section === 'settings') return '#/settings';
+  if (r.section === 'files') return r.id ? `#/files/${encodeURIComponent(r.id)}` : '#/files';
   return r.id ? `#/t/${r.id}` : '';
 }
 
@@ -190,6 +194,7 @@ export function App() {
 
   const inTerminals = route.section === 'terminal';
   const inSettings = route.section === 'settings';
+  const inFiles = route.section === 'files';
   const activeThread = route.section === 'chat' ? (threads.find((t) => t.id === route.id) ?? null) : null;
   const activeTerminal = inTerminals ? (terminals.find((t) => t.id === route.id) ?? null) : null;
   const agentLabel = (id: string) => agents.find((a) => a.id === id)?.label ?? id;
@@ -238,7 +243,7 @@ export function App() {
                   className="section-btn"
                   aria-current={s.id === route.section ? 'page' : undefined}
                   aria-disabled={!s.ready || undefined}
-                  onClick={() => s.ready && s.id !== 'files' && go({ section: s.id, id: null })}
+                  onClick={() => s.ready && go({ section: s.id, id: null })}
                 >
                   <Icon name={s.icon} />
                   <span>{s.label}</span>
@@ -249,14 +254,14 @@ export function App() {
           </ul>
         </nav>
 
-        {!inSettings && (
+        {!inSettings && !inFiles && (
           <button type="button" className="btn primary new-btn" onClick={openNew}>
             <Icon name="plus" />
             <span>{newLabel}</span>
           </button>
         )}
 
-        {inSettings ? null : inTerminals ? (
+        {inSettings || inFiles ? null : inTerminals ? (
           <>
             <h2 className="sidebar-title" id="list-title">
               Terminali
@@ -318,7 +323,9 @@ export function App() {
       <div className="backdrop" hidden={!drawerOpen} onClick={closeDrawer} />
 
       <main id="main" className="main" tabIndex={-1} inert={drawerOpen || undefined}>
-        {inSettings ? (
+        {inFiles ? (
+          <FilesView path={route.id} onNavigate={(p) => go({ section: 'files', id: p })} />
+        ) : inSettings ? (
           <SettingsView
             onOpenTerminal={(t) => {
               setTerminals((ts) => [t, ...ts]);

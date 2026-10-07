@@ -28,7 +28,7 @@ Un'interfaccia web generalista per **più agenti di coding**, organizzata a sezi
 |---|---|---|
 | `packages/bridge` | ✅ funzionante | Avvia un agente ACP, apre la sessione, traduce gli update in eventi AG-UI, gestisce permessi, cancel e login |
 | `apps/server` | ✅ funzionante | HTTP (Hono): conversazioni, registro eventi AG-UI per conversazione, flusso SSE con ripresa, permessi, cancel, token di accesso |
-| `apps/web` | ✅ sezione Chat | React + Vite: chat multi-agente, strumenti, permessi, piano; responsive e accessibile |
+| `apps/web` | ✅ Chat, Terminale, File, Impostazioni | React + Vite, PWA installabile con notifiche push; responsive e accessibile |
 
 ## Traduzione ACP → AG-UI (packages/bridge)
 
@@ -88,6 +88,18 @@ Ogni terminale è una sessione **tmux** su un socket dedicato (`tmux -L agicloud
 - Sopravvivono a: chiusura della pagina, rete che cade, **riavvio del server** (all'avvio si ritrovano le sessioni `agc-*` vive; metadati in `data/terminals.json`).
 - Finiscono solo se: li chiudi dal cestino (`tmux kill-session`) o il programma dentro termina.
 - La sessione nasce al primo collegamento del browser, con le sue misure (i programmi a schermo intero si disegnano subito giusti).
+
+## File
+
+Sezione File (`apps/server/src/files.ts`): sfoglia, editor CodeMirror 6 (linguaggi caricati su richiesta), anteprima Markdown/HTML (iframe `sandbox` senza permessi), immagini/PDF/video/audio (scaricati come Blob col token), download, crea/rinomina/elimina/carica.
+- Solo dentro `PROJECT_ROOTS`, sempre col percorso reale; il rinomina accetta solo un nome (niente `../`); non si eliminano radici né cartelle non vuote.
+- Salvataggio con controllo di conflitto: se il file è cambiato dopo l'apertura (es. lo ha toccato un agente) si sceglie tra ricaricare e sovrascrivere.
+- `/api/files/raw` ha una CSP propria e restrittiva (`sandbox`): un HTML aperto direttamente non esegue script.
+- In chat, i file toccati dagli strumenti sono link alla sezione File.
+
+## Notifiche e app
+
+PWA (manifest, icone, `sw.js` solo per le push, niente cache offline). Web Push con chiavi VAPID in `data/vapid.json` e dispositivi in `data/push.json` (600). Notifica a fine turno (con l'inizio della risposta), in caso di errore e quando l'agente chiede un permesso; il tocco apre la conversazione; niente notifica se la stai già guardando. Su iPhone servono l'app installata e iOS 16.4+.
 
 ## Accessibilità e responsive
 

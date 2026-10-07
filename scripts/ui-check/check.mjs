@@ -8,6 +8,9 @@ export default async function ({ page }) {
   const out = { steps: [], shots: {}, axe: {} };
   const BASE = '${process.env.BASE || 'http://agicloud-uitest:3095/'}';
   await page.setBypassCSP(true);
+  out.console = [];
+  page.on('console', (m) => { if (m.type() === 'error') out.console.push(m.text().slice(0, 300)); });
+  page.on('pageerror', (e) => out.console.push('PAGEERROR ' + String(e).slice(0, 300)));
   ${DARK ? "await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);" : ''}
   const runAxe = async (label) => {
     await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js' });
@@ -141,6 +144,32 @@ export default async function ({ page }) {
   out.settingsMobile = await page.evaluate(() => document.documentElement.scrollWidth);
   await shot('settings-mobile');
   await runAxe('settings-mobile');
+
+  // File: crea, modifica, salva, anteprima
+  await page.setViewport({ width: 1366, height: 860 });
+  page.on('dialog', (d) => (d.type() === 'prompt' ? d.accept('nota.md') : d.accept()));
+  await page.goto(BASE + '#/files/' + encodeURIComponent('/tmp/proj/demo'), { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.files-toolbar');
+  await page.evaluate(() => [...document.querySelectorAll('.files-toolbar button')].find((b) => b.textContent.includes('File')).click());
+  await page.waitForSelector('.cm-content', { timeout: 10000 });
+  await new Promise((r) => setTimeout(r, 500));
+  await page.click('.cm-content');
+  await page.keyboard.type('# Titolo di prova\\n\\nTesto **in grassetto**.');
+  out.editorDebug = await page.evaluate(() => ({ active: document.activeElement?.className, doc: document.querySelector('.cm-content')?.textContent, editors: document.querySelectorAll('.cm-editor').length, touch: 'ontouchstart' in window }));
+  await page.keyboard.down('Control'); await page.keyboard.press('s'); await page.keyboard.up('Control');
+  await page.waitForFunction(() => document.querySelector('.viewer-status')?.textContent.includes('Salvato'), { timeout: 10000 });
+  out.steps.push('file salvato');
+  await shot('files-edit');
+  await runAxe('files-edit');
+  await page.evaluate(() => [...document.querySelectorAll('.seg-btn')].find((b) => b.textContent.includes('Anteprima')).click());
+  await page.waitForSelector('.md-preview strong');
+  out.mdPreview = await page.$eval('.md-preview', (el) => el.innerHTML.slice(0, 120));
+  await shot('files-preview');
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  await new Promise((r) => setTimeout(r, 400));
+  out.filesMobile = await page.evaluate(() => ({ scrollW: document.documentElement.scrollWidth, browserVisible: getComputedStyle(document.querySelector('.files-browser')).display }));
+  await shot('files-mobile');
+  await runAxe('files-mobile');
 
   // Terminale
   await page.setViewport({ width: 1366, height: 860 });

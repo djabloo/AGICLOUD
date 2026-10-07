@@ -12,6 +12,9 @@ import { listDirs } from './projects.js';
 import { TerminalStore } from './terminals.js';
 import { saveUploads } from './uploads.js';
 import { Push } from './push.js';
+import { createEntry, deleteEntry, listDir, rawFile, readText, renameEntry, uploadInto, writeText } from './files.js';
+import { createReadStream } from 'node:fs';
+import { Readable } from 'node:stream';
 import { LOGIN_COMMANDS, Settings } from './settings.js';
 import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
@@ -33,10 +36,11 @@ app.use('*', async (c, next) => {
   else c.header('Cache-Control', 'no-cache');
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('Referrer-Policy', 'no-referrer');
-  c.header(
+  // Le route con una CSP propria (es. file grezzi) la tengono
+  if (!c.res.headers.has('Content-Security-Policy')) c.header(
     'Content-Security-Policy',
     // style 'unsafe-inline': il terminale (xterm.js) crea i suoi stili al volo
-    "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   );
 });
 
@@ -231,6 +235,52 @@ app.post('/api/settings/agents/:id/login', (c) => {
   const home = homedir();
   const cwd = config.projectRoots.some((r) => home === r || home.startsWith(r + '/')) ? home : config.projectRoots[0]!;
   return c.json(terminals.create(cwd, command).summary(), 201);
+});
+
+// ── File ─────────────────────────────────────────────────────────────────────
+app.get('/api/files/list', (c) => c.json(listDir(c.req.query('path') ?? '')));
+
+app.get('/api/files/read', (c) => c.json(readText(c.req.query('path') ?? '')));
+
+// Contenuto grezzo (anteprime di immagini/PDF/video e download). Il browser lo chiede con fetch + token.
+app.get('/api/files/raw', (c) => {
+  const f = rawFile(c.req.query('path') ?? '');
+  const name = encodeURIComponent(f.path.split('/').pop() ?? 'file');
+  c.header('Content-Type', f.mime);
+  c.header('Content-Length', String(f.size));
+  c.header('Content-Disposition', `${c.req.query('download') ? 'attachment' : 'inline'}; filename*=UTF-8''${name}`);
+  // Un HTML aperto direttamente non deve poter eseguire script con i nostri permessi
+  c.header('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox");
+  return c.body(Readable.toWeb(createReadStream(f.path)) as ReadableStream);
+});
+
+app.put('/api/files/write', async (c) => {
+  const body = await jsonBody(c);
+  if (typeof body.content !== 'string') throw new HttpError(400, 'content obbligatorio');
+  const expected = typeof body.mtime === 'number' ? body.mtime : undefined;
+  return c.json(writeText(String(body.path ?? ''), body.content, expected));
+});
+
+app.post('/api/files/create', async (c) => {
+  const body = await jsonBody(c);
+  return c.json(createEntry(String(body.path ?? ''), body.type === 'dir' ? 'dir' : 'file'), 201);
+});
+
+app.post('/api/files/rename', async (c) => {
+  const body = await jsonBody(c);
+  return c.json({ path: renameEntry(String(body.path ?? ''), String(body.name ?? '')) });
+});
+
+app.delete('/api/files', (c) => {
+  deleteEntry(c.req.query('path') ?? '');
+  return c.body(null, 204);
+});
+
+app.post('/api/files/upload', async (c) => {
+  const form = await c.req.parseBody({ all: true });
+  const raw = form.files ?? form.file;
+  const files = (Array.isArray(raw) ? raw : [raw]).filter((f): f is File => f instanceof File);
+  return c.json(await uploadInto(c.req.query('dir') ?? '', files), 201);
 });
 
 // ── Notifiche push ───────────────────────────────────────────────────────────

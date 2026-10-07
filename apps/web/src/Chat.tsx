@@ -136,7 +136,7 @@ export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
         <ol className="items">
           {state.items.map((it) => (
             <li key={it.id} className={`item item-${it.kind}${it.kind === 'message' ? ` from-${it.role}` : ''}`}>
-              <ItemView item={it} threadId={thread.id} />
+              <ItemView item={it} threadId={thread.id} cwd={thread.cwd} />
             </li>
           ))}
         </ol>
@@ -172,7 +172,7 @@ export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
   );
 }
 
-function ItemView({ item, threadId }: { item: Item; threadId: string }) {
+function ItemView({ item, threadId, cwd }: { item: Item; threadId: string; cwd: string }) {
   switch (item.kind) {
     case 'message':
       return (
@@ -188,7 +188,7 @@ function ItemView({ item, threadId }: { item: Item; threadId: string }) {
         </details>
       );
     case 'tool':
-      return <ToolView item={item} />;
+      return <ToolView item={item} cwd={cwd} />;
     case 'permission':
       return <PermissionView item={item} threadId={threadId} />;
     case 'plan':
@@ -222,7 +222,7 @@ function ItemView({ item, threadId }: { item: Item; threadId: string }) {
   }
 }
 
-function ToolView({ item }: { item: Extract<Item, { kind: 'tool' }> }) {
+function ToolView({ item, cwd }: { item: Extract<Item, { kind: 'tool' }>; cwd: string }) {
   const statusLabel =
     item.status === 'completed' ? 'completato' : item.status === 'failed' ? 'fallito' : item.status === 'in_progress' ? 'in corso' : 'in attesa';
   return (
@@ -236,10 +236,13 @@ function ToolView({ item }: { item: Extract<Item, { kind: 'tool' }> }) {
         <ul className="tool-files">
           {item.locations.map((l, i) => (
             <li key={i}>
-              <code>
-                {l.path}
-                {l.line ? `:${l.line}` : ''}
-              </code>
+              {/* Apre il file nella sezione File */}
+              <a href={`#/files/${encodeURIComponent(l.path.startsWith('/') ? l.path : `${cwd}/${l.path}`)}`}>
+                <code>
+                  {l.path}
+                  {l.line ? `:${l.line}` : ''}
+                </code>
+              </a>
             </li>
           ))}
         </ul>

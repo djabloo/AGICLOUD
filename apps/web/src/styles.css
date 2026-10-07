@@ -1460,3 +1460,291 @@ legend {
   border-radius: var(--radius);
   background: var(--surface);
 }
+
+/* ── File ────────────────────────────────────────────────────────────────── */
+.files {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.files-pane {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.files-browser {
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+/* Telefono: o l'elenco o il file aperto */
+.files.has-file .files-browser,
+.files:not(.has-file) .files-viewer {
+  display: none;
+}
+@media (min-width: 900px) {
+  .files {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+  .files.has-file .files-browser,
+  .files:not(.has-file) .files-viewer {
+    display: flex;
+  }
+  .files-error {
+    grid-column: 1 / -1;
+  }
+}
+.files .settings-body {
+  grid-column: 1 / -1;
+}
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 0;
+  padding: 8px 10px 4px;
+  list-style: none;
+}
+.crumbs li:not(:last-child)::after {
+  content: '/';
+  margin-left: 2px;
+  color: var(--text-muted);
+}
+.crumb {
+  min-height: 32px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.crumb[aria-current] {
+  color: var(--text);
+  font-weight: 700;
+}
+.crumb:hover {
+  background: var(--surface-2);
+}
+.files-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.check-row.small {
+  min-height: 36px;
+  font-size: 0.85rem;
+}
+.file-list {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+}
+.file-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  border-radius: 8px;
+}
+.file-item.is-active {
+  background: var(--accent-soft);
+}
+.file-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+.file-row:hover {
+  background: var(--surface-2);
+}
+.file-row .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+.file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-size {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.file-more {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.file-more:hover {
+  background: var(--surface-2);
+}
+.file-menu {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 8px 8px 34px;
+}
+.danger-text {
+  color: var(--danger);
+}
+@media (pointer: coarse) {
+  .file-row {
+    min-height: 44px;
+  }
+  .file-more {
+    width: 44px;
+    height: 44px;
+  }
+}
+.pad {
+  padding: 12px;
+}
+.viewer {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.viewer-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.viewer-title {
+  flex: 1;
+  min-width: 0;
+}
+.viewer-title h2 {
+  margin: 0;
+  font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dirty {
+  color: var(--warn);
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.seg-btn {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.seg-btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 600;
+}
+.viewer-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.code-editor,
+.code-editor .cm-editor {
+  height: 100%;
+}
+.code-editor .cm-editor {
+  font-size: 14px;
+}
+.code-editor .cm-scroller {
+  font-family: var(--mono);
+}
+.md-preview {
+  max-width: 820px;
+  padding: 16px;
+}
+.html-preview,
+.pdf-preview {
+  width: 100%;
+  height: 100%;
+  min-height: 60vh;
+  border: 0;
+  background: #fff;
+}
+.media-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 80vh;
+  margin: 16px auto;
+}
+.viewer-status {
+  margin: 0;
+  padding: 4px 12px;
+  padding-bottom: max(4px, env(safe-area-inset-bottom));
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.viewer-status:empty {
+  display: none;
+}
+.conflict {
+  margin: 8px 12px;
+}
+.conflict p {
+  margin: 0 0 8px;
+}
+.tool-files a {
+  color: var(--accent);
+}
+.tool-files a {
+  display: inline-block;
+  min-height: 24px;
+  padding: 2px 0;
+}
+.files-browser > * {
+  flex: none;
+}
+@media (max-width: 599px) {
+  /* Telefono: nome del file su una riga, pulsanti sotto */
+  .viewer-title {
+    flex: 1 1 calc(100% - 60px);
+  }
+  .viewer-head .seg {
+    margin-right: auto;
+  }
+}
