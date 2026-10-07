@@ -106,6 +106,12 @@ export default async function ({ page }) {
     const demo = cards.find((c) => c.querySelector('h3').textContent.startsWith('Demo'));
     return demo ? [...demo.querySelectorAll('.defaults select')].length : -1;
   });
+  await page.type('.add-key input.mono-input', 'FAL_KEY');
+  await page.type('.add-key input[type=password]', 'chiave-finta-9876');
+  await page.click('.add-key .btn.primary');
+  await page.waitForSelector('.vault-item');
+  out.vault = await page.$eval('.vault-list', (el) => el.textContent);
+  out.vaultLeak = (await page.content()).includes('chiave-finta');
   out.steps.push('impostazioni ok');
   await shot('settings');
   await runAxe('settings');

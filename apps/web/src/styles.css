@@ -1246,3 +1246,63 @@ legend {
   justify-content: flex-start;
   align-items: center;
 }
+
+/* ── Portachiavi ─────────────────────────────────────────────────────────── */
+.vault-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+.vault-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.vault-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.vault-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.vault-note {
+  margin: 0;
+}
+.vault-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+.vault-actions .btn {
+  margin-left: auto;
+}
+.add-key {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.add-key-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 12px;
+}
+.add-key-grid .hint {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+}
+.add-key-note {
+  grid-column: 1 / -1;
+}

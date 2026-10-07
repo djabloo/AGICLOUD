@@ -27,6 +27,7 @@ export class Terminal {
     command: string | undefined,
     cols: number,
     rows: number,
+    extraEnv: Record<string, string> = {},
   ) {
     const shell = process.env.SHELL || '/bin/bash';
     this.proc = pty.spawn(shell, command ? ['-l', '-c', command] : ['-l'], {
@@ -34,7 +35,7 @@ export class Terminal {
       cwd,
       cols,
       rows,
-      env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' } as Record<string, string>,
+      env: { ...process.env, ...extraEnv, TERM: 'xterm-256color', COLORTERM: 'truecolor' } as Record<string, string>,
     });
     this.proc.onData((data) => {
       this.buffer = (this.buffer + data).slice(-SCROLLBACK);
@@ -79,6 +80,9 @@ export class Terminal {
 export class TerminalStore {
   private readonly terminals = new Map<string, Terminal>();
 
+  /** extraEnv: chiavi del portachiavi abilitate per i terminali (lette a ogni apertura) */
+  constructor(private readonly extraEnv: () => Record<string, string> = () => ({})) {}
+
   list() {
     return [...this.terminals.values()].sort((a, b) => b.createdAt - a.createdAt).map((t) => t.summary());
   }
@@ -94,7 +98,7 @@ export class TerminalStore {
     if (alive >= MAX_TERMINALS) throw new HttpError(429, `Troppi terminali aperti (max ${MAX_TERMINALS}): chiudine uno`);
     const real = resolveProject(cwd);
     const title = command ? `${command} · ${basename(real)}` : basename(real);
-    const t = new Terminal(real, title, command, 100, 30);
+    const t = new Terminal(real, title, command, 100, 30, this.extraEnv());
     this.terminals.set(t.id, t);
     return t;
   }

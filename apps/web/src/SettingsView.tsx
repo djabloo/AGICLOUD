@@ -2,6 +2,7 @@ import { useEffect, useId, useState, type FormEvent } from 'react';
 import { api, setToken, type AgentStatus, type GeneralSettings, type TerminalSummary } from './api';
 import type { ConfigOption } from './transcript';
 import { Icon } from './icons';
+import { VaultSection } from './VaultSection';
 
 const LOGIN_TEXT: Record<AgentStatus['login']['state'], string> = {
   ok: 'Collegato',
@@ -40,7 +41,7 @@ export function SettingsView({ onOpenTerminal, onLogout }: { onOpenTerminal: (t:
       <header className="chat-header">
         <div className="chat-heading">
           <h1 id="settings-title">Impostazioni</h1>
-          <p className="chat-meta">Login degli agenti, permessi predefiniti, cartelle, accesso</p>
+          <p className="chat-meta">Login degli agenti, permessi predefiniti, chiavi, cartelle, accesso</p>
         </div>
       </header>
 
@@ -71,6 +72,8 @@ export function SettingsView({ onOpenTerminal, onLogout }: { onOpenTerminal: (t:
             </ul>
           )}
         </section>
+
+        <VaultSection />
 
         {general && <GeneralForm general={general} onSaved={setGeneral} />}
 
@@ -154,7 +157,7 @@ function AgentCard({
         <SecretField key={v.name} agentId={agent.id} name={v.name} label={v.label} isSet={v.set} onChanged={onChanged} />
       ))}
 
-      <Defaults agent={agent} />
+      {agent.chat && <Defaults agent={agent} />}
 
       {error && (
         <p className="form-error" role="alert">

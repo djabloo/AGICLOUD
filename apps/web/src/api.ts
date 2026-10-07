@@ -31,9 +31,20 @@ export interface TerminalSummary {
   exited: boolean;
 }
 
+export interface VaultKey {
+  name: string;
+  note: string;
+  agents: boolean;
+  terminals: boolean;
+  updatedAt: number;
+  last4: string;
+}
+
 export interface AgentStatus {
   id: string;
   label: string;
+  /** false = per ora solo login (es. agy) */
+  chat: boolean;
   note?: string;
   installed: boolean;
   version: string | null;
@@ -116,6 +127,10 @@ export const api = {
     request<void>('POST', `/settings/agents/${agentId}/env`, { name, value }),
   setAgentDefault: (agentId: string, configId: string, value: string | boolean | null) =>
     request<void>('POST', `/settings/agents/${agentId}/defaults`, { configId, value }),
+  vault: () => request<VaultKey[]>('GET', '/settings/vault'),
+  saveVaultKey: (k: { name: string; value?: string; note?: string; agents?: boolean; terminals?: boolean }) =>
+    request<VaultKey[]>('POST', '/settings/vault', k),
+  deleteVaultKey: (name: string) => request<VaultKey[]>('DELETE', `/settings/vault/${encodeURIComponent(name)}`),
   agentLogin: (agentId: string) => request<TerminalSummary>('POST', `/settings/agents/${agentId}/login`),
   terminals: () => request<TerminalSummary[]>('GET', '/terminals'),
   createTerminal: (cwd: string, command?: 'claude') => request<TerminalSummary>('POST', '/terminals', { cwd, command }),

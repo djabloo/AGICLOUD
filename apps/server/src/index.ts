@@ -18,7 +18,7 @@ import { attachTerminalSockets } from './terminal-socket.js';
 const settings = new Settings();
 const store = new ThreadStore(settings);
 store.load();
-const terminals = new TerminalStore();
+const terminals = new TerminalStore(() => settings.vaultEnv('terminals'));
 const app = new Hono<{ Bindings: HttpBindings }>();
 
 app.use('*', async (c, next) => {
@@ -192,6 +192,19 @@ app.post('/api/settings/agents/:id/defaults', async (c) => {
   const value = typeof body.value === 'string' || typeof body.value === 'boolean' ? body.value : null;
   settings.setDefault(c.req.param('id'), String(body.configId ?? ''), value);
   return c.body(null, 204);
+});
+
+// Portachiavi: chiavi API passate ad agenti/terminali come variabili d'ambiente, mai al browser
+app.get('/api/settings/vault', (c) => c.json(settings.vaultList()));
+
+app.post('/api/settings/vault', async (c) => {
+  settings.setVault(await jsonBody(c));
+  return c.json(settings.vaultList());
+});
+
+app.delete('/api/settings/vault/:name', (c) => {
+  settings.deleteVault(c.req.param('name'));
+  return c.json(settings.vaultList());
 });
 
 // Login interattivo dell'agente: si apre un terminale col comando giusto

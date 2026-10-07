@@ -26,7 +26,14 @@ const AGENT_ENV: Record<string, { name: string; label: string }[]> = {
   codex: [{ name: 'OPENAI_API_KEY', label: 'Chiave API OpenAI' }],
   opencode: [],
   cursor: [],
+  agy: [],
 };
+
+/** agy e' installato da tino: lo si usa da li' (con il login dell'utente che lo lancia) */
+export const AGY_BIN = process.env.AGY_BIN || '/home/tino/.local/bin/agy';
+
+/** Strumenti con login ma non ancora usabili in chat */
+const TOOLS = [{ id: 'agy', label: 'agy (Google Antigravity)', note: 'Per ora solo login. La chat con agy arrivera\' con un adattatore dedicato' }];
 
 /** Comando di login da lanciare in un terminale, per agente */
 export const LOGIN_COMMANDS: Record<string, string> = {
@@ -35,10 +42,28 @@ export const LOGIN_COMMANDS: Record<string, string> = {
   codex: 'codex login',
   // Niente browser sul server: stampa il link da aprire sul telefono/PC
   cursor: 'NO_OPEN_BROWSER=1 cursor-agent login',
+  // agy non ha un comando di login: al primo avvio interattivo chiede l'accesso Google
+  agy: AGY_BIN,
 };
 
 const settingsFile = join(config.threadsDir, '..', 'settings.json');
 const secretsFile = join(config.threadsDir, '..', 'secrets.json');
+const vaultFile = join(config.threadsDir, '..', 'vault.json');
+
+/** Chiave del portachiavi: il valore non esce mai dal server */
+interface VaultEntry {
+  value: string;
+  note: string;
+  /** Passata come variabile d'ambiente agli agenti (chat) */
+  agents: boolean;
+  /** Passata ai terminali */
+  terminals: boolean;
+  updatedAt: number;
+}
+
+const VAULT_NAME = /^[A-Z][A-Z0-9_]{1,63}$/;
+/** Nomi che cambierebbero il comportamento di shell e programmi: vietati */
+const VAULT_FORBIDDEN = /^(PATH|HOME|SHELL|USER|LOGNAME|PWD|TERM|LANG|TZ|TMPDIR|IFS|PS\d|ENV|BASH_ENV|AUTH_TOKEN|LD_.*|NODE_.*|NPM_.*|DYLD_.*|PYTHON.*|GIT_.*|SSH_.*|XDG_.*|DISPLAY)$/;
 
 function readJson<T>(file: string, fallback: T): T {
   try {
@@ -63,6 +88,7 @@ export interface LoginStatus {
 export class Settings {
   private data: SettingsFile = readJson(settingsFile, { agentDefaults: {}, agentOptions: {} });
   private secrets: Record<string, Record<string, string>> = readJson(secretsFile, {});
+  private vault: Record<string, VaultEntry> = readJson(vaultFile, {});
   private statusCache = new Map<string, { at: number; value: { installed: boolean; version: string | null; login: LoginStatus } }>();
 
   constructor() {
@@ -72,7 +98,45 @@ export class Settings {
 
   /** Ambiente extra da passare all'agente (chiavi API) */
   agentEnv(agentId: string): Record<string, string> {
-    return { ...this.secrets[agentId] };
+    return { ...this.vaultEnv('agents'), ...this.secrets[agentId] };
+  }
+
+  /** Chiavi del portachiavi abilitate per agenti o terminali, come variabili d'ambiente */
+  vaultEnv(scope: 'agents' | 'terminals'): Record<string, string> {
+    const env: Record<string, string> = {};
+    for (const [name, e] of Object.entries(this.vault)) if (e[scope]) env[name] = e.value;
+    return env;
+  }
+
+  /** Elenco per la UI: mai il valore, solo le ultime 4 cifre per riconoscerla */
+  vaultList() {
+    return Object.entries(this.vault)
+      .map(([name, e]) => ({ name, note: e.note, agents: e.agents, terminals: e.terminals, updatedAt: e.updatedAt, last4: e.value.slice(-4) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  setVault(input: { name?: unknown; value?: unknown; note?: unknown; agents?: unknown; terminals?: unknown }): void {
+    const name = String(input.name ?? '').trim();
+    if (!VAULT_NAME.test(name)) throw new HttpError(400, 'Nome non valido: maiuscole, numeri e _ (es. FAL_KEY)');
+    if (VAULT_FORBIDDEN.test(name)) throw new HttpError(400, `Nome riservato al sistema: ${name}`);
+    const prev = this.vault[name];
+    const value = typeof input.value === 'string' ? input.value.trim() : '';
+    if (!prev && !value) throw new HttpError(400, 'Valore obbligatorio per una chiave nuova');
+    if (value.includes('\n')) throw new HttpError(400, 'Il valore non puo\' andare a capo');
+    this.vault[name] = {
+      value: value || prev!.value,
+      note: typeof input.note === 'string' ? input.note.trim().slice(0, 200) : (prev?.note ?? ''),
+      agents: typeof input.agents === 'boolean' ? input.agents : (prev?.agents ?? true),
+      terminals: typeof input.terminals === 'boolean' ? input.terminals : (prev?.terminals ?? true),
+      updatedAt: Date.now(),
+    };
+    writeJson(vaultFile, this.vault, 0o600);
+  }
+
+  deleteVault(name: string): void {
+    if (!this.vault[name]) throw new HttpError(404, 'Chiave non trovata');
+    delete this.vault[name];
+    writeJson(vaultFile, this.vault, 0o600);
   }
 
   agentDefaults(agentId: string): Record<string, ConfigValue> {
@@ -135,8 +199,12 @@ export class Settings {
 
   /** Stato di ogni agente: installato, versione, login. Controlli lenti: risultato in cache 1 minuto */
   async agents(force = false) {
+    const list = [
+      ...Object.values(AGENTS).map((a) => ({ id: a.id, label: a.label, note: a.note, chat: true })),
+      ...TOOLS.map((t) => ({ ...t, chat: false })),
+    ];
     return Promise.all(
-      Object.values(AGENTS).map(async (a) => {
+      list.map(async (a) => {
         let status = this.statusCache.get(a.id);
         if (force || !status || Date.now() - status.at > 60_000) {
           status = { at: Date.now(), value: await this.probe(a.id) };
@@ -146,6 +214,7 @@ export class Settings {
           id: a.id,
           label: a.label,
           note: a.note,
+          chat: a.chat,
           ...status.value,
           loginCommand: LOGIN_COMMANDS[a.id] ?? null,
           env: (AGENT_ENV[a.id] ?? []).map((v) => ({ ...v, set: Boolean(this.secrets[a.id]?.[v.name] || process.env[v.name]) })),
@@ -231,6 +300,18 @@ export class Settings {
             : { state: 'missing', detail: 'Non collegato' },
         };
       }
+      case 'agy': {
+        const version = await run(AGY_BIN, ['--version'], env);
+        if (version === null) return { installed: false, version: null, login: { state: 'unknown', detail: `agy non trovato in ${AGY_BIN}` } };
+        // Senza login agy resta in attesa: se in 20 secondi elenca i modelli, il login c'e'
+        const models = await run(AGY_BIN, ['models'], env, 20_000);
+        const ok = models !== null && models.trim().length > 0 && !/login|sign in|authenticat/i.test(models);
+        return {
+          installed: true,
+          version: firstLine(version),
+          login: ok ? { state: 'ok', detail: 'Account Google collegato' } : { state: 'missing', detail: 'Non collegato per l\'utente di AgiCloud' },
+        };
+      }
       default:
         return { installed: true, version: null, login: { state: 'ok', detail: 'Nessun login richiesto' } };
     }
@@ -238,10 +319,11 @@ export class Settings {
 }
 
 /** Esegue un comando breve; null se non esiste o fallisce */
-function run(cmd: string, args: string[], env: NodeJS.ProcessEnv): Promise<string | null> {
+function run(cmd: string, args: string[], env: NodeJS.ProcessEnv, timeout = 15_000): Promise<string | null> {
   return new Promise((resolve) => {
-    execFile(cmd, args, { env, timeout: 15_000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
+    execFile(cmd, args, { env, timeout, maxBuffer: 1024 * 1024, cwd: '/tmp' }, (err, stdout, stderr) => {
       if (err && (err as NodeJS.ErrnoException).code === 'ENOENT') return resolve(null);
+      if (err && err.killed) return resolve(null); // scaduto il tempo
       resolve(err && !stdout ? (stderr || null) : `${stdout}${stderr}`);
     });
   });
