@@ -58,6 +58,7 @@ export class AuthRequiredError extends Error {
 }
 
 const STDERR_TAIL = 4000;
+const AUTH_TIMEOUT_MS = 30_000;
 
 interface ActiveRun {
   queue: AsyncQueue<BaseEvent>;
@@ -137,8 +138,17 @@ export class AgentSession {
         clientInfo: { name: 'agicloud', version: '0.0.1' },
       }),
     );
-    if (this.opts.authMethod) {
-      await race(ctx.request(acp.methods.agent.authenticate, { methodId: this.opts.authMethod }));
+    const authMethod = this.opts.authMethod ?? this.agent.authMethod;
+    if (authMethod) {
+      try {
+        // Con credenziali scadute alcuni agenti (Cursor) restano appesi: meglio un errore chiaro
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('login scaduto o non valido: rifai il login dalle Impostazioni')), AUTH_TIMEOUT_MS).unref(),
+        );
+        await race(Promise.race([ctx.request(acp.methods.agent.authenticate, { methodId: authMethod }), timeout]));
+      } catch (err) {
+        throw new AuthRequiredError(this.agent.label, init.authMethods ?? [], errorMessage(err, ''));
+      }
     }
 
     const caps = init.agentCapabilities;

@@ -12,6 +12,8 @@ export interface AgentSpec {
   native: boolean;
   /** Avviso da mostrare nella UI (requisiti, costi) */
   note?: string;
+  /** Metodo di login ACP da chiamare sempre prima di aprire la sessione */
+  authMethod?: string;
 }
 
 export const AGENTS: Record<string, AgentSpec> = {
@@ -30,6 +32,16 @@ export const AGENTS: Record<string, AgentSpec> = {
     args: ['-y', '@agentclientprotocol/claude-agent-acp@0.86.0'],
     native: false,
   },
+  cursor: {
+    id: 'cursor',
+    label: 'Cursor',
+    command: 'cursor-agent',
+    args: ['acp'],
+    native: true,
+    // Cursor vuole authenticate prima di session/new (usa il login gia' fatto con `cursor-agent login`)
+    authMethod: 'cursor_login',
+    note: 'Usa il tuo account Cursor (anche il piano gratuito)',
+  },
   codex: {
     id: 'codex',
     label: 'Codex',
@@ -37,14 +49,6 @@ export const AGENTS: Record<string, AgentSpec> = {
     args: ['-y', '@zed-industries/codex-acp@0.16.0'],
     native: false,
     note: 'Usa il login di codex (account ChatGPT o chiave API)',
-  },
-  gemini: {
-    id: 'gemini',
-    label: 'Gemini CLI',
-    command: 'gemini',
-    args: ['--acp'],
-    native: true,
-    note: 'Richiede una chiave API Gemini (GEMINI_API_KEY): l\'abbonamento Google non basta',
   },
 };
 

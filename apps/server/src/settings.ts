@@ -24,8 +24,8 @@ interface SettingsFile {
 const AGENT_ENV: Record<string, { name: string; label: string }[]> = {
   claude: [{ name: 'ANTHROPIC_API_KEY', label: 'Chiave API Anthropic (facoltativa: senza si usa il login claude.ai)' }],
   codex: [{ name: 'OPENAI_API_KEY', label: 'Chiave API OpenAI' }],
-  gemini: [{ name: 'GEMINI_API_KEY', label: 'Chiave API Gemini' }],
   opencode: [],
+  cursor: [],
 };
 
 /** Comando di login da lanciare in un terminale, per agente */
@@ -33,6 +33,8 @@ export const LOGIN_COMMANDS: Record<string, string> = {
   claude: 'claude auth login',
   opencode: 'opencode auth login',
   codex: 'codex login',
+  // Niente browser sul server: stampa il link da aprire sul telefono/PC
+  cursor: 'NO_OPEN_BROWSER=1 cursor-agent login',
 };
 
 const settingsFile = join(config.threadsDir, '..', 'settings.json');
@@ -214,13 +216,19 @@ export class Settings {
             : { state: 'missing', detail: 'Non collegato' },
         };
       }
-      case 'gemini': {
-        const version = await run('gemini', ['--version'], env);
-        if (version === null) return { installed: false, version: null, login: { state: 'unknown', detail: 'gemini non installato' } };
+      case 'cursor': {
+        const version = await run('cursor-agent', ['--version'], env);
+        if (version === null) return { installed: false, version: null, login: { state: 'unknown', detail: 'cursor-agent non installato' } };
+        const out = stripAnsi((await run('cursor-agent', ['status'], env)) ?? '');
+        const logged = /logged in/i.test(out) && !/not logged in/i.test(out);
         return {
           installed: true,
           version: firstLine(version),
-          login: env.GEMINI_API_KEY ? { state: 'ok', detail: 'Chiave API impostata' } : { state: 'missing', detail: 'Manca GEMINI_API_KEY' },
+          login: logged
+            ? /unable to fetch/i.test(out)
+              ? { state: 'unknown', detail: 'Login presente ma non verificabile: se le chat non partono, rifai il login' }
+              : { state: 'ok', detail: firstLine(out.replace(/^.*Login successful!?\s*/i, '')) }
+            : { state: 'missing', detail: 'Non collegato' },
         };
       }
       default:

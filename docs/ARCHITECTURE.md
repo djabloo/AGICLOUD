@@ -54,10 +54,11 @@ Scelte:
 |---|---|---|
 | OpenCode | `opencode acp` | ✅ testo, tool call, file creato |
 | Claude Code | `@agentclientprotocol/claude-agent-acp` | ✅ testo, permessi, modalità/modello/effort, comandi `/`, ripresa sessione dopo pausa e dopo riavvio del server |
-| Gemini CLI | `gemini --acp` | ⚠️ ponte ok; serve una chiave API Gemini (l'abbonamento Google non la include) |
+| Cursor | `cursor-agent acp` (nativo, `authenticate` con `cursor_login`) | ⚠️ collegamento ok; serve un login Cursor valido sul server (`cursor-agent login` dalle Impostazioni) |
 | Demo | `packages/bridge/src/demo-agent.ts` | ✅ agente finto per prove (`AGICLOUD_DEMO_AGENT=1`): opzioni, comandi, permessi, ripresa |
 | Codex | `@zed-industries/codex-acp` | non provato (API a pagamento) |
-| agy | — | più avanti, come plugin o via terminale |
+| agy | adattatore nostro su `agy --print --input-format stream-json --output-format stream-json` (la CLI 1.3.0 non ha ACP) | da fare |
+| ~~Gemini CLI~~ | — | tolto (2026-10-07): con l'abbonamento Google non si può usare, solo a chiave API. Per la chat contano solo agenti ad abbonamento o piano gratuito |
 
 ## Sezioni (MVP → dopo)
 
