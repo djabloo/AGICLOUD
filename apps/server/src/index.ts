@@ -267,7 +267,7 @@ const server = serve({ fetch: app.fetch, hostname: config.host, port: config.por
 attachTerminalSockets(server as Server, terminals, checkAccess);
 
 async function shutdown() {
-  terminals.killAll();
+  terminals.detachAll();
   await store.shutdown();
   server.close();
   process.exit(0);

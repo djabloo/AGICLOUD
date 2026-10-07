@@ -82,6 +82,13 @@ Scelta: **niente `@ag-ui/client` né componenti CopilotKit** per ora. Il client 
 - Stato "vivo" (opzioni, comandi slash, stato) viaggia come evento `agicloud.state` senza id SSE: non entra nel registro.
 - Progetti: qualsiasi cartella dentro `PROJECT_ROOTS` (default `data/workspaces:/home/user:/opt:/var/www`), controllata con il percorso reale (niente symlink per uscire).
 
+## Terminali
+
+Ogni terminale è una sessione **tmux** su un socket dedicato (`tmux -L agicloud`, config `apps/server/tmux.conf`: niente barra, niente prefisso). Il server si collega con un pty "spettatore" (`tmux attach`) e inoltra l'output via WebSocket.
+- Sopravvivono a: chiusura della pagina, rete che cade, **riavvio del server** (all'avvio si ritrovano le sessioni `agc-*` vive; metadati in `data/terminals.json`).
+- Finiscono solo se: li chiudi dal cestino (`tmux kill-session`) o il programma dentro termina.
+- La sessione nasce al primo collegamento del browser, con le sue misure (i programmi a schermo intero si disegnano subito giusti).
+
 ## Accessibilità e responsive
 
 Obiettivo WCAG 2.2 AA. Verificato con axe-core (0 violazioni, tema chiaro e scuro, desktop e 390px) tramite `scripts/ui-check/run.sh`.
