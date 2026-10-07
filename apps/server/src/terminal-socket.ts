@@ -49,8 +49,7 @@ export function attachTerminalSockets(server: Server, terminals: TerminalStore, 
         } catch {
           return ws.close(4004, 'not found');
         }
-        if (msg.cols && msg.rows) term.resize(msg.cols, msg.rows);
-        const attached = term.attach((m) => send(m));
+        const attached = term.attach((m) => send(m), Number(msg.cols) || undefined, Number(msg.rows) || undefined);
         detach = attached.detach;
         send({ type: 'replay', data: attached.replay, exited: term.exitCode !== null, code: term.exitCode });
         return;

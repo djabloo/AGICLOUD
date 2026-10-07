@@ -1038,10 +1038,11 @@ legend {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding: 6px 0 0 8px;
 }
+/* Il margine sta sul terminale, non sul contenitore: FitAddon lo sottrae e le righe tornano giuste */
 .term-host .xterm {
   height: 100%;
+  padding: 6px 0 0 8px;
 }
 .keybar {
   display: none;

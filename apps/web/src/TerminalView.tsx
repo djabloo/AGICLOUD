@@ -17,12 +17,17 @@ function readSrMode(): boolean {
 
 /** Tasti che sulla tastiera del telefono mancano o sono scomodi */
 const KEYS: { label: string; name: string; seq: string }[] = [
+  { label: 'Invio', name: 'Invio', seq: '\r' },
   { label: 'Esc', name: 'Esc', seq: '\x1b' },
   { label: 'Tab', name: 'Tab', seq: '\t' },
+  { label: 'Spazio', name: 'Spazio', seq: ' ' },
+  { label: '⌫', name: 'Cancella indietro', seq: '\x7f' },
   { label: '↑', name: 'Freccia su', seq: '\x1b[A' },
   { label: '↓', name: 'Freccia giu\'', seq: '\x1b[B' },
   { label: '←', name: 'Freccia sinistra', seq: '\x1b[D' },
   { label: '→', name: 'Freccia destra', seq: '\x1b[C' },
+  { label: 'PgSu', name: 'Pagina su', seq: '\x1b[5~' },
+  { label: 'PgGiù', name: 'Pagina giu\'', seq: '\x1b[6~' },
   { label: '^C', name: 'Control C', seq: '\x03' },
   { label: '^D', name: 'Control D', seq: '\x04' },
   { label: '|', name: 'Barra verticale', seq: '|' },

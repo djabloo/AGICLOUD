@@ -33,9 +33,9 @@ function connect(origin, tok = token) {
 
 const origin = base;
 const a = await connect(origin);
-a.ws.send(JSON.stringify({ type: 'input', data: 'echo MARCA-$((40+2)) && pwd\r' }));
+a.ws.send(JSON.stringify({ type: 'input', data: 'echo MARCA-$((40+2)) && pwd && echo SIZE=$(stty size)\r' }));
 await new Promise((r) => setTimeout(r, 800));
-console.log('output contiene MARCA-42:', a.out.includes('MARCA-42'), '| cwd giusta:', a.out.includes(cwd));
+console.log('output contiene MARCA-42:', a.out.includes('MARCA-42'), '| cwd giusta:', a.out.includes(cwd), '| misure al via (atteso 24 80):', (a.out.match(/SIZE=(\d+ \d+)/) ?? [])[1]);
 a.ws.close();
 
 const b = await connect(origin);
