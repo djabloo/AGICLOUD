@@ -38,6 +38,7 @@ export interface VaultKey {
   terminals: boolean;
   updatedAt: number;
   last4: string;
+  blockedFor: string[];
 }
 
 export interface AgentStatus {

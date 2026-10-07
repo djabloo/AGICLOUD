@@ -14,6 +14,8 @@ export interface AgentSpec {
   note?: string;
   /** Metodo di login ACP da chiamare sempre prima di aprire la sessione */
   authMethod?: string;
+  /** Variabili d'ambiente da togliere sempre: cambierebbero il login dell'agente */
+  envBlock?: string[];
 }
 
 export const AGENTS: Record<string, AgentSpec> = {
@@ -31,6 +33,8 @@ export const AGENTS: Record<string, AgentSpec> = {
     command: 'npx',
     args: ['-y', '@agentclientprotocol/claude-agent-acp@0.86.0'],
     native: false,
+    // Con una chiave API nell'ambiente Claude Code fatturerebbe sull'API invece dell'abbonamento
+    envBlock: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'],
   },
   cursor: {
     id: 'cursor',

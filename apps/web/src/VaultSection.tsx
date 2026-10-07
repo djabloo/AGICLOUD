@@ -60,6 +60,11 @@ export function VaultSection() {
                 </span>
               </div>
               {k.note && <p className="hint vault-note">{k.note}</p>}
+              {k.blockedFor.length > 0 && (
+                <p className="hint vault-note">
+                  Non viene passata a {k.blockedFor.join(', ')}, che resta sul suo account (abbonamento).
+                </p>
+              )}
               <div className="vault-actions">
                 <label className="check-row">
                   <input type="checkbox" checked={k.agents} onChange={(e) => void update(k, { agents: e.target.checked })} />

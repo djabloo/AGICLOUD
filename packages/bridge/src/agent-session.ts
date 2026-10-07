@@ -98,9 +98,11 @@ export class AgentSession {
   }
 
   async start(): Promise<StartResult> {
+    const env: NodeJS.ProcessEnv = { ...process.env, ...this.opts.env };
+    for (const name of this.agent.envBlock ?? []) delete env[name];
     const proc = spawn(this.agent.command, this.agent.args, {
       cwd: this.opts.cwd,
-      env: { ...process.env, ...this.opts.env },
+      env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     this.proc = proc;

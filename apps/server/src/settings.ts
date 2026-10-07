@@ -21,12 +21,15 @@ interface SettingsFile {
 }
 
 /** Variabili d'ambiente impostabili per agente (solo queste: niente iniezioni arbitrarie) */
-const AGENT_ENV: Record<string, { name: string; label: string }[]> = {
-  claude: [{ name: 'ANTHROPIC_API_KEY', label: 'Chiave API Anthropic (facoltativa: senza si usa il login claude.ai)' }],
-  codex: [{ name: 'OPENAI_API_KEY', label: 'Chiave API OpenAI' }],
-  opencode: [],
-  cursor: [],
-  agy: [],
+/** Chiavi per singolo agente: oggi nessuna, gli agenti usano i loro account e le chiavi stanno nel portachiavi */
+const AGENT_ENV: Record<string, { name: string; label: string }[]> = {};
+
+/**
+ * Variabili del portachiavi da NON passare a certi agenti: cambierebbero il loro login.
+ * Con ANTHROPIC_API_KEY nell'ambiente Claude Code fatturerebbe sull'API invece dell'abbonamento.
+ */
+const AGENT_ENV_BLOCK: Record<string, string[]> = {
+  claude: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'],
 };
 
 /** agy e' installato da tino: lo si usa da li' (con il login dell'utente che lo lancia) */
@@ -98,7 +101,9 @@ export class Settings {
 
   /** Ambiente extra da passare all'agente (chiavi API) */
   agentEnv(agentId: string): Record<string, string> {
-    return { ...this.vaultEnv('agents'), ...this.secrets[agentId] };
+    const env = { ...this.vaultEnv('agents'), ...this.secrets[agentId] };
+    for (const name of AGENT_ENV_BLOCK[agentId] ?? []) delete env[name];
+    return env;
   }
 
   /** Chiavi del portachiavi abilitate per agenti o terminali, come variabili d'ambiente */
@@ -111,7 +116,18 @@ export class Settings {
   /** Elenco per la UI: mai il valore, solo le ultime 4 cifre per riconoscerla */
   vaultList() {
     return Object.entries(this.vault)
-      .map(([name, e]) => ({ name, note: e.note, agents: e.agents, terminals: e.terminals, updatedAt: e.updatedAt, last4: e.value.slice(-4) }))
+      .map(([name, e]) => ({
+        name,
+        note: e.note,
+        agents: e.agents,
+        terminals: e.terminals,
+        updatedAt: e.updatedAt,
+        last4: e.value.slice(-4),
+        // Agenti a cui questa chiave non arriva comunque (per non cambiarne il login)
+        blockedFor: Object.entries(AGENT_ENV_BLOCK)
+          .filter(([, names]) => names.includes(name))
+          .map(([agent]) => AGENTS[agent]?.label ?? agent),
+      }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
