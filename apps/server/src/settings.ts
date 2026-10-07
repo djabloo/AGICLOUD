@@ -312,7 +312,7 @@ export class Settings {
           login: logged
             ? /unable to fetch/i.test(out)
               ? { state: 'unknown', detail: 'Login presente ma non verificabile: se le chat non partono, rifai il login' }
-              : { state: 'ok', detail: firstLine(out.replace(/^.*Login successful!?\s*/i, '')) }
+              : { state: 'ok', detail: 'Account Cursor collegato' }
             : { state: 'missing', detail: 'Non collegato' },
         };
       }
