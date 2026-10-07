@@ -42,6 +42,15 @@ export const AGENTS: Record<string, AgentSpec> = {
     authMethod: 'cursor_login',
     note: 'Usa il tuo account Cursor (anche il piano gratuito)',
   },
+  agy: {
+    id: 'agy',
+    label: 'agy (Antigravity)',
+    // Adattatore nostro (agy-agent.ts): agy non parla ACP
+    command: process.execPath,
+    args: ['--import', import.meta.resolve('tsx'), fileURLToPath(new URL('./agy-agent.ts', import.meta.url))],
+    native: false,
+    note: 'Usa il tuo account Google. I comandi di shell richiedono Permessi: Consenti tutto (agy non puo\' chiedere conferma)',
+  },
   codex: {
     id: 'codex',
     label: 'Codex',

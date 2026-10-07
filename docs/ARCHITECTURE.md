@@ -57,7 +57,7 @@ Scelte:
 | Cursor | `cursor-agent acp` (nativo, `authenticate` con `cursor_login`) | ⚠️ collegamento ok; serve un login Cursor valido sul server (`cursor-agent login` dalle Impostazioni) |
 | Demo | `packages/bridge/src/demo-agent.ts` | ✅ agente finto per prove (`AGICLOUD_DEMO_AGENT=1`): opzioni, comandi, permessi, ripresa |
 | Codex | `@zed-industries/codex-acp` | non provato (API a pagamento) |
-| agy | adattatore nostro su `agy --print --input-format stream-json --output-format stream-json` (la CLI 1.3.0 non ha ACP) | da fare |
+| agy | adattatore nostro `packages/bridge/src/agy-agent.ts`: un processo `agy --print` stream-json per messaggio, ripresa con `--conversation` (mappa in `~/.local/state/agicloud/agy-sessions.json`) | ✅ testo, strumenti, ripresa dopo pausa, modello/modalità/permessi. In headless agy non può chiedere permessi: comandi negati (segnalati in chat) salvo "Consenti tutto" |
 | ~~Gemini CLI~~ | — | tolto (2026-10-07): con l'abbonamento Google non si può usare, solo a chiave API. Per la chat contano solo agenti ad abbonamento o piano gratuito |
 
 ## Sezioni (MVP → dopo)

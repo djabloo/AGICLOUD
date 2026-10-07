@@ -33,7 +33,7 @@ const AGENT_ENV: Record<string, { name: string; label: string }[]> = {
 export const AGY_BIN = process.env.AGY_BIN || '/home/tino/.local/bin/agy';
 
 /** Strumenti con login ma non ancora usabili in chat */
-const TOOLS = [{ id: 'agy', label: 'agy (Google Antigravity)', note: 'Per ora solo login. La chat con agy arrivera\' con un adattatore dedicato' }];
+const TOOLS: { id: string; label: string; note?: string }[] = [];
 
 /** Comando di login da lanciare in un terminale, per agente */
 export const LOGIN_COMMANDS: Record<string, string> = {
