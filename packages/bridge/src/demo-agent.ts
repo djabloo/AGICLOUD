@@ -1,6 +1,6 @@
 // Agente ACP finto per prove e test dell'interfaccia: niente modelli, risposte prevedibili.
 // Offre opzioni (modalita', modello), comandi slash, ripresa di sessione, tool call e permessi.
-//   "file" nel messaggio -> tool call con richiesta di permesso; altrimenti risponde in eco.
+//   "crea ... file" nel messaggio -> tool call con richiesta di permesso; altrimenti risponde in eco.
 
 import { randomUUID } from 'node:crypto';
 import { Readable, Writable } from 'node:stream';
@@ -122,7 +122,7 @@ acp
       }
     };
     try {
-      if (/file/i.test(text)) {
+      if (/crea.*file/i.test(text)) {
         await write('Creo il file richiesto. ');
         await say({ sessionUpdate: 'tool_call', toolCallId: 'demo-1', title: 'Scrivi demo.txt', kind: 'edit', status: 'pending', locations: [{ path: 'demo.txt' }] });
         let allowed = s.mode === 'bypass';

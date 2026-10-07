@@ -93,6 +93,13 @@ export class AgentSession {
     return this._configOptions;
   }
 
+  private _promptCaps: acp.PromptCapabilities | undefined;
+
+  /** L'agente accetta immagini nel messaggio? */
+  get acceptsImages(): boolean {
+    return this._promptCaps?.image === true;
+  }
+
   get running(): boolean {
     return this.current !== null;
   }
@@ -154,6 +161,7 @@ export class AgentSession {
     }
 
     const caps = init.agentCapabilities;
+    this._promptCaps = caps?.promptCapabilities;
     const base: acp.NewSessionRequest = { cwd: this.opts.cwd, mcpServers: [] };
     let origin: SessionOrigin = 'new';
     let resumeError: string | undefined;
@@ -193,7 +201,8 @@ export class AgentSession {
   }
 
   /** Esegue un turno e restituisce gli eventi AG-UI man mano che arrivano */
-  async *run(prompt: string, runId: string = randomUUID()): AsyncGenerator<BaseEvent> {
+  /** prompt: testo semplice o blocchi ACP (testo + immagini) */
+  async *run(prompt: string | acp.ContentBlock[], runId: string = randomUUID()): AsyncGenerator<BaseEvent> {
     if (!this.conn || !this._sessionId) throw new Error('Sessione non avviata: chiamare start()');
     if (this.current) throw new Error('Un turno e\' gia\' in corso su questa sessione');
     const run: ActiveRun = { queue: new AsyncQueue<BaseEvent>(), translator: new AcpToAgui() };
@@ -202,7 +211,7 @@ export class AgentSession {
     run.queue.push(ev(EventType.RUN_STARTED, { threadId: this.threadId, runId }));
     const request = this.conn.agent.request(acp.methods.agent.session.prompt, {
       sessionId: this._sessionId,
-      prompt: [{ type: 'text', text: prompt }],
+      prompt: typeof prompt === 'string' ? [{ type: 'text', text: prompt }] : prompt,
     });
     request.then(
       (res) => this.endRun(run, ev(EventType.RUN_FINISHED, { threadId: this.threadId, runId, result: { stopReason: res.stopReason } })),

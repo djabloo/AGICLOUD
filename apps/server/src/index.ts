@@ -10,6 +10,7 @@ import { AGENTS } from '@agicloud/bridge';
 import { config } from './config.js';
 import { listDirs } from './projects.js';
 import { TerminalStore } from './terminals.js';
+import { saveUploads } from './uploads.js';
 import { LOGIN_COMMANDS, Settings } from './settings.js';
 import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
@@ -32,7 +33,7 @@ app.use('*', async (c, next) => {
   c.header(
     'Content-Security-Policy',
     // style 'unsafe-inline': il terminale (xterm.js) crea i suoi stili al volo
-    "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   );
 });
 
@@ -127,12 +128,21 @@ app.delete('/api/threads/:id', async (c) => {
   return c.body(null, 204);
 });
 
+app.post('/api/threads/:id/uploads', async (c) => {
+  const thread = store.get(c.req.param('id'));
+  const form = await c.req.parseBody({ all: true });
+  const raw = form.files ?? form.file;
+  const files = (Array.isArray(raw) ? raw : [raw]).filter((f): f is File => f instanceof File);
+  return c.json(await saveUploads(thread.meta.cwd, files), 201);
+});
+
 app.post('/api/threads/:id/runs', async (c) => {
   const thread = store.get(c.req.param('id'));
   const body = await jsonBody(c);
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
-  if (!prompt) throw new HttpError(400, 'Messaggio vuoto');
-  const runId = await thread.run(prompt);
+  const attachments = Array.isArray(body.attachments) ? body.attachments.filter((a): a is string => typeof a === 'string').slice(0, 20) : [];
+  if (!prompt && !attachments.length) throw new HttpError(400, 'Messaggio vuoto');
+  const runId = await thread.run(prompt, attachments);
   return c.json({ runId }, 202);
 });
 

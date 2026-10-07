@@ -70,11 +70,11 @@ export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
     if (el) stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
   };
 
-  const send = async (prompt: string) => {
+  const send = async (prompt: string, attachments: string[]) => {
     setSendError('');
     stickToBottom.current = true;
     try {
-      await api.run(thread.id, prompt);
+      await api.run(thread.id, prompt, attachments);
       return true;
     } catch (err) {
       setSendError(err instanceof Error ? err.message : String(err));
@@ -152,6 +152,7 @@ export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
       )}
 
       <Composer
+        threadId={thread.id}
         commands={state.commands}
         disabled={!canSend}
         running={state.running}
@@ -206,6 +207,18 @@ function ItemView({ item, threadId }: { item: Item; threadId: string }) {
       );
     case 'error':
       return <p className="notice notice-error">{item.message}</p>;
+    case 'attachments':
+      return (
+        <ul className="attach-list sent" aria-label="File allegati">
+          {item.files.map((f) => (
+            <li key={f.path} className="attach-chip" title={f.path}>
+              <Icon name="file" />
+              <span className="attach-name">{f.name}</span>
+              <span className="attach-size">{formatSize(f.size)}</span>
+            </li>
+          ))}
+        </ul>
+      );
   }
 }
 
@@ -290,8 +303,34 @@ function ConfigBar({ threadId, options, disabled }: { threadId: string; options:
       setError(err instanceof Error ? err.message : String(err));
     }
   };
+  const [open, setOpen] = useState(false);
+  const panelId = `${id}-panel`;
+  // Riassunto in una riga: i valori scelti, senza i nomi delle opzioni
+  const summary = options
+    .map((o) => {
+      if (o.type === 'boolean') return o.currentValue === true ? o.name : null;
+      const flat = (o.options ?? []).flatMap((opt) => ('group' in opt ? opt.options : [opt]));
+      return flat.find((x) => x.value === o.currentValue)?.name ?? String(o.currentValue);
+    })
+    .filter((v) => v && v !== 'Off' && v !== 'Default')
+    .join(' · ');
   return (
-    <div className="config-bar" role="group" aria-label="Impostazioni dell'agente">
+    <div className={`config-bar${open ? ' is-open' : ''}`}>
+      <button
+        type="button"
+        className="config-toggle"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Icon name="settings" />
+        <span className="visually-hidden">Impostazioni dell'agente: </span>
+        <span className="config-summary">{summary || 'Impostazioni'}</span>
+        <span className="config-chevron" aria-hidden="true">
+          {open ? '▾' : '▸'}
+        </span>
+      </button>
+      <div id={panelId} className="config-panel" role="group" aria-label="Impostazioni dell'agente" hidden={!open}>
       {options.map((o) =>
         o.type === 'boolean' ? (
           <label key={o.id} className="cfg cfg-bool" title={o.description ?? undefined}>
@@ -331,6 +370,7 @@ function ConfigBar({ threadId, options, disabled }: { threadId: string; options:
           </label>
         ),
       )}
+      </div>
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -342,7 +382,18 @@ function ConfigBar({ threadId, options, disabled }: { threadId: string; options:
 
 const MAX_SUGGESTIONS = 8;
 
+interface PendingFile {
+  key: string;
+  name: string;
+  size: number;
+  preview?: string;
+  status: 'uploading' | 'ready' | 'error';
+  path?: string;
+  error?: string;
+}
+
 function Composer({
+  threadId,
   commands,
   disabled,
   running,
@@ -351,15 +402,59 @@ function Composer({
   onSend,
   onStop,
 }: {
+  threadId: string;
   commands: SlashCommand[];
   disabled: boolean;
   running: boolean;
   error: string;
   usage?: { used: number; size: number };
-  onSend: (text: string) => Promise<boolean>;
+  onSend: (text: string, attachments: string[]) => Promise<boolean>;
   onStop: () => void;
 }) {
   const [text, setText] = useState('');
+  const [files, setFiles] = useState<PendingFile[]>([]);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [fileMsg, setFileMsg] = useState('');
+
+  const addFiles = async (list: FileList | File[]) => {
+    const picked = [...list];
+    if (!picked.length) return;
+    const entries: PendingFile[] = picked.map((f) => ({
+      key: `${Date.now()}-${Math.random()}`,
+      name: f.name || 'immagine.png',
+      size: f.size,
+      preview: f.type.startsWith('image/') ? URL.createObjectURL(f) : undefined,
+      status: 'uploading',
+    }));
+    setFiles((cur) => [...cur, ...entries]);
+    setFileMsg(`Caricamento di ${picked.length} file…`);
+    try {
+      const saved = await api.upload(threadId, picked);
+      setFiles((cur) =>
+        cur.map((p) => {
+          const i = entries.findIndex((e) => e.key === p.key);
+          return i >= 0 ? { ...p, status: 'ready', path: saved[i]?.path } : p;
+        }),
+      );
+      setFileMsg(`${picked.length} file pronti da inviare`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setFiles((cur) => cur.map((p) => (entries.some((e) => e.key === p.key) ? { ...p, status: 'error', error: msg } : p)));
+      setFileMsg(`Caricamento non riuscito: ${msg}`);
+    }
+  };
+
+  const removeFile = (key: string) => {
+    setFiles((cur) => {
+      const f = cur.find((p) => p.key === key);
+      if (f?.preview) URL.revokeObjectURL(f.preview);
+      return cur.filter((p) => p.key !== key);
+    });
+    area.current?.focus();
+  };
+
+  const uploading = files.some((f) => f.status === 'uploading');
+  const ready = files.filter((f) => f.status === 'ready' && f.path).map((f) => f.path!);
   const [active, setActive] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -393,8 +488,13 @@ function Composer({
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
     const value = text.trim();
-    if (!value || disabled) return;
-    if (await onSend(value)) setText('');
+    if ((!value && !ready.length) || disabled || uploading) return;
+    if (await onSend(value, ready)) {
+      setText('');
+      for (const f of files) if (f.preview) URL.revokeObjectURL(f.preview);
+      setFiles([]);
+      setFileMsg('');
+    }
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -425,7 +525,46 @@ function Composer({
 
   const listId = `${id}-cmds`;
   return (
-    <form className="composer" onSubmit={submit}>
+    <form
+      className="composer"
+      onSubmit={submit}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) void addFiles(e.dataTransfer.files);
+      }}
+    >
+      {files.length > 0 && (
+        <ul className="attach-list pending" aria-label="File da inviare">
+          {files.map((f) => (
+            <li key={f.key} className={`attach-chip is-${f.status}`}>
+              {f.preview ? <img src={f.preview} alt="" className="attach-thumb" /> : <Icon name="file" />}
+              <span className="attach-name">{f.name}</span>
+              <span className="attach-size">
+                {f.status === 'uploading' ? 'caricamento…' : f.status === 'error' ? 'errore' : formatSize(f.size)}
+              </span>
+              <button type="button" className="attach-remove" onClick={() => removeFile(f.key)}>
+                <Icon name="close" />
+                <span className="visually-hidden">Togli {f.name}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <input
+        ref={fileInput}
+        type="file"
+        multiple
+        hidden
+        onChange={(e) => {
+          if (e.target.files) void addFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+      <button type="button" className="btn icon-btn attach-btn" onClick={() => fileInput.current?.click()}>
+        <Icon name="clip" />
+        <span className="visually-hidden">Allega file</span>
+      </button>
       {open && (
         <ul id={listId} className="suggestions" role="listbox" aria-label="Comandi">
           {suggestions.map((c, i) => (
@@ -460,7 +599,14 @@ function Composer({
           setActive(0);
         }}
         onKeyDown={onKeyDown}
-        placeholder={commands.length ? 'Scrivi all\'agente… ( / per i comandi)' : 'Scrivi all\'agente…'}
+        onPaste={(e) => {
+          // Immagini incollate (screenshot): diventano allegati
+          if (e.clipboardData.files.length) {
+            e.preventDefault();
+            void addFiles(e.clipboardData.files);
+          }
+        }}
+        placeholder="Scrivi all'agente…"
         aria-controls={open ? listId : undefined}
         aria-activedescendant={open ? `${listId}-${activeIndex}` : undefined}
         aria-autocomplete="list"
@@ -472,7 +618,7 @@ function Composer({
           <span className="visually-hidden">Interrompi</span>
         </button>
       ) : (
-        <button type="submit" className="btn send-btn primary" disabled={disabled || !text.trim()}>
+        <button type="submit" className="btn send-btn primary" disabled={disabled || uploading || (!text.trim() && !ready.length)}>
           <Icon name="send" />
           <span className="visually-hidden">Invia</span>
         </button>
@@ -488,7 +634,7 @@ function Composer({
         )}
       </p>
       <div className="visually-hidden" aria-live="polite">
-        {open ? `${suggestions.length} comandi disponibili, frecce per scegliere` : ''}
+        {open ? `${suggestions.length} comandi disponibili, frecce per scegliere` : fileMsg}
       </div>
       {error && (
         <p id={`${id}-err`} className="form-error" role="alert">
@@ -497,6 +643,12 @@ function Composer({
       )}
     </form>
   );
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function planStatus(s: string): string {

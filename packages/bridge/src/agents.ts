@@ -78,7 +78,7 @@ if (process.env.AGICLOUD_DEMO_AGENT === '1') {
     command: process.execPath,
     args: ['--import', import.meta.resolve('tsx'), fileURLToPath(new URL('./demo-agent.ts', import.meta.url))],
     native: true,
-    note: 'Agente di prova: non usa modelli. Scrivi "file" per provare i permessi, /piano per un piano',
+    note: 'Agente di prova: non usa modelli. Scrivi "crea un file" per provare i permessi, /piano per un piano',
   };
 }
 

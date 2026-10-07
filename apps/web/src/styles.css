@@ -686,7 +686,7 @@ label {
 /* ── Composer: resta sopra la tastiera virtuale e la barra home ──────────── */
 .composer {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
   gap: 4px 8px;
   align-items: end;
   padding: 10px 16px;
@@ -811,13 +811,56 @@ legend {
 
 /* ── Impostazioni dell'agente (modalita', modello, effort) ───────────────── */
 .config-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 12px;
-  align-items: center;
-  padding: 8px 16px 0;
   border-top: 1px solid var(--border);
   background: var(--surface);
+}
+.config-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 4px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.config-toggle:hover {
+  color: var(--text);
+}
+.config-toggle .icon {
+  width: 16px;
+  height: 16px;
+}
+.config-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.config-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px 12px;
+  padding: 4px 16px 10px;
+}
+.config-panel[hidden] {
+  display: none;
+}
+.config-panel .cfg {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+.config-panel .cfg select {
+  width: 100%;
+  max-width: none;
 }
 .cfg {
   display: inline-flex;
@@ -1306,4 +1349,96 @@ legend {
 }
 .add-key-note {
   grid-column: 1 / -1;
+}
+
+/* ── Allegati ────────────────────────────────────────────────────────────── */
+.attach-btn {
+  width: 44px;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+}
+.attach-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.attach-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.attach-list.pending {
+  grid-column: 1 / -1;
+  padding-bottom: 4px;
+}
+.attach-list.sent {
+  justify-content: flex-end;
+}
+.attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 36px;
+  padding: 2px 4px 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+.attach-list.sent .attach-chip {
+  padding-right: 10px;
+  background: var(--accent-soft);
+}
+.attach-chip .icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.attach-chip.is-error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.attach-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+.attach-name {
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attach-size {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.attach-remove {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.attach-remove:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+@media (pointer: coarse) {
+  .attach-remove {
+    width: 44px;
+    height: 44px;
+  }
 }

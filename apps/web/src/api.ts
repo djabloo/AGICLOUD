@@ -22,6 +22,14 @@ export interface ThreadSummary {
   updatedAt: number;
 }
 
+export interface UploadedFile {
+  name: string;
+  /** Relativo alla cartella del progetto */
+  path: string;
+  size: number;
+  mime: string;
+}
+
 export interface TerminalSummary {
   id: string;
   cwd: string;
@@ -139,7 +147,22 @@ export const api = {
   setConfig: (id: string, configId: string, value: string | boolean) =>
     request<void>('POST', `/threads/${id}/config`, { configId, value }),
   deleteThread: (id: string) => request<void>('DELETE', `/threads/${id}`),
-  run: (id: string, prompt: string) => request<{ runId: string }>('POST', `/threads/${id}/runs`, { prompt }),
+  run: (id: string, prompt: string, attachments: string[] = []) =>
+    request<{ runId: string }>('POST', `/threads/${id}/runs`, { prompt, attachments }),
+  upload: async (id: string, files: File[]): Promise<UploadedFile[]> => {
+    const form = new FormData();
+    for (const f of files) form.append('files', f, f.name);
+    const res = await fetch(`/api/threads/${id}/uploads`, {
+      method: 'POST',
+      headers: memoryToken ? { authorization: `Bearer ${memoryToken}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new ApiError(res.status, data.error ?? `Errore ${res.status}`);
+    }
+    return res.json();
+  },
   cancel: (id: string) => request<void>('POST', `/threads/${id}/cancel`),
   respondPermission: (id: string, requestId: string, optionId: string | null) =>
     request<void>('POST', `/threads/${id}/permissions/${requestId}`, { optionId }),

@@ -13,13 +13,14 @@ import {
   writeFileSync,
   type WriteStream,
 } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, extname, join } from 'node:path';
 import { EventType, type BaseEvent } from '@ag-ui/core';
 import type * as acp from '@agentclientprotocol/sdk';
 import { AgentSession, AuthRequiredError, custom, ev, getAgent } from '@agicloud/bridge';
 import { config } from './config.js';
 import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
+import { readAttachment, resolveAttachment } from './uploads.js';
 import type { Settings } from './settings.js';
 
 export { HttpError } from './errors.js';
@@ -111,12 +112,17 @@ export class Thread {
     this.emit(custom('thread_status', { status: 'idle' }));
   }
 
-  async run(prompt: string): Promise<string> {
+  /** attachments: percorsi relativi in .agicloud/uploads (gia' caricati) */
+  async run(prompt: string, attachments: string[] = []): Promise<string> {
     if (this.status === 'running') throw new HttpError(409, 'L\'agente sta gia\' lavorando: attendi o interrompi');
     await this.ensureStarted();
     if (this.status !== 'ready' || !this.session) throw new HttpError(409, 'L\'agente non e\' disponibile');
 
-    if (!this.events.some((e) => e.type === EventType.RUN_STARTED)) this.meta.title = prompt.slice(0, 80);
+    const files = attachments.map((p) => ({ rel: p, ...resolveAttachment(this.meta.cwd, p) }));
+    const content = buildPrompt(prompt, files, this.session.acceptsImages);
+    if (!this.events.some((e) => e.type === EventType.RUN_STARTED)) {
+      this.meta.title = (prompt || files.map((f) => basename(f.rel)).join(', ')).slice(0, 80);
+    }
     this.touch();
     const runId = randomUUID();
     const session = this.session;
@@ -126,10 +132,13 @@ export class Thread {
     this.emit(ev(EventType.TEXT_MESSAGE_START, { messageId, role: 'user' }));
     this.emit(ev(EventType.TEXT_MESSAGE_CONTENT, { messageId, delta: prompt }));
     this.emit(ev(EventType.TEXT_MESSAGE_END, { messageId }));
+    if (files.length) {
+      this.emit(custom('attachments', { messageId, files: files.map((f) => ({ name: attachmentName(f.rel), path: f.rel, size: f.size })) }));
+    }
 
     void (async () => {
       try {
-        for await (const e of session.run(prompt, runId)) this.emit(e);
+        for await (const e of session.run(content, runId)) this.emit(e);
       } catch (err) {
         this.emit(ev(EventType.RUN_ERROR, { message: err instanceof Error ? err.message : String(err) }));
       } finally {
@@ -429,4 +438,28 @@ function compact(events: BaseEvent[]): BaseEvent[] {
     }
   }
   return out;
+}
+
+const IMAGE_TYPES: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' };
+/** Oltre questa dimensione l'immagine non va inline: l'agente la legge dal percorso */
+const MAX_INLINE_IMAGE = 5 * 1024 * 1024;
+
+/** Nome originale senza il prefisso data-ora aggiunto al salvataggio */
+function attachmentName(rel: string): string {
+  return basename(rel).replace(/^\d{8}-\d{6}-(\d+-)?/, '');
+}
+
+/** Testo + elenco dei file allegati; le immagini anche come immagini, se l'agente le accetta */
+function buildPrompt(prompt: string, files: { rel: string; abs: string; size: number }[], images: boolean): acp.ContentBlock[] {
+  const text = files.length
+    ? `${prompt || 'Guarda i file allegati.'}\n\nFile allegati (percorsi relativi alla cartella del progetto):\n${files.map((f) => `- ${f.rel}`).join('\n')}`
+    : prompt;
+  const blocks: acp.ContentBlock[] = [{ type: 'text', text }];
+  if (images) {
+    for (const f of files) {
+      const mime = IMAGE_TYPES[extname(f.rel).toLowerCase()];
+      if (mime && f.size <= MAX_INLINE_IMAGE) blocks.push({ type: 'image', mimeType: mime, data: readAttachment(f.abs).toString('base64') });
+    }
+  }
+  return blocks;
 }

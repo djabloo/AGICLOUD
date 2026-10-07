@@ -29,7 +29,8 @@ export type Item =
     }
   | { kind: 'permission'; id: string; title: string; options: PermissionOption[]; resolved?: string | null }
   | { kind: 'plan'; id: string; entries: { content: string; status: string; priority?: string }[] }
-  | { kind: 'error'; id: string; message: string };
+  | { kind: 'error'; id: string; message: string }
+  | { kind: 'attachments'; id: string; files: { name: string; path: string; size: number }[] };
 
 export interface ConfigOption {
   id: string;
@@ -168,6 +169,9 @@ function reduceCustom(state: Transcript, name: string, v: any): Transcript {
           { kind: 'permission', id: v.requestId, title: v.toolCall?.title ?? 'Azione dell\'agente', options: v.options ?? [] },
         ],
       };
+
+    case 'agicloud.attachments':
+      return { ...state, items: [...items, { kind: 'attachments', id: `att-${v.messageId}`, files: v.files ?? [] }] };
 
     case 'agicloud.permission_resolved':
       return { ...state, items: update(items, v.requestId, (it) => (it.kind === 'permission' ? { ...it, resolved: v.optionId } : it)) };

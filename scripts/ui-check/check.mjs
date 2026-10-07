@@ -96,6 +96,27 @@ export default async function ({ page }) {
   await page.keyboard.press('Escape');
   await new Promise(r => setTimeout(r, 300));
   out.afterEsc = await page.evaluate(() => ({ expanded: document.querySelector('.menu-btn').getAttribute('aria-expanded'), focused: document.activeElement?.className }));
+  // Allegati: file nascosto + invio, l'agente demo rimanda il testo ricevuto
+  await page.evaluate(() => {
+    const input = document.querySelector('.composer input[type=file]');
+    const dt = new DataTransfer();
+    dt.items.add(new File(['ciao dal file'], 'nota prova.txt', { type: 'text/plain' }));
+    const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0));
+    dt.items.add(new File([png], 'pixel.png', { type: 'image/png' }));
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForFunction(() => document.querySelectorAll('.attach-list.pending .attach-chip.is-ready').length === 2, { timeout: 10000 });
+  await shot('attach-pending');
+  await runAxe('attach-pending');
+  await page.type('.composer textarea', 'Leggi gli allegati');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelectorAll('.attach-list.sent .attach-chip').length === 2, { timeout: 10000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('.from-assistant')].some((m) => m.textContent.includes('.agicloud/uploads/')), { timeout: 15000 });
+  out.attachEcho = await page.evaluate(() => [...document.querySelectorAll('.from-assistant')].pop().textContent.slice(0, 300));
+  out.steps.push('allegati ok');
+  await shot('attach-sent');
+
   // Impostazioni
   await page.setViewport({ width: 1366, height: 860 });
   await page.goto(BASE + '#/settings', { waitUntil: 'domcontentloaded' });

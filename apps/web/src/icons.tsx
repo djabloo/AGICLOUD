@@ -14,6 +14,8 @@ const paths = {
   shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
   settings: 'M4 6h9M17 6h3M15 4v4M4 12h3M11 12h9M9 10v4M4 18h11M19 18h1M17 16v4',
   refresh: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',
+  clip: 'M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7',
+  file: 'M6 3h8l4 4v14H6zM14 3v4h4',
 } as const;
 
 export type IconName = keyof typeof paths;
