@@ -23,6 +23,10 @@ const app = new Hono<{ Bindings: HttpBindings }>();
 
 app.use('*', async (c, next) => {
   await next();
+  // Cache: i file in /assets hanno l'hash nel nome (immutabili); tutto il resto va sempre ricontrollato,
+  // altrimenti i telefoni tengono la pagina vecchia dopo un aggiornamento
+  if (c.req.path.startsWith('/assets/')) c.header('Cache-Control', 'public, max-age=31536000, immutable');
+  else c.header('Cache-Control', 'no-cache');
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('Referrer-Policy', 'no-referrer');
   c.header(
