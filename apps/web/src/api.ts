@@ -31,6 +31,24 @@ export interface TerminalSummary {
   exited: boolean;
 }
 
+export interface AgentStatus {
+  id: string;
+  label: string;
+  note?: string;
+  installed: boolean;
+  version: string | null;
+  login: { state: 'ok' | 'missing' | 'unknown'; detail: string };
+  loginCommand: string | null;
+  env: { name: string; label: string; set: boolean }[];
+  defaults: Record<string, string | boolean>;
+  options: import('./transcript').ConfigOption[];
+}
+
+export interface GeneralSettings {
+  projectRoots: string[];
+  idleMinutes: number;
+}
+
 export interface DirListing {
   path: string | null;
   parent: string | null;
@@ -91,6 +109,14 @@ export const api = {
   dirs: (path?: string) => request<DirListing>('GET', `/dirs${path ? `?path=${encodeURIComponent(path)}` : ''}`),
   threads: () => request<ThreadSummary[]>('GET', '/threads'),
   createThread: (agentId: string, cwd: string) => request<ThreadSummary>('POST', '/threads', { agentId, cwd }),
+  settings: (refresh = false) =>
+    request<{ general: GeneralSettings; agents: AgentStatus[] }>('GET', `/settings${refresh ? '?refresh=1' : ''}`),
+  saveGeneral: (g: Partial<GeneralSettings>) => request<GeneralSettings>('POST', '/settings/general', g),
+  setAgentEnv: (agentId: string, name: string, value: string | null) =>
+    request<void>('POST', `/settings/agents/${agentId}/env`, { name, value }),
+  setAgentDefault: (agentId: string, configId: string, value: string | boolean | null) =>
+    request<void>('POST', `/settings/agents/${agentId}/defaults`, { configId, value }),
+  agentLogin: (agentId: string) => request<TerminalSummary>('POST', `/settings/agents/${agentId}/login`),
   terminals: () => request<TerminalSummary[]>('GET', '/terminals'),
   createTerminal: (cwd: string, command?: 'claude') => request<TerminalSummary>('POST', '/terminals', { cwd, command }),
   deleteTerminal: (id: string) => request<void>('DELETE', `/terminals/${id}`),

@@ -96,6 +96,25 @@ export default async function ({ page }) {
   await page.keyboard.press('Escape');
   await new Promise(r => setTimeout(r, 300));
   out.afterEsc = await page.evaluate(() => ({ expanded: document.querySelector('.menu-btn').getAttribute('aria-expanded'), focused: document.activeElement?.className }));
+  // Impostazioni
+  await page.setViewport({ width: 1366, height: 860 });
+  await page.goto(BASE + '#/settings', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.agent-card', { timeout: 30000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('.agent-card h3')].some((h) => h.textContent.startsWith('Demo')), { timeout: 30000 });
+  out.settingsAgents = await page.$$eval('.agent-card', (cards) => cards.map((c) => c.querySelector('h3').textContent + ': ' + c.querySelector('.badge').textContent));
+  out.demoDefaults = await page.$$eval('.agent-card', (cards) => {
+    const demo = cards.find((c) => c.querySelector('h3').textContent.startsWith('Demo'));
+    return demo ? [...demo.querySelectorAll('.defaults select')].length : -1;
+  });
+  out.steps.push('impostazioni ok');
+  await shot('settings');
+  await runAxe('settings');
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  await new Promise((r) => setTimeout(r, 300));
+  out.settingsMobile = await page.evaluate(() => document.documentElement.scrollWidth);
+  await shot('settings-mobile');
+  await runAxe('settings-mobile');
+
   // Terminale
   await page.setViewport({ width: 1366, height: 860 });
   await page.goto(BASE + '#/term', { waitUntil: 'domcontentloaded' });

@@ -10,10 +10,13 @@ import { AGENTS } from '@agicloud/bridge';
 import { config } from './config.js';
 import { listDirs } from './projects.js';
 import { TerminalStore } from './terminals.js';
+import { LOGIN_COMMANDS, Settings } from './settings.js';
+import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
 import { attachTerminalSockets } from './terminal-socket.js';
 
-const store = new ThreadStore();
+const settings = new Settings();
+const store = new ThreadStore(settings);
 store.load();
 const terminals = new TerminalStore();
 const app = new Hono<{ Bindings: HttpBindings }>();
@@ -166,6 +169,38 @@ app.get('/api/threads/:id/events', (c) => {
     clearInterval(ping);
     unsubscribe();
   });
+});
+
+// ── Impostazioni ─────────────────────────────────────────────────────────────
+app.get('/api/settings', async (c) =>
+  c.json({ general: settings.general(), agents: await settings.agents(c.req.query('refresh') === '1') }),
+);
+
+app.post('/api/settings/general', async (c) => {
+  settings.setGeneral(await jsonBody(c));
+  return c.json(settings.general());
+});
+
+app.post('/api/settings/agents/:id/env', async (c) => {
+  const body = await jsonBody(c);
+  settings.setEnv(c.req.param('id'), String(body.name ?? ''), typeof body.value === 'string' ? body.value : null);
+  return c.body(null, 204);
+});
+
+app.post('/api/settings/agents/:id/defaults', async (c) => {
+  const body = await jsonBody(c);
+  const value = typeof body.value === 'string' || typeof body.value === 'boolean' ? body.value : null;
+  settings.setDefault(c.req.param('id'), String(body.configId ?? ''), value);
+  return c.body(null, 204);
+});
+
+// Login interattivo dell'agente: si apre un terminale col comando giusto
+app.post('/api/settings/agents/:id/login', (c) => {
+  const command = LOGIN_COMMANDS[c.req.param('id')];
+  if (!command) throw new HttpError(400, 'Questo agente non ha un login da terminale');
+  const home = homedir();
+  const cwd = config.projectRoots.some((r) => home === r || home.startsWith(r + '/')) ? home : config.projectRoots[0]!;
+  return c.json(terminals.create(cwd, command).summary(), 201);
 });
 
 // ── Terminali ────────────────────────────────────────────────────────────────

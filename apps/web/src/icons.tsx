@@ -12,6 +12,8 @@ const paths = {
   trash: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',
   tool: 'M14 6a4 4 0 0 0-5 5l-5 5 3 3 5-5a4 4 0 0 0 5-5l-3 3-3-3z',
   shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+  settings: 'M4 6h9M17 6h3M15 4v4M4 12h3M11 12h9M9 10v4M4 18h11M19 18h1M17 16v4',
+  refresh: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5',
 } as const;
 
 export type IconName = keyof typeof paths;

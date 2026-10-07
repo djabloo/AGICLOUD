@@ -5,10 +5,11 @@ import { Login } from './Login';
 import { NewThreadDialog } from './NewThread';
 import { NewTerminalDialog } from './NewTerminal';
 import { TerminalView } from './TerminalView';
+import { SettingsView } from './SettingsView';
 import { Icon, type IconName } from './icons';
 
 type Auth = 'checking' | 'ok' | 'needed';
-type Section = 'chat' | 'terminal';
+type Section = 'chat' | 'terminal' | 'settings';
 
 interface Route {
   section: Section;
@@ -19,6 +20,7 @@ const SECTIONS: { id: Section | 'files'; label: string; icon: IconName; ready: b
   { id: 'chat', label: 'Chat', icon: 'chat', ready: true },
   { id: 'terminal', label: 'Terminale', icon: 'terminal', ready: true },
   { id: 'files', label: 'File', icon: 'files', ready: false },
+  { id: 'settings', label: 'Impostazioni', icon: 'settings', ready: true },
 ];
 
 /** #/t/<id> = conversazione, #/term = terminali, #/term/<id> = un terminale */
@@ -27,11 +29,13 @@ function routeFromHash(): Route {
   if (t) return { section: 'chat', id: t[1]! };
   const term = location.hash.match(/^#\/term(?:\/([\w-]+))?$/);
   if (term) return { section: 'terminal', id: term[1] ?? null };
+  if (location.hash === '#/settings') return { section: 'settings', id: null };
   return { section: 'chat', id: null };
 }
 
 function hashFor(r: Route): string {
   if (r.section === 'terminal') return r.id ? `#/term/${r.id}` : '#/term';
+  if (r.section === 'settings') return '#/settings';
   return r.id ? `#/t/${r.id}` : '';
 }
 
@@ -185,7 +189,8 @@ export function App() {
   }
 
   const inTerminals = route.section === 'terminal';
-  const activeThread = !inTerminals ? (threads.find((t) => t.id === route.id) ?? null) : null;
+  const inSettings = route.section === 'settings';
+  const activeThread = route.section === 'chat' ? (threads.find((t) => t.id === route.id) ?? null) : null;
   const activeTerminal = inTerminals ? (terminals.find((t) => t.id === route.id) ?? null) : null;
   const agentLabel = (id: string) => agents.find((a) => a.id === id)?.label ?? id;
   const newLabel = inTerminals ? 'Nuovo terminale' : 'Nuova conversazione';
@@ -244,12 +249,14 @@ export function App() {
           </ul>
         </nav>
 
-        <button type="button" className="btn primary new-btn" onClick={openNew}>
-          <Icon name="plus" />
-          <span>{newLabel}</span>
-        </button>
+        {!inSettings && (
+          <button type="button" className="btn primary new-btn" onClick={openNew}>
+            <Icon name="plus" />
+            <span>{newLabel}</span>
+          </button>
+        )}
 
-        {inTerminals ? (
+        {inSettings ? null : inTerminals ? (
           <>
             <h2 className="sidebar-title" id="list-title">
               Terminali
@@ -311,7 +318,18 @@ export function App() {
       <div className="backdrop" hidden={!drawerOpen} onClick={closeDrawer} />
 
       <main id="main" className="main" tabIndex={-1} inert={drawerOpen || undefined}>
-        {activeThread ? (
+        {inSettings ? (
+          <SettingsView
+            onOpenTerminal={(t) => {
+              setTerminals((ts) => [t, ...ts]);
+              go({ section: 'terminal', id: t.id });
+            }}
+            onLogout={() => {
+              setAuthError(undefined);
+              setAuth('needed');
+            }}
+          />
+        ) : activeThread ? (
           <Chat
             key={activeThread.id}
             thread={activeThread}

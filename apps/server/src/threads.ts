@@ -20,6 +20,7 @@ import { AgentSession, AuthRequiredError, custom, ev, getAgent } from '@agicloud
 import { config } from './config.js';
 import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
+import type { Settings } from './settings.js';
 
 export { HttpError } from './errors.js';
 
@@ -212,8 +213,10 @@ export class Thread {
     const session = new AgentSession(getAgent(this.meta.agentId), {
       cwd: this.meta.cwd,
       threadId: this.id,
+      env: this.store.settings.agentEnv(this.meta.agentId),
       resumeSessionId: this.meta.acpSessionId,
       onConfigOptions: (options) => {
+        this.store.settings.rememberOptions(this.meta.agentId, options);
         this.meta.configOptions = options;
         this.saveMeta();
         this.pushState();
@@ -235,6 +238,7 @@ export class Thread {
       const resumed = this.meta.acpSessionId;
       this.meta.acpSessionId = res.sessionId;
       this.meta.configOptions = res.configOptions;
+      this.store.settings.rememberOptions(this.meta.agentId, res.configOptions);
       this.emit(custom('agent_info', { agentInfo: res.init.agentInfo ?? null }));
       if (resumed) {
         this.emit(
@@ -333,6 +337,8 @@ export class Thread {
 export class ThreadStore {
   private readonly threads = new Map<string, Thread>();
 
+  constructor(readonly settings: Settings) {}
+
   /** Ricarica le conversazioni salvate (agenti spenti: ripartono al primo messaggio) */
   load(): void {
     for (const file of readdirSync(config.threadsDir)) {
@@ -371,7 +377,16 @@ export class ThreadStore {
     }
     const now = Date.now();
     const thread = new Thread(
-      { id: randomUUID(), agentId, cwd: resolveProject(cwd), title: 'Nuova conversazione', createdAt: now, updatedAt: now, config: {} },
+      {
+        id: randomUUID(),
+        agentId,
+        cwd: resolveProject(cwd),
+        title: 'Nuova conversazione',
+        createdAt: now,
+        updatedAt: now,
+        // Modalita'/modello predefiniti dalle Impostazioni: applicati all'avvio dell'agente
+        config: this.settings.agentDefaults(agentId),
+      },
       this,
     );
     thread.saveMeta();
