@@ -54,9 +54,9 @@ Scelte:
 |---|---|---|
 | OpenCode | `opencode acp` | ✅ testo, tool call, file creato |
 | Claude Code | `@agentclientprotocol/claude-agent-acp` | ✅ testo, permessi, modalità/modello/effort, comandi `/`, ripresa sessione dopo pausa e dopo riavvio del server |
-| Cursor | `cursor-agent acp` (nativo, `authenticate` con `cursor_login`) | ⚠️ collegamento ok; serve un login Cursor valido sul server (`cursor-agent login` dalle Impostazioni) |
+| Cursor | `cursor-agent acp` (nativo, `authenticate` con `cursor_login`) | ✅ collegato (login da Impostazioni con `cursor-agent login`) |
 | Demo | `packages/bridge/src/demo-agent.ts` | ✅ agente finto per prove (`AGICLOUD_DEMO_AGENT=1`): opzioni, comandi, permessi, ripresa |
-| Codex | `@zed-industries/codex-acp` | non provato (API a pagamento) |
+| ~~Codex~~ | `@zed-industries/codex-acp` | tolto dalla chat (2026-10-07): sul server è collegato con la chiave API di n8n, costerebbe a consumo. Riattivabile con `AGICLOUD_CODEX=1` |
 | agy | adattatore nostro `packages/bridge/src/agy-agent.ts`: un processo `agy --print` stream-json per messaggio, ripresa con `--conversation` (mappa in `~/.local/state/agicloud/agy-sessions.json`) | ✅ testo, strumenti, ripresa dopo pausa, modello/modalità/permessi. In headless agy non può chiedere permessi: comandi negati (segnalati in chat) salvo "Consenti tutto" |
 | ~~Gemini CLI~~ | — | tolto (2026-10-07): con l'abbonamento Google non si può usare, solo a chiave API. Per la chat contano solo agenti ad abbonamento o piano gratuito |
 

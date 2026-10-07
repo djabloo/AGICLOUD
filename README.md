@@ -1,6 +1,6 @@
 # AgiCloud
 
-Interfaccia web multi-agente per agenti di coding (Claude Code, Codex, Cursor, OpenCode, ...), basata sugli standard aperti **ACP** e **AG-UI**.
+Interfaccia web multi-agente per agenti di coding (Claude Code, agy, Cursor, OpenCode, ...), basata sugli standard aperti **ACP** e **AG-UI**.
 
 Stato: in uso quotidiano su app.agicloud.dev (sezione Chat). Architettura in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

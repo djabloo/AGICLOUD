@@ -55,15 +55,20 @@ export const AGENTS: Record<string, AgentSpec> = {
     native: false,
     note: 'Usa il tuo account Google. I comandi di shell richiedono Permessi: Consenti tutto (agy non puo\' chiedere conferma)',
   },
-  codex: {
+};
+
+// Codex: tolto dalla chat (2026-10-07). Sul server e' collegato con la chiave API usata da n8n,
+// quindi costerebbe a consumo. Riattivabile con AGICLOUD_CODEX=1 se si usa un account ChatGPT.
+if (process.env.AGICLOUD_CODEX === '1') {
+  AGENTS.codex = {
     id: 'codex',
     label: 'Codex',
     command: 'npx',
     args: ['-y', '@zed-industries/codex-acp@0.16.0'],
     native: false,
     note: 'Usa il login di codex (account ChatGPT o chiave API)',
-  },
-};
+  };
+}
 
 // Agente finto (demo-agent.ts): opzioni, comandi, permessi, ripresa. Per prove e test UI.
 if (process.env.AGICLOUD_DEMO_AGENT === '1') {
