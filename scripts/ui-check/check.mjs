@@ -16,7 +16,7 @@ export default async function ({ page }) {
     await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js' });
     const r = await page.evaluate(async () => {
       const res = await axe.run(document, { runOnly: ['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa','best-practice'] });
-      return res.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, n: v.nodes.length, target: v.nodes.slice(0,3).map(n => n.target.join(' ')) }));
+      return res.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, n: v.nodes.length, target: v.nodes.slice(0,3).map(n => n.target.join(' ')), detail: v.nodes.slice(0,2).map(n => (n.html || '').slice(0,120) + ' | ' + (n.any?.[0]?.message || '')) }));
     });
     out.axe[label] = r;
   };
@@ -74,6 +74,11 @@ export default async function ({ page }) {
   await page.click('.permission .btn.primary');
   await page.waitForFunction(() => document.querySelector('.status')?.textContent.includes('Pronto') && document.querySelectorAll('.from-assistant').length >= 2, { timeout: 20000 });
   out.steps.push('turno completato');
+  out.diff = await page.evaluate(() => ({
+    stat: document.querySelector('.diff-stat')?.textContent,
+    add: document.querySelectorAll('.diff .dl-add').length,
+    del: document.querySelectorAll('.diff .dl-del').length,
+  }));
   out.livePolite = await page.evaluate(() => document.querySelector('[aria-live=polite]')?.textContent);
   await page.evaluate(() => document.querySelectorAll('details.tool')[0]?.setAttribute('open',''));
   await shot('done');

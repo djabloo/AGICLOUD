@@ -3,6 +3,7 @@ import { api, followEvents, type ThreadSummary } from './api';
 import { emptyTranscript, reduce, type ConfigOption, type Item, type SlashCommand } from './transcript';
 import { Markdown } from './markdown';
 import { Icon } from './icons';
+import { DiffStat, DiffView, diffStats } from './DiffView';
 
 interface Props {
   thread: ThreadSummary;
@@ -225,19 +226,23 @@ function ItemView({ item, threadId, cwd }: { item: Item; threadId: string; cwd: 
 function ToolView({ item, cwd }: { item: Extract<Item, { kind: 'tool' }>; cwd: string }) {
   const statusLabel =
     item.status === 'completed' ? 'completato' : item.status === 'failed' ? 'fallito' : item.status === 'in_progress' ? 'in corso' : 'in attesa';
+  const fileHref = (p: string) => `#/files/${encodeURIComponent(p.startsWith('/') ? p : `${cwd}/${p}`)}`;
+  const stats = item.diffs ? diffStats(item.diffs) : null;
   return (
-    <details className={`tool tool-${item.status}`}>
+    <details className={`tool tool-${item.status}`} open={item.diffs ? true : undefined}>
       <summary>
         <Icon name="tool" />
         <span className="tool-title">{item.title}</span>
+        {stats && <DiffStat added={stats.added} removed={stats.removed} />}
         <span className="tool-status">{statusLabel}</span>
       </summary>
-      {item.locations.length > 0 && (
+      {item.diffs?.map((d, i) => <DiffView key={i} diff={d} href={fileHref(d.path)} />)}
+      {!item.diffs && item.locations.length > 0 && (
         <ul className="tool-files">
           {item.locations.map((l, i) => (
             <li key={i}>
               {/* Apre il file nella sezione File */}
-              <a href={`#/files/${encodeURIComponent(l.path.startsWith('/') ? l.path : `${cwd}/${l.path}`)}`}>
+              <a href={fileHref(l.path)}>
                 <code>
                   {l.path}
                   {l.line ? `:${l.line}` : ''}
@@ -247,7 +252,7 @@ function ToolView({ item, cwd }: { item: Extract<Item, { kind: 'tool' }>; cwd: s
           ))}
         </ul>
       )}
-      {item.result && <pre className="tool-result">{item.result}</pre>}
+      {item.result && !item.diffs && <pre className="tool-result">{item.result}</pre>}
     </details>
   );
 }

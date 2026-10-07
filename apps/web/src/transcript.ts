@@ -26,6 +26,8 @@ export type Item =
       status: string;
       locations: ToolLocation[];
       result?: string;
+      /** Modifiche ai file (contenuti ACP di tipo "diff") */
+      diffs?: { path: string; oldText: string | null; newText: string }[];
     }
   | { kind: 'permission'; id: string; title: string; options: PermissionOption[]; resolved?: string | null }
   | { kind: 'plan'; id: string; entries: { content: string; status: string; priority?: string }[] }
@@ -156,6 +158,7 @@ function reduceCustom(state: Transcript, name: string, v: any): Transcript {
                 toolKind: v.kind ?? it.toolKind,
                 status: v.status ?? it.status,
                 locations: v.locations?.length ? v.locations : it.locations,
+                diffs: extractDiffs(v.content) ?? it.diffs,
               }
             : it,
         ),
@@ -218,4 +221,12 @@ function stopReasonText(reason: string): string {
     default:
       return `Turno terminato (${reason}).`;
   }
+}
+
+function extractDiffs(content: unknown): { path: string; oldText: string | null; newText: string }[] | undefined {
+  if (!Array.isArray(content)) return undefined;
+  const diffs = content
+    .filter((c: any) => c?.type === 'diff' && typeof c.path === 'string' && typeof c.newText === 'string')
+    .map((c: any) => ({ path: c.path, oldText: typeof c.oldText === 'string' ? c.oldText : null, newText: c.newText }));
+  return diffs.length ? diffs : undefined;
 }

@@ -1748,3 +1748,88 @@ legend {
     margin-right: auto;
   }
 }
+
+/* ── Diff delle modifiche ────────────────────────────────────────────────── */
+.diff-stat {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.diff-plus {
+  color: var(--ok);
+}
+.diff-minus {
+  color: var(--danger);
+}
+.diff {
+  margin: 0 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.diff-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.diff-head a {
+  color: var(--text);
+}
+.diff-new {
+  color: var(--ok);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.diff-body {
+  max-height: 420px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.dl {
+  display: block;
+  min-width: max-content;
+  padding: 0 10px 0 0;
+  white-space: pre;
+  text-decoration: none;
+}
+.dl-sign {
+  display: inline-block;
+  width: 1.8em;
+  text-align: center;
+  user-select: none;
+  color: var(--text-muted);
+}
+.dl-add {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+.dl-add .dl-sign {
+  color: var(--ok);
+}
+.dl-del {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+}
+.dl-del .dl-sign {
+  color: var(--danger);
+}
+.dl-gap {
+  padding: 2px 10px;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-style: italic;
+  background: var(--surface-2);
+}
+@media (forced-colors: active) {
+  .dl-add,
+  .dl-del {
+    forced-color-adjust: none;
+    border-left: 3px solid CanvasText;
+  }
+}

@@ -137,7 +137,14 @@ acp
           });
           allowed = res.outcome.outcome === 'selected' && res.outcome.optionId === 'yes';
         }
-        await say({ sessionUpdate: 'tool_call_update', toolCallId: 'demo-1', status: allowed ? 'completed' : 'failed', content: [{ type: 'content', content: { type: 'text', text: allowed ? 'scritto' : 'rifiutato' } }] });
+        await say({
+          sessionUpdate: 'tool_call_update',
+          toolCallId: 'demo-1',
+          status: allowed ? 'completed' : 'failed',
+          content: allowed
+            ? [{ type: 'diff', path: 'demo.txt', oldText: 'riga uno\nriga due\nriga quattro\n', newText: 'riga uno\nriga DUE\nriga tre\nriga quattro\n' }]
+            : [{ type: 'content', content: { type: 'text', text: 'rifiutato' } }],
+        });
         await write(allowed ? 'Fatto.' : 'Ok, non lo creo.');
       } else if (text.startsWith('/piano')) {
         await say({ sessionUpdate: 'plan', entries: [
