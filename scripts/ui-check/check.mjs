@@ -125,6 +125,39 @@ export default async function ({ page }) {
   out.steps.push('allegati ok');
   await shot('attach-sent');
 
+  // Organizzazione conversazioni (desktop): ricerca nel testo, rinomina, fissa, archivia
+  await page.setViewport({ width: 1366, height: 860 });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.thread-search input');
+  await page.type('.thread-search input', 'allegati');
+  await page.waitForFunction(() => document.querySelector('.thread-snippet')?.textContent.includes('allegati'), { timeout: 10000 });
+  out.searchSnippet = await page.$eval('.thread-snippet', (e) => e.textContent.slice(0, 80));
+  await page.$eval('.thread-search input', (el) => { el.value = ''; });
+  await page.click('.thread-search input', { clickCount: 3 });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.thread-snippet'));
+  await page.click('.thread-more');
+  await page.waitForSelector('.thread-menu');
+  await shot('thread-menu');
+  await runAxe('thread-menu');
+  await page.click('.thread-menu button:nth-child(1)');
+  await page.waitForSelector('.rename-form input');
+  await page.$eval('.rename-form input', (el) => { el.select(); });
+  await page.keyboard.type('Titolo rinominato');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => [...document.querySelectorAll('.thread-title')].some((e) => e.textContent.includes('Titolo rinominato')), { timeout: 5000 });
+  await page.click('.thread-more');
+  await page.click('.thread-menu button:nth-child(2)');
+  await page.waitForFunction(() => [...document.querySelectorAll('.sidebar-title')].some((e) => e.textContent.includes('Fissate')), { timeout: 5000 });
+  await page.click('.thread-more');
+  await page.click('.thread-menu button:nth-child(3)');
+  await page.waitForSelector('.archived-toggle', { timeout: 5000 });
+  out.archivedToggle = await page.$eval('.archived-toggle', (e) => e.textContent);
+  await page.click('.archived-toggle');
+  await shot('thread-archived');
+  await runAxe('thread-archived');
+  out.steps.push('conversazioni organizzate');
+
   // Impostazioni
   await page.setViewport({ width: 1366, height: 860 });
   await page.goto(BASE + '#/settings', { waitUntil: 'domcontentloaded' });

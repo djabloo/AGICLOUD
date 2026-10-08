@@ -20,6 +20,14 @@ export interface ThreadSummary {
   status: ThreadStatus;
   createdAt: number;
   updatedAt: number;
+  pinned: boolean;
+  archived: boolean;
+}
+
+export interface SearchHit {
+  id: string;
+  snippet: string;
+  inTitle: boolean;
 }
 
 export interface UploadedFile {
@@ -146,6 +154,9 @@ export const api = {
   projects: () => request<{ roots: string[]; recent: string[] }>('GET', '/projects'),
   dirs: (path?: string) => request<DirListing>('GET', `/dirs${path ? `?path=${encodeURIComponent(path)}` : ''}`),
   threads: () => request<ThreadSummary[]>('GET', '/threads'),
+  updateThread: (id: string, patch: { title?: string; pinned?: boolean; archived?: boolean }) =>
+    request<ThreadSummary>('PATCH', `/threads/${id}`, patch),
+  searchThreads: (q: string) => request<SearchHit[]>('GET', `/threads/search?q=${encodeURIComponent(q)}`),
   createThread: (agentId: string, cwd: string) => request<ThreadSummary>('POST', '/threads', { agentId, cwd }),
   settings: (refresh = false) =>
     request<{ general: GeneralSettings; agents: AgentStatus[] }>('GET', `/settings${refresh ? '?refresh=1' : ''}`),

@@ -80,6 +80,7 @@ Scelta: **niente `@ag-ui/client` né componenti CopilotKit** per ora. Il client 
 - Al messaggio successivo riparte con `session/resume` (o `session/load`) sulla stessa sessione ACP e riapplica le scelte salvate. Se la ripresa fallisce si apre una sessione nuova e la UI lo dice.
 - Oltre `MAX_SESSIONS` agenti accesi si mette in pausa quello inattivo da più tempo.
 - Stato "vivo" (opzioni, comandi slash, stato) viaggia come evento `agicloud.state` senza id SSE: non entra nel registro.
+- Organizzazione: rinomina (il titolo scelto non viene più sostituito dal primo messaggio), fissa in cima, archivia (spegne l'agente; nascosta in "Archiviate"). Ricerca `GET /api/threads/search?q=` su titoli e testo dei messaggi, con estratto.
 - Progetti: qualsiasi cartella dentro `PROJECT_ROOTS` (default `data/workspaces:/home/user:/opt:/var/www`), controllata con il percorso reale (niente symlink per uscire).
 
 ## Terminali

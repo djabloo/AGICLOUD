@@ -1833,3 +1833,109 @@ legend {
     border-left: 3px solid CanvasText;
   }
 }
+
+/* ── Lista conversazioni: ricerca, menu azioni, archiviate ───────────────── */
+.thread-search input {
+  min-height: 40px;
+  padding: 6px 10px;
+  font-size: 0.9rem;
+}
+.thread-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+.thread-row .thread-btn {
+  flex: 1;
+  min-width: 0;
+  padding-right: 4px;
+}
+.thread-more {
+  flex: none;
+  width: 36px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.thread-more:hover,
+.thread-more[aria-expanded='true'] {
+  background: var(--surface-2);
+  color: var(--text);
+}
+@media (pointer: coarse) {
+  .thread-more {
+    width: 44px;
+  }
+}
+.thread-menu {
+  position: absolute;
+  right: 4px;
+  top: calc(100% - 4px);
+  z-index: 30;
+  display: grid;
+  min-width: 190px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+}
+.thread-menu button {
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.thread-menu button:hover,
+.thread-menu button:focus-visible {
+  background: var(--surface-2);
+}
+.danger-text {
+  color: var(--danger) !important;
+}
+.thread-snippet {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  white-space: normal;
+}
+.pin-mark {
+  font-size: 0.8em;
+}
+.rename-form {
+  flex: 1;
+  padding: 4px 0;
+}
+.rename-form input {
+  min-height: 40px;
+}
+.archived-toggle {
+  min-height: 40px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.archived-toggle:hover {
+  color: var(--text);
+}

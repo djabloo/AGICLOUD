@@ -6,6 +6,7 @@ import { NewThreadDialog } from './NewThread';
 import { NewTerminalDialog } from './NewTerminal';
 import { TerminalView } from './TerminalView';
 import { SettingsView } from './SettingsView';
+import { ThreadList } from './ThreadList';
 import { FilesView } from './FilesView';
 import { Icon, type IconName } from './icons';
 
@@ -291,31 +292,14 @@ export function App() {
           </>
         ) : (
           <>
-            <h2 className="sidebar-title" id="list-title">
-              Conversazioni
-            </h2>
-            {threads.length === 0 ? (
-              <p className="sidebar-empty">Nessuna conversazione</p>
-            ) : (
-              <ul className="threads" aria-labelledby="list-title">
-                {threads.map((t) => (
-                  <li key={t.id}>
-                    <button
-                      type="button"
-                      className="thread-btn"
-                      aria-current={t.id === route.id ? 'page' : undefined}
-                      onClick={() => go({ section: 'chat', id: t.id })}
-                    >
-                      <span className="thread-title">{t.title}</span>
-                      <span className="thread-meta">
-                        {agentLabel(t.agentId)} · {t.project}
-                        {t.status === 'running' && <span className="thread-running"> · al lavoro</span>}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ThreadList
+              threads={threads}
+              activeId={route.section === 'chat' ? route.id : null}
+              agentLabel={agentLabel}
+              onSelect={(tid) => go({ section: 'chat', id: tid })}
+              onChanged={(t) => setThreads((ts) => ts.map((x) => (x.id === t.id ? t : x)))}
+              onDelete={(tid) => void removeThread(tid)}
+            />
           </>
         )}
       </aside>

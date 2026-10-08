@@ -108,6 +108,14 @@ app.get('/api/dirs', (c) => c.json(listDirs(c.req.query('path') || undefined)));
 
 app.get('/api/threads', (c) => c.json(store.list()));
 
+app.get('/api/threads/search', (c) => c.json(store.search(c.req.query('q') ?? '')));
+
+app.patch('/api/threads/:id', async (c) => {
+  const thread = store.get(c.req.param('id'));
+  thread.update(await jsonBody(c));
+  return c.json(thread.summary());
+});
+
 app.post('/api/threads', async (c) => {
   const body = await jsonBody(c);
   const thread = store.create(String(body.agentId ?? ''), String(body.cwd ?? ''));

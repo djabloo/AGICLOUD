@@ -44,6 +44,12 @@ interface ThreadMeta {
   config: Record<string, ConfigValue>;
   /** Ultime opzioni note, per mostrarle anche ad agente spento */
   configOptions?: acp.SessionConfigOption[];
+  /** Titolo scelto dall'utente: non viene piu' sostituito dal primo messaggio */
+  customTitle?: boolean;
+  /** Fissata in cima alla lista */
+  pinned?: boolean;
+  /** Nascosta dalla lista principale (non cancellata) */
+  archived?: boolean;
 }
 
 /** Stato "vivo" mandato alla UI fuori dal registro (non salvato, cambia spesso) */
@@ -79,7 +85,50 @@ export class Thread {
 
   summary() {
     const { id, agentId, cwd, title, createdAt, updatedAt } = this.meta;
-    return { id, agentId, cwd, project: basename(cwd), title, status: this.status, createdAt, updatedAt };
+    return {
+      id,
+      agentId,
+      cwd,
+      project: basename(cwd),
+      title,
+      status: this.status,
+      createdAt,
+      updatedAt,
+      pinned: this.meta.pinned === true,
+      archived: this.meta.archived === true,
+    };
+  }
+
+  /** Rinomina, fissa, archivia */
+  update(patch: { title?: unknown; pinned?: unknown; archived?: unknown }): void {
+    if (typeof patch.title === 'string') {
+      const title = patch.title.trim().replace(/\s+/g, ' ').slice(0, 120);
+      if (!title) throw new HttpError(400, 'Il titolo non puo\' essere vuoto');
+      this.meta.title = title;
+      this.meta.customTitle = true;
+    }
+    if (typeof patch.pinned === 'boolean') this.meta.pinned = patch.pinned;
+    if (typeof patch.archived === 'boolean') {
+      this.meta.archived = patch.archived;
+      if (patch.archived) {
+        this.meta.pinned = false;
+        void this.sleep(); // archiviata: niente agente acceso
+      }
+    }
+    this.saveMeta();
+  }
+
+  /** Testo della conversazione (messaggi tuoi e dell'agente), per la ricerca */
+  searchText(): { role: string; text: string }[] {
+    const msgs = new Map<string, { role: string; text: string }>();
+    for (const e of this.events as (BaseEvent & { messageId?: string; role?: string; delta?: string })[]) {
+      if (e.type === EventType.TEXT_MESSAGE_START && e.messageId) msgs.set(e.messageId, { role: e.role ?? 'assistant', text: '' });
+      else if (e.type === EventType.TEXT_MESSAGE_CONTENT && e.messageId) {
+        const m = msgs.get(e.messageId);
+        if (m) m.text += e.delta ?? '';
+      }
+    }
+    return [...msgs.values()];
   }
 
   state(): ThreadState {
@@ -121,7 +170,7 @@ export class Thread {
 
     const files = attachments.map((p) => ({ rel: p, ...resolveAttachment(this.meta.cwd, p) }));
     const content = buildPrompt(prompt, files, this.session.acceptsImages);
-    if (!this.events.some((e) => e.type === EventType.RUN_STARTED)) {
+    if (!this.meta.customTitle && !this.events.some((e) => e.type === EventType.RUN_STARTED)) {
       this.meta.title = (prompt || files.map((f) => basename(f.rel)).join(', ')).slice(0, 80);
     }
     this.touch();
@@ -392,6 +441,26 @@ export class ThreadStore {
 
   list() {
     return [...this.threads.values()].map((t) => t.summary()).sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  /** Cerca nei titoli e nel testo; per ogni conversazione un estratto attorno al primo risultato */
+  search(q: string) {
+    const needle = q.trim().toLowerCase();
+    if (needle.length < 2) return [];
+    const out: { id: string; snippet: string; inTitle: boolean }[] = [];
+    for (const t of this.threads.values()) {
+      const inTitle = t.meta.title.toLowerCase().includes(needle);
+      let snippet = '';
+      for (const m of t.searchText()) {
+        const i = m.text.toLowerCase().indexOf(needle);
+        if (i < 0) continue;
+        const start = Math.max(0, i - 50);
+        snippet = `${start ? '…' : ''}${m.text.slice(start, i + needle.length + 70).replace(/\s+/g, ' ').trim()}…`;
+        break;
+      }
+      if (inTitle || snippet) out.push({ id: t.id, snippet, inTitle });
+    }
+    return out.slice(0, 50);
   }
 
   recentProjects(): string[] {
