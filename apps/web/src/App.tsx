@@ -31,7 +31,8 @@ function routeFromHash(): Route {
   if (t) return { section: 'chat', id: t[1]! };
   const term = location.hash.match(/^#\/term(?:\/([\w-]+))?$/);
   if (term) return { section: 'terminal', id: term[1] ?? null };
-  if (location.hash === '#/settings') return { section: 'settings', id: null };
+  const settings = location.hash.match(/^#\/settings(?:\/([\w-]+))?$/);
+  if (settings) return { section: 'settings', id: settings[1] ?? null };
   const files = location.hash.match(/^#\/files(?:\/(.+))?$/);
   if (files) return { section: 'files', id: files[1] ? decodeURIComponent(files[1]) : null };
   return { section: 'chat', id: null };
@@ -39,7 +40,7 @@ function routeFromHash(): Route {
 
 function hashFor(r: Route): string {
   if (r.section === 'terminal') return r.id ? `#/term/${r.id}` : '#/term';
-  if (r.section === 'settings') return '#/settings';
+  if (r.section === 'settings') return r.id ? `#/settings/${r.id}` : '#/settings';
   if (r.section === 'files') return r.id ? `#/files/${encodeURIComponent(r.id)}` : '#/files';
   return r.id ? `#/t/${r.id}` : '';
 }
@@ -311,6 +312,7 @@ export function App() {
           <FilesView path={route.id} onNavigate={(p) => go({ section: 'files', id: p })} />
         ) : inSettings ? (
           <SettingsView
+            page={route.id}
             onOpenTerminal={(t) => {
               setTerminals((ts) => [t, ...ts]);
               go({ section: 'terminal', id: t.id });

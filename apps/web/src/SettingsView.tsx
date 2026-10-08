@@ -5,6 +5,7 @@ import { Icon } from './icons';
 import { VaultSection } from './VaultSection';
 import { NotificationsSection } from './NotificationsSection';
 import { AgentLogin } from './AgentLogin';
+import { getTheme, setTheme, type ThemeChoice } from './theme';
 
 const LOGIN_TEXT: Record<AgentStatus['login']['state'], string> = {
   ok: 'Collegato',
@@ -12,12 +13,36 @@ const LOGIN_TEXT: Record<AgentStatus['login']['state'], string> = {
   unknown: 'Stato sconosciuto',
 };
 
-export function SettingsView({ onOpenTerminal, onLogout }: { onOpenTerminal: (t: TerminalSummary) => void; onLogout: () => void }) {
+type PageId = 'agenti' | 'chiavi' | 'notifiche' | 'aspetto' | 'generale' | 'accesso';
+
+const PAGES: { id: PageId; label: string; desc: string }[] = [
+  { id: 'agenti', label: 'Agenti', desc: 'Login, stato e scelte predefinite' },
+  { id: 'chiavi', label: 'Chiavi', desc: 'Portachiavi per processi e terminali' },
+  { id: 'notifiche', label: 'Notifiche e app', desc: 'Avvisi sul telefono, installazione' },
+  { id: 'aspetto', label: 'Aspetto', desc: 'Tema chiaro o scuro' },
+  { id: 'generale', label: 'Cartelle e pausa', desc: 'Progetti consentiti, pausa degli agenti' },
+  { id: 'accesso', label: 'Accesso', desc: 'Esci da questo dispositivo' },
+];
+
+/** page: voce scelta (#/settings/<voce>). Senza voce: su telefono l'elenco, su schermo largo la prima */
+export function SettingsView({
+  page,
+  onOpenTerminal,
+  onLogout,
+}: {
+  page: string | null;
+  onOpenTerminal: (t: TerminalSummary) => void;
+  onLogout: () => void;
+}) {
   const [agents, setAgents] = useState<AgentStatus[] | null>(null);
   const [general, setGeneral] = useState<GeneralSettings | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [announce, setAnnounce] = useState('');
+  const current = PAGES.find((p) => p.id === page) ?? null;
+  const shown = current ?? PAGES[0]!;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const firstRender = useRef(true);
 
   const load = async (refresh = false) => {
     setRefreshing(true);
@@ -38,71 +63,145 @@ export function SettingsView({ onOpenTerminal, onLogout }: { onOpenTerminal: (t:
     void load();
   }, []);
 
+  // Cambio voce: il focus va al titolo della voce (o all'elenco tornando indietro su telefono)
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    if (current) contentRef.current?.querySelector<HTMLElement>('h2')?.focus();
+    else document.querySelector<HTMLElement>('.settings-nav a')?.focus();
+  }, [page]);
+
   return (
     <section className="settings" aria-labelledby="settings-title">
       <header className="chat-header">
         <div className="chat-heading">
           <h1 id="settings-title">Impostazioni</h1>
-          <p className="chat-meta">Agenti, notifiche, chiavi, cartelle, accesso</p>
+          <p className="chat-meta">{current ? current.label : 'Scegli una voce'}</p>
         </div>
       </header>
 
-      <div className="settings-body">
-        {error && (
-          <p className="notice notice-error" role="alert">
-            {error}
-          </p>
-        )}
+      <div className={`settings-body settings-layout ${current ? 'has-page' : 'no-page'}`}>
+        <nav className="settings-nav" aria-label="Voci delle impostazioni">
+          <ul>
+            {PAGES.map((p) => (
+              <li key={p.id}>
+                <a href={`#/settings/${p.id}`} aria-current={p.id === shown.id ? 'page' : undefined}>
+                  <span className="settings-nav-label">{p.label}</span>
+                  <span className="settings-nav-desc">{p.desc}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-        <section aria-labelledby="agents-title" className="settings-group">
-          <div className="group-head">
-            <h2 id="agents-title">Agenti</h2>
-            <button type="button" className="btn small-btn" onClick={() => void load(true)} disabled={refreshing}>
-              <Icon name="refresh" />
-              <span>{refreshing ? 'Controllo…' : 'Ricontrolla'}</span>
-            </button>
-          </div>
-          {!agents ? (
-            <p className="hint">Controllo degli agenti in corso…</p>
-          ) : (
-            <ul className="agent-cards">
-              {agents.map((a) => (
-                <li key={a.id}>
-                  <AgentCard agent={a} onOpenTerminal={onOpenTerminal} onChanged={() => void load(true)} />
-                </li>
-              ))}
-            </ul>
+        <div className="settings-content" ref={contentRef}>
+          <a className="settings-back" href="#/settings">
+            <span aria-hidden="true">‹ </span>Tutte le impostazioni
+          </a>
+          {error && (
+            <p className="notice notice-error" role="alert">
+              {error}
+            </p>
           )}
-        </section>
 
-        <NotificationsSection />
+          {shown.id === 'agenti' && (
+            <section aria-labelledby="agents-title" className="settings-group">
+              <div className="group-head">
+                <h2 id="agents-title" tabIndex={-1}>
+                  Agenti
+                </h2>
+                <button type="button" className="btn small-btn" onClick={() => void load(true)} disabled={refreshing}>
+                  <Icon name="refresh" />
+                  <span>{refreshing ? 'Controllo…' : 'Ricontrolla'}</span>
+                </button>
+              </div>
+              {!agents ? (
+                <p className="hint">Controllo degli agenti in corso…</p>
+              ) : (
+                <ul className="agent-cards">
+                  {agents.map((a) => (
+                    <li key={a.id}>
+                      <AgentCard agent={a} onOpenTerminal={onOpenTerminal} onChanged={() => void load(true)} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
-        <VaultSection />
+          {shown.id === 'chiavi' && <VaultSection />}
 
-        {general && <GeneralForm general={general} onSaved={setGeneral} />}
+          {shown.id === 'notifiche' && <NotificationsSection />}
 
-        <section aria-labelledby="access-title" className="settings-group">
-          <h2 id="access-title">Accesso</h2>
-          <p className="hint">
-            Il token di accesso sta sul server in <code>/home/user/.secrets/agicloud-app.env</code>. Uscendo, questo
-            browser lo dimentica e alla prossima apertura lo richiede.
-          </p>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => {
-              setToken('');
-              onLogout();
-            }}
-          >
-            Esci da questo dispositivo
-          </button>
-        </section>
+          {shown.id === 'aspetto' && <AppearanceSection />}
+
+          {shown.id === 'generale' && (general ? <GeneralForm general={general} onSaved={setGeneral} /> : <p className="hint">Caricamento…</p>)}
+
+          {shown.id === 'accesso' && (
+            <section aria-labelledby="access-title" className="settings-group">
+              <h2 id="access-title" tabIndex={-1}>
+                Accesso
+              </h2>
+              <p className="hint">
+                Il token di accesso sta sul server in <code>/home/user/.secrets/agicloud-app.env</code>. Uscendo, questo
+                browser lo dimentica e alla prossima apertura lo richiede.
+              </p>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setToken('');
+                  onLogout();
+                }}
+              >
+                Esci da questo dispositivo
+              </button>
+            </section>
+          )}
+        </div>
       </div>
 
       <div className="visually-hidden" aria-live="polite">
         {announce}
       </div>
+    </section>
+  );
+}
+
+const THEMES: { id: ThemeChoice; label: string; desc: string }[] = [
+  { id: 'system', label: 'Automatico', desc: 'Segue il telefono o il computer' },
+  { id: 'light', label: 'Chiaro', desc: '' },
+  { id: 'dark', label: 'Scuro', desc: '' },
+];
+
+function AppearanceSection() {
+  const id = useId();
+  const [theme, setThemeState] = useState<ThemeChoice>(getTheme);
+  const choose = (t: ThemeChoice) => {
+    setTheme(t);
+    setThemeState(t);
+  };
+  return (
+    <section aria-labelledby={`${id}-title`} className="settings-group">
+      <h2 id={`${id}-title`} tabIndex={-1}>
+        Aspetto
+      </h2>
+      <fieldset className="choice-group">
+        <legend>Tema</legend>
+        {THEMES.map((t) => (
+          <label key={t.id} className="choice">
+            <input type="radio" name={`${id}-theme`} value={t.id} checked={theme === t.id} onChange={() => choose(t.id)} />
+            <span className={`theme-swatch theme-swatch-${t.id}`} aria-hidden="true" />
+            <span className="choice-text">
+              <span>{t.label}</span>
+              {t.desc && <span className="hint">{t.desc}</span>}
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      <p className="hint">Vale per questo dispositivo. Il terminale resta scuro.</p>
     </section>
   );
 }
@@ -363,7 +462,9 @@ function GeneralForm({ general, onSaved }: { general: GeneralSettings; onSaved: 
 
   return (
     <section aria-labelledby={`${id}-title`} className="settings-group">
-      <h2 id={`${id}-title`}>Generale</h2>
+      <h2 id={`${id}-title`} tabIndex={-1}>
+        Cartelle e pausa
+      </h2>
       <form className="general-form" onSubmit={save}>
         <label htmlFor={`${id}-roots`}>Cartelle consentite</label>
         <textarea

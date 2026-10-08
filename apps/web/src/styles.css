@@ -1,4 +1,4 @@
-/* AgiCloud — tema chiaro/scuro da sistema, mobile-first, contrasti AA */
+/* AgiCloud — tema chiaro/scuro (sistema o scelto), mobile-first, contrasti AA */
 
 :root {
   --bg: #f7f8fb;
@@ -21,8 +21,9 @@
   color-scheme: light;
 }
 
+/* Tema: automatico (sistema), oppure scelto in Impostazioni → Aspetto (data-theme su <html>) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #0b0f17;
     --surface: #121826;
     --surface-2: #1a2232;
@@ -38,6 +39,23 @@
     --focus: #8cc8ff;
     color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0b0f17;
+  --surface: #121826;
+  --surface-2: #1a2232;
+  --border: #2b3548;
+  --text: #e8ecf3;
+  --text-muted: #a3adbf;
+  --accent: #5cb1ff;
+  --accent-text: #08111f;
+  --accent-soft: #15283f;
+  --danger: #ff8a7a;
+  --ok: #5fd38d;
+  --warn: #f5b84d;
+  --focus: #8cc8ff;
+  color-scheme: dark;
 }
 
 *,
@@ -2067,4 +2085,155 @@ legend {
   font-size: 0.8rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* ── Impostazioni a voci: su telefono elenco → voce, su schermo largo affiancate ── */
+.settings-layout {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+.settings-nav ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.settings-nav a {
+  display: grid;
+  gap: 2px;
+  min-height: 44px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.settings-nav a:hover {
+  background: var(--surface-2);
+}
+.settings-nav-label {
+  font-weight: 600;
+}
+.settings-nav-desc {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.settings-content {
+  min-width: 0;
+}
+.settings-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.settings-group h2:focus {
+  outline: none;
+}
+.settings-group h2:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.no-page .settings-content,
+.has-page .settings-nav {
+  display: none;
+}
+@media (min-width: 900px) {
+  .settings-layout {
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 24px;
+  }
+  .no-page .settings-content,
+  .has-page .settings-nav {
+    display: block;
+  }
+  .settings-nav {
+    position: sticky;
+    top: 0;
+    align-self: start;
+  }
+  .settings-nav ul {
+    gap: 4px;
+  }
+  .settings-nav a {
+    border-color: transparent;
+    background: transparent;
+  }
+  .settings-nav a[aria-current='page'] {
+    border-color: var(--border);
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .settings-nav-desc {
+    display: none;
+  }
+  .settings-back {
+    display: none;
+  }
+  .settings-content .settings-group {
+    margin-left: 0;
+  }
+}
+
+/* Scelte a pulsanti radio grandi (es. tema) */
+.choice-group {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+.choice-group legend {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-weight: 400;
+  cursor: pointer;
+}
+.choice:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.choice input {
+  width: 20px;
+  min-height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.choice-text {
+  display: grid;
+  gap: 2px;
+}
+.choice-text > span:first-child {
+  font-weight: 600;
+}
+.theme-swatch {
+  width: 36px;
+  height: 24px;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.theme-swatch-light {
+  background: linear-gradient(90deg, #ffffff 50%, #eef1f6 50%);
+}
+.theme-swatch-dark {
+  background: linear-gradient(90deg, #121826 50%, #0b0f17 50%);
+}
+.theme-swatch-system {
+  background: linear-gradient(135deg, #ffffff 50%, #121826 50%);
 }

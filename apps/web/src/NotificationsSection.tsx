@@ -109,7 +109,9 @@ export function NotificationsSection() {
 
   return (
     <section aria-labelledby={`${id}-title`} className="settings-group">
-      <h2 id={`${id}-title`}>Notifiche e app</h2>
+      <h2 id={`${id}-title`} tabIndex={-1}>
+        Notifiche e app
+      </h2>
       <p className="hint">
         Un avviso sul telefono quando un agente ha finito o ti chiede un permesso. Toccandolo si apre la conversazione.
         Se la stai gia' guardando, l'avviso non arriva.

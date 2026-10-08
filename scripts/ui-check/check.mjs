@@ -168,20 +168,38 @@ export default async function ({ page }) {
     const demo = cards.find((c) => c.querySelector('h3').textContent.startsWith('Demo'));
     return demo ? [...demo.querySelectorAll('.defaults select')].length : -1;
   });
+  await shot('settings');
+  await runAxe('settings');
+  await page.click('.settings-nav a[href="#/settings/chiavi"]');
+  await page.waitForSelector('.add-key input.mono-input');
+  out.settingsFocus = await page.evaluate(() => document.activeElement?.textContent.trim());
   await page.type('.add-key input.mono-input', 'FAL_KEY');
   await page.type('.add-key input[type=password]', 'chiave-finta-9876');
   await page.click('.add-key .btn.primary');
   await page.waitForSelector('.vault-item');
   out.vault = await page.$eval('.vault-list', (el) => el.textContent);
   out.vaultLeak = (await page.content()).includes('chiave-finta');
+  // Aspetto: tema scuro scelto a mano, poi di nuovo automatico
+  await page.click('.settings-nav a[href="#/settings/aspetto"]');
+  await page.waitForSelector('.choice input[value=dark]');
+  await page.click('.choice input[value=dark]');
+  out.themeChosen = await page.evaluate(() => [document.documentElement.dataset.theme, getComputedStyle(document.body).backgroundColor]);
+  await shot('settings-theme');
+  await runAxe('settings-theme');
+  await page.click('.choice input[value=system]');
+  out.themeReset = await page.evaluate(() => document.documentElement.dataset.theme ?? 'system');
   out.steps.push('impostazioni ok');
-  await shot('settings');
-  await runAxe('settings');
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
-  await new Promise((r) => setTimeout(r, 300));
-  out.settingsMobile = await page.evaluate(() => document.documentElement.scrollWidth);
+  await page.goto(BASE + '#/settings', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.settings-nav a');
+  out.settingsMobile = await page.evaluate(() => [document.documentElement.scrollWidth, getComputedStyle(document.querySelector('.settings-content')).display]);
   await shot('settings-mobile');
   await runAxe('settings-mobile');
+  await page.click('.settings-nav a[href="#/settings/agenti"]');
+  await page.waitForSelector('.agent-card', { visible: true });
+  out.settingsMobilePage = await page.evaluate(() => [getComputedStyle(document.querySelector('.settings-nav')).display, document.activeElement?.textContent.trim()]);
+  await shot('settings-mobile-agents');
+  await runAxe('settings-mobile-agents');
 
   // Login guidato (finto claude del container): link, codice sbagliato, codice giusto
   const claudeCard = await page.evaluateHandle(() => [...document.querySelectorAll('.agent-card')].find((c) => c.querySelector('h3').textContent === 'Claude Code'));

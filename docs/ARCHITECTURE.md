@@ -96,6 +96,11 @@ Ogni terminale ha un **custode** (`apps/server/src/term-host.ts`): un processo s
 - Login di Claude: le shell partono con `apps/server/terminal.bashrc` (carica `.profile`/`.bashrc` e poi toglie `CLAUDE_CODE_OAUTH_TOKEN`), così `claude` nel terminale usa il login dell'account (claude.ai, Pro) come la chat. Il token resta in `~/.bashrc` perché serve al webhook-server (N8N-BUILDER).
 - All'avvio il server toglie dal proprio ambiente (ereditato da custodi e shell) le variabili di una sessione Claude Code "madre" (`CLAUDECODE`, `CLAUDE_CODE_*`…), ereditate se lo si avvia da dentro Claude Code.
 
+## Impostazioni
+
+Divise in voci (`#/settings/<voce>`): Agenti, Chiavi, Notifiche e app, Aspetto, Cartelle e pausa, Accesso. Su telefono prima l'elenco, poi la voce con "‹ Tutte le impostazioni"; da 900px elenco e voce affiancati. Al cambio di voce il focus va al titolo.
+- Aspetto: tema Automatico/Chiaro/Scuro per dispositivo (`localStorage`, `data-theme` su `<html>`, `apps/web/src/theme.ts`), applicato prima del primo disegno; aggiorna anche `theme-color` e l'editor dei file.
+
 ## Login degli agenti
 
 Dalle Impostazioni, senza terminale (`apps/server/src/logins.ts`, `apps/web/src/AgentLogin.tsx`): il comando di login gira in un pty nascosto largo 1000 colonne (il link esce su una riga), dall'output si prendono il link e la richiesta del codice. L'interfaccia mostra "Apri la pagina di accesso", "Copia link" e, se serve, il campo per il codice; lo stato si aggiorna ogni secondo.

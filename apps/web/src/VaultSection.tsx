@@ -34,7 +34,9 @@ export function VaultSection() {
 
   return (
     <section aria-labelledby={`${id}-title`} className="settings-group">
-      <h2 id={`${id}-title`}>Chiavi</h2>
+      <h2 id={`${id}-title`} tabIndex={-1}>
+        Chiavi
+      </h2>
       <p className="hint">
         Chiavi API per video, workflow e script: restano sul server e non tornano mai al browser. Agenti e terminali le
         ricevono come variabili d'ambiente, quindi in chat basta scrivere per esempio <code>usa $FAL_KEY</code>. Valgono per

@@ -7,6 +7,7 @@ import { tags } from '@lezer/highlight';
 
 import { languages } from '@codemirror/language-data';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { isDark } from './theme';
 
 interface Props {
   /** Cambia quando si apre un altro file: l'editor riparte da zero */
@@ -18,7 +19,7 @@ interface Props {
   onSave: () => void;
 }
 
-const dark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+const dark = isDark;
 
 /**
  * One Dark usa #7d8799 su #282c34 per commenti e numeri di riga: ~3,8:1, sotto il 4,5:1 WCAG AA.
