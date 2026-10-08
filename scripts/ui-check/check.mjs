@@ -225,11 +225,31 @@ export default async function ({ page }) {
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('.xterm-rows')?.textContent.includes('CIAO-2'), { timeout: 10000 });
   out.steps.push('terminale ok');
+  // Link lungo spezzato da tmux su piu' righe: la barra deve ricomporlo intero
+  const longUrl = 'https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=https%3A%2F%2Fconsole.anthropic.com%2Foauth%2Fcode%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile&state=AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
+  await page.keyboard.type("clear; echo '" + longUrl + "'");
+  await page.keyboard.press('Enter');
+  await page.waitForFunction((u) => [...document.querySelectorAll('.term-link-url')].some((e) => e.textContent === u), { timeout: 10000 }, longUrl);
+  out.linkBar = await page.$$eval('.term-link-url', (els) => els.map((e) => e.textContent.length));
+  await page.click('.term-tools .btn.small-btn');
+  await page.waitForSelector('dialog[open] .term-text-area');
+  out.textHasUrl = await page.$eval('.term-text-area', (e, u) => e.value.includes(u), longUrl);
+  await shot('terminal-text');
+  await runAxe('terminal-text');
+  await page.type('#term-send-input', 'echo INVIATO-DAL-RIQUADRO');
+  await page.click('.term-send .btn.primary');
+  await page.click('dialog[open] .dialog-actions:last-child .btn');
+  await page.waitForFunction(() => document.querySelector('.xterm-rows')?.textContent.includes('INVIATO-DAL-RIQUADRO'), { timeout: 10000 });
+  await shot('terminal-links');
+  await runAxe('terminal-links');
+  out.steps.push('link e testo del terminale ok');
   await shot('terminal');
   await runAxe('terminal');
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => document.querySelector('.xterm-rows')?.textContent.includes('CIAO-2'), { timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector('.xterm-rows')?.textContent.includes('INVIATO-DAL-RIQUADRO'), { timeout: 10000 });
+  await new Promise((r) => setTimeout(r, 800));
+  out.replayJunk = await page.evaluate(() => /\d;\d+;\dc/.test(document.querySelector('.xterm-rows')?.textContent ?? ''));
   out.steps.push('terminale ripreso dopo ricarica');
   out.terminalMobile = await page.evaluate(() => ({
     keybar: getComputedStyle(document.querySelector('.keybar')).display,

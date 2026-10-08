@@ -1939,3 +1939,70 @@ legend {
 .archived-toggle:hover {
   color: var(--text);
 }
+
+/* ── Terminale: link trovati e testo copiabile ───────────────────────────── */
+.term-links {
+  display: grid;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #2b3548;
+  background: #121826;
+}
+.term-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.term-link-url {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #8cc8ff;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.term-link .small-btn {
+  flex: none;
+  min-height: 36px;
+  border-color: #2b3548;
+  background: #1a2232;
+  color: #e8ecf3;
+  text-decoration: none;
+}
+@media (pointer: coarse) {
+  .term-link .small-btn {
+    min-height: 44px;
+  }
+}
+.term-text-dialog {
+  width: min(100% - 32px, 760px);
+}
+.term-text-body {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+}
+.term-text-body h2 {
+  margin: 0;
+}
+.term-text-area {
+  min-height: 40dvh;
+  resize: vertical;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  white-space: pre;
+  overflow: auto;
+}
+.term-send {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.term-send .secret-row input {
+  flex: 1 1 200px;
+  min-width: 0;
+  font-family: var(--mono);
+}
