@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Finto `claude` per la prova dell'interfaccia: versione, stato e login guidato (link + codice)
+case "$*" in
+  --version) echo "9.9.9 (finto)" ;;
+  "auth status")
+    if [ -f /tmp/fake-claude-ok ]; then echo '{"loggedIn":true,"authMethod":"claude.ai","subscriptionType":"pro"}'
+    else echo '{"loggedIn":false}'; fi ;;
+  "auth login --claudeai")
+    echo "Opening browser to sign in…"
+    echo "If the browser didn't open, visit: https://claude.com/cai/oauth/authorize?code=true&client_id=prova&state=abc"
+    printf 'Paste code here if prompted > '
+    while read -r code; do
+      if [ "$code" = "codice-giusto" ]; then touch /tmp/fake-claude-ok; echo "Login successful."; exit 0; fi
+      echo "Invalid code. Please make sure the full code was copied."
+    done ;;
+  *) echo "finto claude: $*" >&2; exit 1 ;;
+esac

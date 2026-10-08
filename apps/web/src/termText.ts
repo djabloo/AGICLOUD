@@ -1,6 +1,7 @@
 // Testo e link dal buffer di xterm.js. Il terminale e' un canvas: per copiare o aprire un link
-// bisogna ricostruire il testo. tmux spezza le righe lunghe a capo "vero" (non marcate come
-// a capo morbido), quindi una riga piena fino all'ultima colonna si considera continuata.
+// bisogna ricostruire il testo. Alcuni programmi a schermo intero (es. le interfacce di login)
+// spezzano le righe lunghe con un a capo "vero", quindi una riga piena fino all'ultima colonna
+// si considera continuata.
 
 import type { Terminal } from '@xterm/xterm';
 

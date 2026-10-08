@@ -1,9 +1,10 @@
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { api, setToken, type AgentStatus, type GeneralSettings, type TerminalSummary } from './api';
 import type { ConfigOption } from './transcript';
 import { Icon } from './icons';
 import { VaultSection } from './VaultSection';
 import { NotificationsSection } from './NotificationsSection';
+import { AgentLogin } from './AgentLogin';
 
 const LOGIN_TEXT: Record<AgentStatus['login']['state'], string> = {
   ok: 'Collegato',
@@ -118,6 +119,14 @@ function AgentCard({
   const id = useId();
   const [error, setError] = useState('');
   const loginState = agent.installed ? agent.login.state : 'unknown';
+  const [guided, setGuided] = useState(false);
+  const loginBtn = useRef<HTMLButtonElement>(null);
+  const wasGuided = useRef(false);
+  // Chiuso il pannello di accesso, il focus torna al pulsante che l'ha aperto
+  useEffect(() => {
+    if (wasGuided.current && !guided) loginBtn.current?.focus();
+    wasGuided.current = guided;
+  }, [guided]);
 
   const login = async () => {
     setError('');
@@ -144,16 +153,32 @@ function AgentCard({
       </p>
       {agent.note && <p className="hint">{agent.note}</p>}
 
-      {agent.loginCommand && agent.installed && (
+      {agent.loginCommand && agent.installed && !guided && (
         <div className="agent-actions">
+          {agent.guidedLogin && (
+            <button ref={loginBtn} type="button" className={`btn small-btn${agent.login.state === 'ok' ? '' : ' primary'}`} onClick={() => setGuided(true)}>
+              <span>{agent.login.state === 'ok' ? 'Accedi di nuovo' : 'Accedi'}</span>
+            </button>
+          )}
           <button type="button" className="btn small-btn" onClick={() => void login()}>
             <Icon name="terminal" />
-            <span>{agent.login.state === 'ok' ? 'Gestisci login' : 'Accedi'}</span>
+            <span>{agent.guidedLogin ? 'Dal terminale' : agent.login.state === 'ok' ? 'Gestisci login' : 'Accedi'}</span>
           </button>
           <span className="hint">
-            Apre un terminale con <code>{agent.loginCommand}</code>
+            {agent.guidedLogin ? 'Ti serve solo il browser' : 'Apre un terminale con'} {!agent.guidedLogin && <code>{agent.loginCommand}</code>}
           </span>
         </div>
+      )}
+      {guided && (
+        <AgentLogin
+          agentId={agent.id}
+          label={agent.label}
+          onDone={onChanged}
+          onClose={() => {
+            setGuided(false);
+            onChanged();
+          }}
+        />
       )}
 
       {agent.env.map((v) => (

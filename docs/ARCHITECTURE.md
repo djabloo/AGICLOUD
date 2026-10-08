@@ -85,14 +85,25 @@ Scelta: **niente `@ag-ui/client` né componenti CopilotKit** per ora. Il client 
 
 ## Terminali
 
-Ogni terminale è una sessione **tmux** su un socket dedicato (`tmux -L agicloud`, config `apps/server/tmux.conf`: niente barra, niente prefisso). Il server si collega con un pty "spettatore" (`tmux attach`) e inoltra l'output via WebSocket.
-- Sopravvivono a: chiusura della pagina, rete che cade, **riavvio del server** (all'avvio si ritrovano le sessioni `agc-*` vive; metadati in `data/terminals.json`).
-- Finiscono solo se: li chiudi dal cestino (`tmux kill-session`) o il programma dentro termina.
-- La sessione nasce al primo collegamento del browser, con le sue misure (i programmi a schermo intero si disegnano subito giusti).
-- Link e copia: il terminale è un canvas, quindi `termText.ts` ricostruisce il testo dal buffer (le righe piene fino all'ultima colonna si considerano spezzate da tmux) → barra "Link nel terminale" con Apri/Copia, riquadro "Testo" selezionabile anche su telefono con campo "Invia al terminale" (per i codici di login), link cliccabili su una riga (`addon-web-links`), Ctrl+Maiusc+C/V.
-- Alla rilettura dell'output (riconnessione) le risposte automatiche di xterm alle domande di tmux vengono scartate, altrimenti finirebbero nella shell come input.
+Ogni terminale ha un **custode** (`apps/server/src/term-host.ts`): un processo staccato dal server (`setsid -f`, quindi PM2 non lo chiude) che tiene la shell in un pty e ne conserva l'output (400k caratteri). Il server ci parla su un socket Unix (`data/terminals/<id>.sock`, 600, cartella 700) con righe JSON e inoltra al browser via WebSocket.
+- Niente multiplexer in mezzo (fino al 2026-10-08 era tmux): xterm riceve l'output originale, quindi scorrimento all'indietro, selezione e link funzionano in modo naturale.
+- Configurazione del custode via stdin, non da riga di comando: le chiavi del portachiavi finirebbero in `/proc/<pid>/cmdline`.
+- Sopravvivono a: chiusura della pagina, rete che cade, **riavvio del server** (all'avvio si ricollega ai socket dei terminali in `data/terminals.json`; al collegamento il custode rimanda tutto l'output).
+- Finiscono solo se: li chiudi dal cestino (messaggio `kill` al custode) o il programma dentro termina (il custode resta un'ora per mostrare l'uscita, poi se ne va).
+- La shell nasce al primo collegamento del browser, con le sue misure (i programmi a schermo intero si disegnano subito giusti).
+- Link e copia: il terminale è un canvas, quindi `termText.ts` ricostruisce il testo dal buffer (le righe piene fino all'ultima colonna si considerano continuate: alcuni programmi a schermo intero spezzano con un a capo vero) → barra "Link nel terminale" con Apri/Copia, riquadro "Testo" selezionabile anche su telefono con campo "Invia al terminale" (per i codici di login), link cliccabili su una riga (`addon-web-links`), Ctrl+Maiusc+C/V.
+- Alla rilettura dell'output (riconnessione) le risposte automatiche di xterm alle domande dei programmi ("che terminale sei?") vengono scartate, altrimenti finirebbero nella shell come input.
 - Login di Claude: le shell partono con `apps/server/terminal.bashrc` (carica `.profile`/`.bashrc` e poi toglie `CLAUDE_CODE_OAUTH_TOKEN`), così `claude` nel terminale usa il login dell'account (claude.ai, Pro) come la chat. Il token resta in `~/.bashrc` perché serve al webhook-server (N8N-BUILDER).
-- All'avvio il server toglie dal proprio ambiente e da quello globale di tmux le variabili di una sessione Claude Code "madre" (`CLAUDECODE`, `CLAUDE_CODE_*`…), ereditate se lo si avvia da dentro Claude Code.
+- All'avvio il server toglie dal proprio ambiente (ereditato da custodi e shell) le variabili di una sessione Claude Code "madre" (`CLAUDECODE`, `CLAUDE_CODE_*`…), ereditate se lo si avvia da dentro Claude Code.
+
+## Login degli agenti
+
+Dalle Impostazioni, senza terminale (`apps/server/src/logins.ts`, `apps/web/src/AgentLogin.tsx`): il comando di login gira in un pty nascosto largo 1000 colonne (il link esce su una riga), dall'output si prendono il link e la richiesta del codice. L'interfaccia mostra "Apri la pagina di accesso", "Copia link" e, se serve, il campo per il codice; lo stato si aggiorna ogni secondo.
+- Claude Code: `claude auth login --claudeai` (sempre abbonamento) → link + codice. Codice sbagliato: claude scrive "Invalid code" e aspetta un altro codice.
+- Cursor: `NO_OPEN_BROWSER=1 cursor-agent login` → solo link, finisce da solo.
+- OpenCode e agy hanno menu interattivi: login dal terminale (resta anche come ripiego per tutti).
+- Ambiente come per l'agente: senza `ANTHROPIC_API_KEY` e senza il `CLAUDE_CODE_OAUTH_TOKEN` di `~/.bashrc`. Scade dopo 10 minuti.
+- Prova: `scripts/ui-check` usa un finto `claude` (`scripts/ui-check/fake-bin/claude`) per link, codice sbagliato e codice giusto.
 
 ## File
 

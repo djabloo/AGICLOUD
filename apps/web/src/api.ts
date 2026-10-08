@@ -57,6 +57,16 @@ export interface VaultKey {
   blockedFor: string[];
 }
 
+export interface GuidedLogin {
+  agentId: string;
+  state: 'waiting' | 'checking' | 'done' | 'failed';
+  url: string | null;
+  needsCode: boolean;
+  askingCode: boolean;
+  output: string;
+  error: string | null;
+}
+
 export interface AgentStatus {
   id: string;
   label: string;
@@ -67,6 +77,8 @@ export interface AgentStatus {
   version: string | null;
   login: { state: 'ok' | 'missing' | 'unknown'; detail: string };
   loginCommand: string | null;
+  /** Login dal browser (link + codice), senza terminale */
+  guidedLogin: boolean;
   env: { name: string; label: string; set: boolean }[];
   defaults: Record<string, string | boolean>;
   options: import('./transcript').ConfigOption[];
@@ -170,6 +182,11 @@ export const api = {
     request<VaultKey[]>('POST', '/settings/vault', k),
   deleteVaultKey: (name: string) => request<VaultKey[]>('DELETE', `/settings/vault/${encodeURIComponent(name)}`),
   agentLogin: (agentId: string) => request<TerminalSummary>('POST', `/settings/agents/${agentId}/login`),
+  startGuidedLogin: (agentId: string) => request<GuidedLogin>('POST', `/settings/agents/${agentId}/login/guided`),
+  guidedLoginStatus: (agentId: string) => request<GuidedLogin | null>('GET', `/settings/agents/${agentId}/login/guided`),
+  sendGuidedLoginCode: (agentId: string, code: string) =>
+    request<GuidedLogin>('POST', `/settings/agents/${agentId}/login/guided/code`, { code }),
+  cancelGuidedLogin: (agentId: string) => request<void>('DELETE', `/settings/agents/${agentId}/login/guided`),
   listFiles: (path: string) =>
     request<{ path: string; parent: string | null; entries: FileEntry[]; truncated: boolean }>('GET', `/files/list?path=${encodeURIComponent(path)}`),
   readFile: (path: string) => request<FileContent>('GET', `/files/read?path=${encodeURIComponent(path)}`),

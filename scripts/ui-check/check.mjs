@@ -183,6 +183,28 @@ export default async function ({ page }) {
   await shot('settings-mobile');
   await runAxe('settings-mobile');
 
+  // Login guidato (finto claude del container): link, codice sbagliato, codice giusto
+  const claudeCard = await page.evaluateHandle(() => [...document.querySelectorAll('.agent-card')].find((c) => c.querySelector('h3').textContent === 'Claude Code'));
+  await (await claudeCard.$('.agent-actions .btn.primary')).click();
+  await page.waitForSelector('.guided-login a.btn', { timeout: 15000 });
+  out.guidedFocus = await page.evaluate(() => document.activeElement?.tagName);
+  await page.type('.guided-code input', 'codice-sbagliato');
+  await page.click('.guided-code .btn.primary');
+  await page.waitForSelector('.guided-login .form-error', { timeout: 15000 });
+  await claudeCard.evaluate((c) => c.scrollIntoView());
+  await shot('guided-mobile');
+  await runAxe('guided-mobile');
+  await page.type('.guided-code input', 'codice-giusto');
+  await page.click('.guided-code .btn.primary');
+  await page.waitForFunction(() => document.querySelector('.guided-status')?.textContent.includes('completato'), { timeout: 15000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('.agent-card')].find((c) => c.querySelector('h3').textContent === 'Claude Code')?.querySelector('.badge').textContent.includes('Collegato'), { timeout: 15000 });
+  await claudeCard.evaluate((c) => c.scrollIntoView());
+  await shot('guided-done');
+  await runAxe('guided-done');
+  await page.click('.guided-login .agent-actions .btn');
+  out.guidedFocusAfter = await page.evaluate(() => document.activeElement?.textContent);
+  out.steps.push('login guidato ok');
+
   // File: crea, modifica, salva, anteprima
   await page.setViewport({ width: 1366, height: 860 });
   page.on('dialog', (d) => (d.type() === 'prompt' ? d.accept('nota.md') : d.accept()));
@@ -225,7 +247,7 @@ export default async function ({ page }) {
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('.xterm-rows')?.textContent.includes('CIAO-2'), { timeout: 10000 });
   out.steps.push('terminale ok');
-  // Link lungo spezzato da tmux su piu' righe: la barra deve ricomporlo intero
+  // Link lungo spezzato su piu' righe: la barra deve ricomporlo intero
   const longUrl = 'https://claude.ai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=https%3A%2F%2Fconsole.anthropic.com%2Foauth%2Fcode%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile&state=AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
   await page.keyboard.type("clear; echo '" + longUrl + "'");
   await page.keyboard.press('Enter');

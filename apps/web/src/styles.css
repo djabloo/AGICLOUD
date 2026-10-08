@@ -2006,3 +2006,65 @@ legend {
   min-width: 0;
   font-family: var(--mono);
 }
+
+/* ── Login guidato degli agenti ──────────────────────────────────────────── */
+.guided-login {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.guided-login h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+.guided-login h4:focus {
+  outline: none;
+}
+.guided-login h4:focus-visible {
+  outline: 2px solid var(--focus, var(--accent));
+  outline-offset: 2px;
+}
+.guided-status {
+  margin: 0;
+  font-weight: 600;
+}
+.guided-done::before {
+  content: '✓ ';
+  color: var(--ok);
+}
+.guided-steps {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 1.4em;
+}
+.guided-steps li {
+  display: grid;
+  gap: 6px;
+}
+.guided-code {
+  display: grid;
+  gap: 6px;
+}
+.guided-code input {
+  flex: 1 1 200px;
+  font-family: ui-monospace, monospace;
+}
+.guided-details summary {
+  cursor: pointer;
+  padding: 12px 0;
+}
+.guided-details pre {
+  max-height: 200px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

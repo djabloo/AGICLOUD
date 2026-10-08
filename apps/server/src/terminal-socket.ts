@@ -49,9 +49,12 @@ export function attachTerminalSockets(server: Server, terminals: TerminalStore, 
         } catch {
           return ws.close(4004, 'not found');
         }
-        const attached = term.attach((m) => send(m), Number(msg.cols) || undefined, Number(msg.rows) || undefined);
-        detach = attached.detach;
-        send({ type: 'replay', data: attached.replay, exited: term.exitCode !== null, code: term.exitCode });
+        detach = () => {}; // da qui in poi i messaggi sono input, anche mentre si aspetta il custode
+        void term.attach((m) => send(m), Number(msg.cols) || undefined, Number(msg.rows) || undefined).then((attached) => {
+          if (ws.readyState !== ws.OPEN) return attached.detach();
+          detach = attached.detach;
+          send({ type: 'replay', data: attached.replay, exited: term.exitCode !== null, code: term.exitCode });
+        });
         return;
       }
       const term = safeGet(terminals, id);

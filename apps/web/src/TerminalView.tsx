@@ -124,7 +124,7 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
         const msg = JSON.parse(ev.data);
         if (msg.type === 'replay') {
           term.reset();
-          // L'output riletto contiene domande al terminale (es. tmux chiede che terminale sei):
+          // L'output riletto contiene domande al terminale (es. un programma chiede che terminale sei):
           // le risposte automatiche di xterm non vanno spedite alla shell come se le avessi scritte tu
           replaying = true;
           term.write(msg.data, () => {

@@ -16,6 +16,7 @@ import { createEntry, deleteEntry, listDir, rawFile, readText, renameEntry, uplo
 import { createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
 import { LOGIN_COMMANDS, Settings } from './settings.js';
+import { GuidedLogins } from './logins.js';
 import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
 import { attachTerminalSockets } from './terminal-socket.js';
@@ -234,6 +235,23 @@ app.post('/api/settings/vault', async (c) => {
 app.delete('/api/settings/vault/:name', (c) => {
   settings.deleteVault(c.req.param('name'));
   return c.json(settings.vaultList());
+});
+
+// Login guidato (senza terminale): link da aprire e, se serve, codice da incollare
+const logins = new GuidedLogins((id) => settings.forgetStatus(id));
+
+app.post('/api/settings/agents/:id/login/guided', (c) => c.json(logins.start(c.req.param('id'))));
+
+app.get('/api/settings/agents/:id/login/guided', (c) => c.json(logins.get(c.req.param('id'))));
+
+app.post('/api/settings/agents/:id/login/guided/code', async (c) => {
+  const body = await jsonBody(c);
+  return c.json(logins.sendCode(c.req.param('id'), String(body.code ?? '')));
+});
+
+app.delete('/api/settings/agents/:id/login/guided', (c) => {
+  logins.cancel(c.req.param('id'));
+  return c.body(null, 204);
 });
 
 // Login interattivo dell'agente: si apre un terminale col comando giusto

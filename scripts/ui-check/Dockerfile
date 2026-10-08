@@ -1,3 +1,4 @@
-# Immagine per la prova dell'interfaccia: Node 22 + tmux (i terminali di AgiCloud girano in tmux)
+# Immagine per la prova dell'interfaccia: Node 22 (setsid, usato dai terminali, e' gia' in util-linux)
+# + un finto `claude` per provare il login guidato senza account
 FROM node:22-bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends tmux && rm -rf /var/lib/apt/lists/*
+COPY fake-bin/claude /usr/local/bin/claude

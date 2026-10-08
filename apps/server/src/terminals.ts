@@ -1,29 +1,30 @@
-// Terminali persistenti. Ogni terminale e' una sessione tmux su un socket dedicato (-L agicloud):
+// Terminali persistenti. Ogni terminale ha un custode (term-host.ts): un processo staccato dal server
+// che tiene in vita la shell e il suo output. Il server ci parla su un socket Unix, quindi il terminale
 // sopravvive alla chiusura della pagina, alla rete che cade e anche ai riavvii del server.
-// Il server si collega alla sessione con un pty "spettatore" (tmux attach) e ne inoltra l'output.
+// L'output arriva al browser cosi' com'e' (nessun multiplexer che ridisegna lo schermo).
 
-import { execFileSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { connect, type Socket } from 'node:net';
 import { basename, join } from 'node:path';
-import * as pty from 'node-pty';
-import { config, LEAKED_SESSION_VARS } from './config.js';
+import { config } from './config.js';
 import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
 
 const MAX_TERMINALS = 10;
-/** Output tenuto per la riconnessione del browser (caratteri) */
-const SCROLLBACK = 400_000;
-/** Se nessuno si collega entro questo tempo la sessione parte comunque, con misure standard */
+/** Se nessuno si collega entro questo tempo la shell parte comunque, con misure standard */
 const START_FALLBACK_MS = 15_000;
 
-const TMUX_SOCKET = 'agicloud';
-const TMUX_CONF = new URL('../tmux.conf', import.meta.url).pathname;
+const HOST_SCRIPT = new URL('./term-host.ts', import.meta.url).pathname;
+const TSX = import.meta.resolve('tsx');
 const TERMINAL_RC = new URL('../terminal.bashrc', import.meta.url).pathname;
-const PREFIX = 'agc-';
-const META_FILE = join(config.threadsDir, '..', 'terminals.json');
+const DATA_DIR = join(config.threadsDir, '..');
+const META_FILE = join(DATA_DIR, 'terminals.json');
+const SOCKET_DIR = join(DATA_DIR, 'terminals');
 
 type Listener = (msg: { type: 'data'; data: string } | { type: 'exit'; code: number }) => void;
+type HostMsg = { type: 'replay'; data: string; exited: boolean; code: number | null } | { type: 'data'; data: string } | { type: 'exit'; code: number };
 
 interface TerminalMeta {
   id: string;
@@ -32,59 +33,28 @@ interface TerminalMeta {
   createdAt: number;
 }
 
-function tmux(args: string[]): string {
-  return execFileSync('tmux', ['-L', TMUX_SOCKET, '-f', TMUX_CONF, ...args], {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-}
-
-/** Il server tmux tiene l'ambiente di chi l'ha avviato: si tolgono le variabili di sessione Claude Code */
-function cleanTmuxEnvironment(): void {
-  let lines: string[] = [];
-  try {
-    lines = tmux(['show-environment', '-g']).split('\n');
-  } catch {
-    return; // server tmux non ancora avviato: nascera' dall'ambiente gia' pulito
-  }
-  for (const line of lines) {
-    const name = line.split('=')[0]!.replace(/^-/, '');
-    if (LEAKED_SESSION_VARS.test(name)) {
-      try {
-        tmux(['set-environment', '-g', '-u', name]);
-      } catch {
-        /* gia' tolta */
-      }
-    }
-  }
-}
-
-function tmuxSessions(): Set<string> {
-  try {
-    return new Set(tmux(['list-sessions', '-F', '#{session_name}']).split('\n').filter((s) => s.startsWith(PREFIX)));
-  } catch {
-    return new Set(); // nessun server tmux attivo = nessuna sessione
-  }
-}
-
 export class Terminal {
+  /** Copia dell'output del custode, per chi si collega dal browser */
   private buffer = '';
   exitCode: number | null = null;
   private readonly listeners = new Set<Listener>();
-  /** pty che guarda la sessione tmux (si ricrea se cade) */
-  private viewer: pty.IPty | null = null;
+  private sock: Socket | null = null;
+  private connecting: Promise<void> | null = null;
   private fallback: NodeJS.Timeout | null = null;
+  /** Misure da mandare appena il custode risponde */
+  private pendingSize: [number, number] | null = null;
 
   constructor(
     readonly meta: TerminalMeta,
-    /** true = sessione tmux gia' esistente (ritrovata dopo un riavvio) */
-    private created: boolean,
+    /** true = custode gia' attivo (ritrovato dopo un riavvio) */
+    private started: boolean,
     private readonly command?: string,
     private readonly extraEnv: Record<string, string> = {},
   ) {
-    if (!created) {
-      // La sessione nasce quando arriva il primo browser, gia' con le sue misure
-      this.fallback = setTimeout(() => this.ensureSession(100, 30), START_FALLBACK_MS);
+    if (started) void this.connectHost();
+    else {
+      // La shell nasce quando arriva il primo browser, gia' con le sue misure
+      this.fallback = setTimeout(() => this.start(100, 30), START_FALLBACK_MS);
       this.fallback.unref();
     }
   }
@@ -93,8 +63,8 @@ export class Terminal {
     return this.meta.id;
   }
 
-  private get session() {
-    return PREFIX + this.meta.id;
+  private get socketPath() {
+    return join(SOCKET_DIR, `${this.meta.id}.sock`);
   }
 
   summary() {
@@ -102,52 +72,92 @@ export class Terminal {
     return { id, cwd, project: basename(cwd), title, createdAt, exited: this.exitCode !== null };
   }
 
-  private ensureSession(cols: number, rows: number): void {
-    if (this.created || this.exitCode !== null) return;
+  /** Avvia il custode (staccato dal server: `setsid -f` lo affida a init, PM2 non lo chiude) */
+  private start(cols: number, rows: number): void {
+    if (this.started || this.exitCode !== null) return;
+    this.started = true;
     if (this.fallback) clearTimeout(this.fallback);
-    const env = Object.entries(this.extraEnv).flatMap(([k, v]) => ['-e', `${k}=${v}`]);
     const shell = process.env.SHELL || '/bin/bash';
-    const bash = basename(shell) === 'bash';
     // CLAUDE_CODE_OAUTH_TOKEN (da ~/.bashrc) farebbe usare a `claude` un token diverso dal login dell'account
-    const cmd = this.command
+    const argv = this.command
       ? [shell, '-l', '-c', `unset CLAUDE_CODE_OAUTH_TOKEN; ${this.command}`]
-      : bash
+      : basename(shell) === 'bash'
         ? [shell, '--rcfile', TERMINAL_RC, '-i']
         : [shell, '-l'];
-    tmux([
-      'new-session', '-d', '-s', this.session,
-      '-x', String(clampCols(cols)), '-y', String(clampRows(rows)),
-      '-c', this.meta.cwd, ...env, ...cmd,
-    ]);
-    this.created = true;
+    mkdirSync(SOCKET_DIR, { recursive: true, mode: 0o700 });
+    const child = spawn('setsid', ['-f', process.execPath, '--import', TSX, HOST_SCRIPT], {
+      cwd: this.meta.cwd,
+      stdio: ['pipe', 'ignore', 'ignore'],
+    });
+    child.on('error', () => this.markExited(1));
+    child.stdin.end(
+      JSON.stringify({
+        socket: this.socketPath,
+        cwd: this.meta.cwd,
+        cols: clampCols(cols),
+        rows: clampRows(rows),
+        argv,
+        env: this.extraEnv,
+      }),
+    );
+    void this.connectHost();
   }
 
-  /** Collega (o ricollega) lo spettatore alla sessione tmux */
-  private ensureViewer(cols: number, rows: number): void {
-    if (this.viewer || this.exitCode !== null) return;
-    this.ensureSession(cols, rows);
-    if (!tmuxSessions().has(this.session)) {
-      this.markExited(0);
-      return;
+  /** Collegamento al custode; al primo avvio il socket compare dopo qualche centinaio di ms */
+  private connectHost(): Promise<void> {
+    if (this.sock || this.connecting) return this.connecting ?? Promise.resolve();
+    this.connecting = (async () => {
+      for (let attempt = 0; attempt < 50 && this.exitCode === null; attempt++) {
+        const sock = await tryConnect(this.socketPath);
+        if (sock) return this.useSocket(sock);
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      this.markExited(1); // custode morto o mai partito
+    })().finally(() => (this.connecting = null));
+    return this.connecting;
+  }
+
+  private useSocket(sock: Socket): void {
+    this.sock = sock;
+    sock.setEncoding('utf8');
+    let pending = '';
+    sock.on('data', (chunk: string) => {
+      pending += chunk;
+      let nl;
+      while ((nl = pending.indexOf('\n')) >= 0) {
+        const line = pending.slice(0, nl);
+        pending = pending.slice(nl + 1);
+        try {
+          this.onHost(JSON.parse(line) as HostMsg);
+        } catch {
+          /* riga rovinata */
+        }
+      }
+    });
+    sock.on('close', () => {
+      if (this.sock !== sock) return;
+      this.sock = null;
+      this.markExited(this.exitCode ?? 0); // il custode se n'e' andato
+    });
+    sock.on('error', () => {});
+    if (this.pendingSize) {
+      this.toHost({ type: 'resize', cols: this.pendingSize[0], rows: this.pendingSize[1] });
+      this.pendingSize = null;
     }
-    const viewer = pty.spawn('tmux', ['-L', TMUX_SOCKET, '-f', TMUX_CONF, 'attach-session', '-t', this.session], {
-      name: 'xterm-256color',
-      cwd: this.meta.cwd,
-      cols: clampCols(cols),
-      rows: clampRows(rows),
-      env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' } as Record<string, string>,
-    });
-    this.viewer = viewer;
-    viewer.onData((data) => {
-      this.buffer = (this.buffer + data).slice(-SCROLLBACK);
-      for (const l of this.listeners) l({ type: 'data', data });
-    });
-    viewer.onExit(({ exitCode }) => {
-      if (this.viewer !== viewer) return;
-      this.viewer = null;
-      // Lo spettatore esce quando la sessione finisce (programma terminato o chiusa)
-      if (!tmuxSessions().has(this.session)) this.markExited(exitCode);
-    });
+  }
+
+  private onHost(msg: HostMsg): void {
+    if (msg.type === 'replay') {
+      this.buffer = msg.data;
+      if (msg.exited) this.markExited(msg.code ?? 0);
+    } else if (msg.type === 'data') {
+      this.buffer += msg.data;
+      for (const l of this.listeners) l(msg);
+    } else if (msg.type === 'exit') this.markExited(msg.code);
+  }
+
+  private toHost(msg: unknown): void {
+    if (this.sock && !this.sock.destroyed) this.sock.write(JSON.stringify(msg) + '\n');
   }
 
   private markExited(code: number): void {
@@ -156,47 +166,43 @@ export class Terminal {
     for (const l of this.listeners) l({ type: 'exit', code });
   }
 
-  /** cols/rows: misure del browser che si collega */
-  attach(listener: Listener, cols?: number, rows?: number): { replay: string; detach: () => void } {
-    this.listeners.add(listener);
+  /** cols/rows: misure del browser che si collega. Si aspetta il custode per avere tutto l'output */
+  async attach(listener: Listener, cols?: number, rows?: number): Promise<{ replay: string; detach: () => void }> {
     if (cols && rows) {
-      if (!this.viewer) this.ensureViewer(cols, rows);
+      if (!this.started) this.start(cols, rows);
       else this.resize(cols, rows);
     }
+    await this.connectHost();
+    this.listeners.add(listener);
     return { replay: this.buffer, detach: () => this.listeners.delete(listener) };
   }
 
   write(data: string): void {
-    if (this.exitCode === null) this.viewer?.write(data);
+    if (this.exitCode === null) this.toHost({ type: 'input', data });
   }
 
   resize(cols: number, rows: number): void {
-    if (this.exitCode !== null || !this.viewer) return;
-    try {
-      this.viewer.resize(clampCols(cols), clampRows(rows));
-    } catch {
-      /* lo spettatore puo' essere appena uscito */
-    }
+    if (this.exitCode !== null) return;
+    const size: [number, number] = [clampCols(cols), clampRows(rows)];
+    if (this.sock) this.toHost({ type: 'resize', cols: size[0], rows: size[1] });
+    else this.pendingSize = size;
   }
 
-  /** Chiude davvero: termina la sessione tmux e i suoi processi */
+  /** Chiude davvero: il custode termina la shell e se ne va */
   kill(): void {
     if (this.fallback) clearTimeout(this.fallback);
     this.listeners.clear();
-    try {
-      if (this.created) tmux(['kill-session', '-t', this.session]);
-    } catch {
-      /* gia' terminata */
-    }
-    this.viewer?.kill();
+    this.toHost({ type: 'kill' });
+    this.sock?.end();
+    this.sock = null;
   }
 
-  /** Arresto del server: si stacca lo spettatore, la sessione tmux resta viva */
-  detachViewer(): void {
+  /** Arresto del server: ci si stacca, il custode e la shell restano vivi */
+  disconnect(): void {
     this.listeners.clear();
-    const v = this.viewer;
-    this.viewer = null;
-    v?.kill();
+    const s = this.sock;
+    this.sock = null;
+    s?.destroy();
   }
 }
 
@@ -205,13 +211,11 @@ export class TerminalStore {
 
   /** extraEnv: chiavi del portachiavi abilitate per i terminali (lette a ogni apertura) */
   constructor(private readonly extraEnv: () => Record<string, string> = () => ({})) {
-    cleanTmuxEnvironment();
     this.restore();
   }
 
-  /** Dopo un riavvio: si ritrovano le sessioni tmux ancora vive */
+  /** Dopo un riavvio: si ritrovano i custodi ancora vivi (quelli morti si scoprono al collegamento) */
   private restore(): void {
-    const alive = tmuxSessions();
     let saved: TerminalMeta[] = [];
     try {
       saved = existsSync(META_FILE) ? JSON.parse(readFileSync(META_FILE, 'utf8')) : [];
@@ -219,7 +223,7 @@ export class TerminalStore {
       saved = [];
     }
     for (const meta of saved) {
-      if (alive.has(PREFIX + meta.id)) this.terminals.set(meta.id, new Terminal(meta, true));
+      if (existsSync(join(SOCKET_DIR, `${meta.id}.sock`))) this.terminals.set(meta.id, new Terminal(meta, true));
     }
     this.save();
   }
@@ -257,10 +261,19 @@ export class TerminalStore {
     this.save();
   }
 
-  /** Arresto del server: i terminali restano vivi in tmux */
+  /** Arresto del server: i terminali restano vivi nei loro custodi */
   detachAll(): void {
-    for (const t of this.terminals.values()) t.detachViewer();
+    for (const t of this.terminals.values()) t.disconnect();
   }
+}
+
+function tryConnect(path: string): Promise<Socket | null> {
+  return new Promise((resolve) => {
+    if (!existsSync(path)) return resolve(null);
+    const sock = connect(path);
+    sock.once('connect', () => resolve(sock));
+    sock.once('error', () => resolve(null));
+  });
 }
 
 /** "NO_OPEN_BROWSER=1 /percorso/cursor-agent login" -> "cursor-agent login" */

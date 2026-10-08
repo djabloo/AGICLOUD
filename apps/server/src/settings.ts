@@ -8,6 +8,7 @@ import type * as acp from '@agentclientprotocol/sdk';
 import { AGENTS } from '@agicloud/bridge';
 import { config } from './config.js';
 import { HttpError } from './errors.js';
+import { GUIDED_LOGINS } from './logins.js';
 
 type ConfigValue = string | boolean;
 
@@ -28,7 +29,7 @@ const AGENT_ENV: Record<string, { name: string; label: string }[]> = {};
  * Variabili del portachiavi da NON passare a certi agenti: cambierebbero il loro login.
  * Con ANTHROPIC_API_KEY nell'ambiente Claude Code fatturerebbe sull'API invece dell'abbonamento.
  */
-const AGENT_ENV_BLOCK: Record<string, string[]> = {
+export const AGENT_ENV_BLOCK: Record<string, string[]> = {
   claude: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'],
 };
 
@@ -40,7 +41,7 @@ const TOOLS: { id: string; label: string; note?: string }[] = [];
 
 /** Comando di login da lanciare in un terminale, per agente */
 export const LOGIN_COMMANDS: Record<string, string> = {
-  claude: 'claude auth login',
+  claude: 'claude auth login --claudeai',
   opencode: 'opencode auth login',
   codex: 'codex login',
   // Niente browser sul server: stampa il link da aprire sul telefono/PC
@@ -186,6 +187,11 @@ export class Settings {
     this.statusCache.delete(agentId);
   }
 
+  /** Dopo un login lo stato dell'agente va ricontrollato subito */
+  forgetStatus(agentId: string): void {
+    this.statusCache.delete(agentId);
+  }
+
   general() {
     return { projectRoots: config.projectRoots, idleMinutes: Math.round(config.idleMs / 60_000) };
   }
@@ -233,6 +239,7 @@ export class Settings {
           chat: a.chat,
           ...status.value,
           loginCommand: LOGIN_COMMANDS[a.id] ?? null,
+          guidedLogin: a.id in GUIDED_LOGINS,
           env: (AGENT_ENV[a.id] ?? []).map((v) => ({ ...v, set: Boolean(this.secrets[a.id]?.[v.name] || process.env[v.name]) })),
           defaults: this.data.agentDefaults[a.id] ?? {},
           options: this.data.agentOptions[a.id] ?? [],
