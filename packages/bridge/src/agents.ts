@@ -34,7 +34,8 @@ export const AGENTS: Record<string, AgentSpec> = {
     args: ['-y', '@agentclientprotocol/claude-agent-acp@0.86.0'],
     native: false,
     // Con una chiave API nell'ambiente Claude Code fatturerebbe sull'API invece dell'abbonamento
-    envBlock: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'],
+    // Variabili di una sessione Claude Code "madre": il Claude della chat deve partire come uno normale
+    envBlock: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_CODE_CHILD_SESSION', 'CLAUDE_CODE_MESSAGING_SOCKET', 'CLAUDE_CODE_MESSAGING_TOKEN', 'CLAUDE_CODE_SESSION_ATTENDED', 'CLAUDE_CODE_EXECPATH'],
   },
   cursor: {
     id: 'cursor',

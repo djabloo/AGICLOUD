@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import * as pty from 'node-pty';
-import { config } from './config.js';
+import { config, LEAKED_SESSION_VARS } from './config.js';
 import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
 
@@ -19,6 +19,7 @@ const START_FALLBACK_MS = 15_000;
 
 const TMUX_SOCKET = 'agicloud';
 const TMUX_CONF = new URL('../tmux.conf', import.meta.url).pathname;
+const TERMINAL_RC = new URL('../terminal.bashrc', import.meta.url).pathname;
 const PREFIX = 'agc-';
 const META_FILE = join(config.threadsDir, '..', 'terminals.json');
 
@@ -36,6 +37,26 @@ function tmux(args: string[]): string {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+}
+
+/** Il server tmux tiene l'ambiente di chi l'ha avviato: si tolgono le variabili di sessione Claude Code */
+function cleanTmuxEnvironment(): void {
+  let lines: string[] = [];
+  try {
+    lines = tmux(['show-environment', '-g']).split('\n');
+  } catch {
+    return; // server tmux non ancora avviato: nascera' dall'ambiente gia' pulito
+  }
+  for (const line of lines) {
+    const name = line.split('=')[0]!.replace(/^-/, '');
+    if (LEAKED_SESSION_VARS.test(name)) {
+      try {
+        tmux(['set-environment', '-g', '-u', name]);
+      } catch {
+        /* gia' tolta */
+      }
+    }
+  }
 }
 
 function tmuxSessions(): Set<string> {
@@ -86,7 +107,13 @@ export class Terminal {
     if (this.fallback) clearTimeout(this.fallback);
     const env = Object.entries(this.extraEnv).flatMap(([k, v]) => ['-e', `${k}=${v}`]);
     const shell = process.env.SHELL || '/bin/bash';
-    const cmd = this.command ? [shell, '-l', '-c', this.command] : [shell, '-l'];
+    const bash = basename(shell) === 'bash';
+    // CLAUDE_CODE_OAUTH_TOKEN (da ~/.bashrc) farebbe usare a `claude` un token diverso dal login dell'account
+    const cmd = this.command
+      ? [shell, '-l', '-c', `unset CLAUDE_CODE_OAUTH_TOKEN; ${this.command}`]
+      : bash
+        ? [shell, '--rcfile', TERMINAL_RC, '-i']
+        : [shell, '-l'];
     tmux([
       'new-session', '-d', '-s', this.session,
       '-x', String(clampCols(cols)), '-y', String(clampRows(rows)),
@@ -178,6 +205,7 @@ export class TerminalStore {
 
   /** extraEnv: chiavi del portachiavi abilitate per i terminali (lette a ogni apertura) */
   constructor(private readonly extraEnv: () => Record<string, string> = () => ({})) {
+    cleanTmuxEnvironment();
     this.restore();
   }
 

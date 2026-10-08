@@ -39,6 +39,14 @@ export const config = {
 // Il token non deve finire nell'ambiente di agenti e terminali
 delete process.env.AUTH_TOKEN;
 
+/**
+ * Variabili di una sessione Claude Code (es. se il server e' stato avviato da dentro Claude Code).
+ * Ereditate da agenti e terminali, farebbero credere a `claude` di essere un sotto-processo
+ * di quella sessione invece di un Claude normale con il login dell'account.
+ */
+export const LEAKED_SESSION_VARS = /^(CLAUDECODE|CLAUDE_CODE_.+|CLAUDE_AGENT_SDK_VERSION|CLAUDE_PID|CLAUDE_EFFORT)$/;
+for (const name of Object.keys(process.env)) if (LEAKED_SESSION_VARS.test(name)) delete process.env[name];
+
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 if (!LOCAL_HOSTS.has(config.host) && !config.authToken) {
   console.error(`Rifiuto di ascoltare su ${config.host} senza AUTH_TOKEN.`);

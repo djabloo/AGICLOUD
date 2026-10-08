@@ -89,6 +89,8 @@ Ogni terminale è una sessione **tmux** su un socket dedicato (`tmux -L agicloud
 - Sopravvivono a: chiusura della pagina, rete che cade, **riavvio del server** (all'avvio si ritrovano le sessioni `agc-*` vive; metadati in `data/terminals.json`).
 - Finiscono solo se: li chiudi dal cestino (`tmux kill-session`) o il programma dentro termina.
 - La sessione nasce al primo collegamento del browser, con le sue misure (i programmi a schermo intero si disegnano subito giusti).
+- Login di Claude: le shell partono con `apps/server/terminal.bashrc` (carica `.profile`/`.bashrc` e poi toglie `CLAUDE_CODE_OAUTH_TOKEN`), così `claude` nel terminale usa il login dell'account (claude.ai, Pro) come la chat. Il token resta in `~/.bashrc` perché serve al webhook-server (N8N-BUILDER).
+- All'avvio il server toglie dal proprio ambiente e da quello globale di tmux le variabili di una sessione Claude Code "madre" (`CLAUDECODE`, `CLAUDE_CODE_*`…), ereditate se lo si avvia da dentro Claude Code.
 
 ## File
 
