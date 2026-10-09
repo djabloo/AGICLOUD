@@ -27,6 +27,8 @@ export interface ThreadSummary {
   /** Thread affidato da un capo */
   parentId: string | null;
   childState: 'running' | 'waiting' | 'done' | 'error' | 'idle' | null;
+  /** Thread affidato in attesa di un tuo permesso */
+  pendingPermission: { requestId: string; title: string; options: { optionId: string; name: string; kind: string }[] } | null;
   worktree: { branch: string; state: 'open' | 'merged' | 'discarded' } | null;
   /** Plugin Design: skill e design system scelti alla creazione */
   design: DesignChoice | null;

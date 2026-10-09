@@ -3,3 +3,5 @@ node_modules/
 *.log
 data/
 apps/web/dist/
+# impostazioni locali di Claude Code (permessi della sessione)
+.claude/settings.local.json

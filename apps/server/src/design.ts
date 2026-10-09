@@ -40,6 +40,8 @@ export class Previews {
   resolve(token: string, rel: string): string {
     const p = this.tokens.get(token);
     if (!p || p.expires <= Date.now()) throw new HttpError(404, 'Anteprima scaduta: riaprila da AgiCloud');
+    // Niente file o cartelle nascosti (.env, .git, .agicloud...): la pagina in anteprima ha accesso alla rete
+    if (rel.split(/[\\/]/).some((seg) => seg.startsWith('.'))) throw new HttpError(404, 'Non trovato');
     let real: string;
     try {
       real = realpathSync(join(p.root, rel));

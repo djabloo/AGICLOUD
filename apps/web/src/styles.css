@@ -2478,3 +2478,41 @@ legend {
     height: 45dvh;
   }
 }
+
+/* Tendine lunghe con campo "Cerca" (SearchSelect) */
+.cfg.cfg-search {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.config-panel .cfg-search {
+  grid-column: span 2;
+}
+.cfg-filter {
+  min-height: 36px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: inherit;
+}
+.cfg-search select {
+  max-width: none;
+}
+
+/* Freccia "vai alla fine": resta in basso a destra mentre si scorre la conversazione */
+.jump-bottom {
+  position: sticky;
+  bottom: 12px;
+  display: flex;
+  margin: 0 0 0 auto;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+  font-size: 1.2rem;
+  z-index: 2;
+}
+.child-permission {
+  margin: 8px 16px 0;
+}
+.child-permission .permission-title {
+  display: block;
+  font-weight: 400;
+}

@@ -90,7 +90,12 @@ export function DelegationView({ item, threadId, threads }: { item: Delegation; 
 export function LeadChildren({ lead, threads }: { lead: ThreadSummary; threads: ThreadSummary[] }) {
   const kids = threads.filter((t) => t.parentId === lead.id && !t.archived).sort((a, b) => a.createdAt - b.createdAt);
   if (!kids.length) return null;
+  const waiting = kids.filter((k) => k.pendingPermission);
   return (
+    <>
+    {waiting.map((k) => (
+      <ChildPermission key={`${k.id}-${k.pendingPermission!.requestId}`} child={k} />
+    ))}
     <nav className="lead-children" aria-label="Thread affidati dal capo">
       <ul>
         {kids.map((k) => (
@@ -104,6 +109,46 @@ export function LeadChildren({ lead, threads }: { lead: ThreadSummary; threads: 
         ))}
       </ul>
     </nav>
+    </>
+  );
+}
+
+/** Permesso chiesto da un thread affidato, con la risposta direttamente dalla chat del capo */
+function ChildPermission({ child }: { child: ThreadSummary }) {
+  const id = useId();
+  const p = child.pendingPermission!;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const answer = async (optionId: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      await api.respondPermission(child.id, p.requestId, optionId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="permission child-permission" role="group" aria-labelledby={`${id}-t`}>
+      <p id={`${id}-t`} className="permission-title">
+        <span>
+          Il thread <a href={`#/t/${child.id}`}>{child.title}</a> aspetta un tuo permesso: <strong>{p.title}</strong>
+        </span>
+      </p>
+      <div className="permission-actions">
+        {p.options.map((o) => (
+          <button key={o.optionId} type="button" className={`btn ${o.kind.startsWith('allow') ? 'primary' : ''}`} disabled={busy} onClick={() => void answer(o.optionId)}>
+            {o.name}
+          </button>
+        ))}
+      </div>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -182,6 +227,9 @@ export function ChildPanel({ thread, threads, running }: { thread: ThreadSummary
         )}
         {changes?.truncated && <p className="hint">Diff troppo grande: mostrato solo l'inizio.</p>}
       </div>
+      {thread.worktree && thread.worktree.state !== 'open' && (
+        <p className="hint">Thread concluso: per altro lavoro chiedi al capo un nuovo thread.</p>
+      )}
       <div aria-live="polite" className="child-message">
         {message}
       </div>

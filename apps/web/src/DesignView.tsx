@@ -106,7 +106,7 @@ export function DesignView({ onTry }: { onTry: (choice: DesignChoice) => void })
     <section className="design-gallery" aria-labelledby="design-title">
       <div className="design-head">
         <h1 id="design-title">Design</h1>
-        <p>Skill e stili di Open Design: scegline uno e l'agente scrive le pagine nel progetto, con anteprima dal vivo nella chat.</p>
+        <p>Skill e stili di design: scegline uno e l'agente scrive le pagine nel progetto, con anteprima dal vivo nella chat.</p>
         {error && <p className="form-error" role="alert">{error}</p>}
       </div>
 

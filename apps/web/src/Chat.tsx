@@ -5,6 +5,7 @@ import { Markdown } from './markdown';
 import { Icon } from './icons';
 import { DiffStat, DiffView, diffStats } from './DiffView';
 import { ChildPanel, DelegationView, LeadChildren } from './LeadViews';
+import { SearchSelect } from './SearchSelect';
 import { DesignBar } from './DesignPreview';
 
 interface Props {
@@ -38,6 +39,8 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
   const [sendError, setSendError] = useState('');
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
+  /** Lontano dal fondo: compare la freccia per tornarci */
+  const [awayFromBottom, setAwayFromBottom] = useState(false);
 
   useEffect(() => {
     dispatch({ type: 'reset' });
@@ -76,7 +79,19 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
 
   const onScroll = () => {
     const el = scroller.current;
-    if (el) stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (!el) return;
+    stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    setAwayFromBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 400);
+  };
+
+  const jumpToBottom = () => {
+    const el = scroller.current;
+    if (!el) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollTo({ top: el.scrollHeight, behavior: reduce ? 'auto' : 'smooth' });
+    stickToBottom.current = true;
+    setAwayFromBottom(false);
+    document.querySelector<HTMLTextAreaElement>('.composer textarea')?.focus({ preventScroll: true });
   };
 
   const send = async (prompt: string, attachments: string[]) => {
@@ -92,7 +107,9 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
   };
 
   // Ad agente in pausa si puo' scrivere: si riaccende e riprende la sessione
-  const canSend = (state.status === 'ready' || state.status === 'idle' || state.status === 'error') && !state.running;
+  // Thread affidato gia' unito o scartato: concluso, la sua copia non c'e' piu'
+  const closed = Boolean(thread.worktree && thread.worktree.state !== 'open');
+  const canSend = (state.status === 'ready' || state.status === 'idle' || state.status === 'error') && !state.running && !closed;
 
   return (
     <section className="chat" aria-labelledby="chat-title">
@@ -160,6 +177,12 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
           <p className="working" aria-hidden="true">
             <span className="dots" />
           </p>
+        )}
+        {awayFromBottom && (
+          <button type="button" className="btn icon-btn jump-bottom" onClick={jumpToBottom}>
+            <span aria-hidden="true">↓</span>
+            <span className="visually-hidden">Vai alla fine della conversazione</span>
+          </button>
         )}
       </div>
 
@@ -388,31 +411,15 @@ function ConfigBar({ threadId, options, disabled }: { threadId: string; options:
             <span>{o.name}</span>
           </label>
         ) : (
-          <label key={o.id} className="cfg" htmlFor={`${id}-${o.id}`}>
-            <span className="cfg-name">{o.name}</span>
-            <select
-              id={`${id}-${o.id}`}
-              value={String(o.currentValue)}
-              disabled={disabled}
-              onChange={(e) => change(o.id, e.target.value)}
-            >
-              {(o.options ?? []).map((opt) =>
-                'group' in opt ? (
-                  <optgroup key={opt.group} label={opt.name}>
-                    {opt.options.map((g) => (
-                      <option key={g.value} value={g.value}>
-                        {g.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ) : (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.name}
-                  </option>
-                ),
-              )}
-            </select>
-          </label>
+          <SearchSelect
+            key={o.id}
+            id={`${id}-${o.id}`}
+            label={o.name}
+            value={String(o.currentValue)}
+            options={o.options ?? []}
+            disabled={disabled}
+            onChange={(v) => change(o.id, v)}
+          />
         ),
       )}
       </div>

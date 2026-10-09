@@ -5,6 +5,7 @@ import { Icon } from './icons';
 import { VaultSection } from './VaultSection';
 import { NotificationsSection } from './NotificationsSection';
 import { AgentLogin } from './AgentLogin';
+import { SearchSelect } from './SearchSelect';
 import { getTheme, setTheme, type ThemeChoice } from './theme';
 
 const LOGIN_TEXT: Record<AgentStatus['login']['state'], string> = {
@@ -408,25 +409,14 @@ function Defaults({ agent }: { agent: AgentStatus }) {
       <legend>Per le nuove conversazioni</legend>
       <div className="defaults-row">
         {selects.map((o) => (
-          <label key={o.id} className="cfg" htmlFor={`${id}-${o.id}`}>
-            <span className="cfg-name">{o.name}</span>
-            <select id={`${id}-${o.id}`} value={String(values[o.id] ?? '')} onChange={(e) => void change(o.id, e.target.value)}>
-              <option value="">Predefinito dell'agente</option>
-              {(o.options ?? []).flatMap((opt) =>
-                'group' in opt
-                  ? opt.options.map((g) => (
-                      <option key={g.value} value={g.value}>
-                        {g.name}
-                      </option>
-                    ))
-                  : [
-                      <option key={opt.value} value={opt.value}>
-                        {opt.name}
-                      </option>,
-                    ],
-              )}
-            </select>
-          </label>
+          <SearchSelect
+            key={o.id}
+            id={`${id}-${o.id}`}
+            label={o.name}
+            value={String(values[o.id] ?? '')}
+            options={[{ value: '', name: 'Predefinito dell\'agente' }, ...(o.options ?? [])]}
+            onChange={(v) => void change(o.id, v)}
+          />
         ))}
       </div>
       <p className="hint" aria-live="polite">

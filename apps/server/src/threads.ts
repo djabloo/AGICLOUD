@@ -93,7 +93,8 @@ export class Thread {
   /** Messaggi in attesa che l'agente finisca il turno (es. avvisi di AgiCloud al capo) */
   private readonly queue: { prompt: string; auto: boolean }[] = [];
   /** Richieste di permesso non ancora risolte */
-  private readonly openPermissions = new Set<string>();
+  /** Richieste di permesso non ancora risolte (titolo e scelte: il capo le mostra anche nella sua chat) */
+  private readonly openPermissions = new Map<string, { title: string; options: { optionId: string; name: string; kind: string }[] }>();
   /** Un turno e' in preparazione o in corso */
   private busy = false;
 
@@ -123,12 +124,25 @@ export class Thread {
       parentId: this.meta.parentId ?? null,
       /** Thread affidato: in corso, aspetta te, finito, errore */
       childState: this.meta.parentId ? this.childState() : null,
+      /** Thread affidato in attesa di un tuo permesso: si puo' rispondere anche dalla chat del capo */
+      pendingPermission: this.meta.parentId ? this.pendingPermission() : null,
       worktree: this.meta.worktree ? { branch: this.meta.worktree.branch, state: this.meta.worktree.state } : null,
       design: this.meta.design ?? null,
     };
   }
 
+  pendingPermission() {
+    const first = this.openPermissions.entries().next();
+    return first.done ? null : { requestId: first.value[0], ...first.value[1] };
+  }
+
+  /** Thread affidato le cui modifiche sono gia' state unite o scartate: e' concluso */
+  get closed(): boolean {
+    return Boolean(this.meta.worktree && this.meta.worktree.state !== 'open');
+  }
+
   childState(): 'running' | 'waiting' | 'done' | 'error' | 'idle' {
+    if (this.closed) return 'done';
     if (this.openPermissions.size > 0) return 'waiting';
     if (this.busy || this.queue.length) return 'running';
     if (this.status === 'error' || this.status === 'auth_required' || this.meta.lastOutcome === 'error') return 'error';
@@ -229,6 +243,9 @@ export class Thread {
   /** auto: messaggio scritto da AgiCloud (es. "il thread X ha finito"), non da te */
   async run(prompt: string, attachments: string[] = [], opts: { auto?: boolean } = {}): Promise<string> {
     if (this.status === 'running' || this.busy) throw new HttpError(409, 'L\'agente sta gia\' lavorando: attendi o interrompi');
+    if (this.closed) {
+      throw new HttpError(409, 'Thread concluso: le sue modifiche sono state unite o scartate e la copia separata non c\'e\' piu\'. Per altro lavoro chiedi al capo un nuovo thread.');
+    }
     // Occupato da subito: tra l'avvio dell'agente e l'inizio del turno non deve partire un altro messaggio
     this.busy = true;
     let files: { rel: string; abs: string; size: number }[];
@@ -279,8 +296,20 @@ export class Thread {
           else if (x.type === EventType.RUN_FINISHED) outcome = { stop: x.result?.stopReason };
           else if (x.type === EventType.RUN_ERROR) outcome = { error: x.message };
           else if (x.type === EventType.CUSTOM && x.name === 'agicloud.permission_request') {
-            this.openPermissions.add(x.value?.requestId);
-            this.notify(`Permesso richiesto · ${this.meta.title}`, x.value?.toolCall?.title ?? 'L\'agente chiede conferma');
+            this.openPermissions.set(x.value?.requestId, {
+              title: x.value?.toolCall?.title ?? 'Azione dell\'agente',
+              options: (x.value?.options ?? []).map((o: any) => ({ optionId: o.optionId, name: o.name, kind: o.kind })),
+            });
+            // Thread affidato: la notifica porta alla chat del capo, dove si puo' rispondere senza cercarlo
+            const parent = this.meta.parentId ? this.store.find(this.meta.parentId) : undefined;
+            if (parent) {
+              void this.store.onNotify?.({
+                title: `Il thread "${this.meta.title}" aspetta te`.slice(0, 80),
+                body: x.value?.toolCall?.title ?? 'L\'agente chiede conferma',
+                url: `/#/t/${parent.id}`,
+                tag: this.id,
+              });
+            } else this.notify(`Permesso richiesto · ${this.meta.title}`, x.value?.toolCall?.title ?? 'L\'agente chiede conferma');
           }
         }
       } catch (err) {
@@ -387,6 +416,11 @@ export class Thread {
   }
 
   private async start(): Promise<void> {
+    if (!existsSync(this.meta.cwd)) {
+      // Senza cartella l'agente fallirebbe con un "ENOENT" che sembra un agente non installato
+      this.setStatus('error', { message: `La cartella di lavoro non esiste piu': ${this.meta.cwd}` });
+      return;
+    }
     await this.store.makeRoom(this);
     this.setStatus('starting');
     const session = new AgentSession(getAgent(this.meta.agentId), {

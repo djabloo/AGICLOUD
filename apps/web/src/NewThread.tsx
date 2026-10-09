@@ -123,7 +123,7 @@ export function NewThreadDialog({ open, agents, error, busy, preset, onClose, on
           <span className="choice-text">
             <span>Conversazione di design</span>
             <span className="hint" id={`${id}-design-hint`}>
-              L'agente usa una skill e uno stile di Open Design e scrive le pagine in design/, con anteprima dal vivo.
+              L'agente usa una skill e uno stile della sezione Design e scrive le pagine in design/, con anteprima dal vivo.
             </span>
           </span>
         </label>

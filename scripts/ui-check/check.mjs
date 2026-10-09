@@ -244,12 +244,14 @@ export default async function ({ page }) {
   await page.waitForFunction(() => document.querySelector('.delegation-outcome a'), { timeout: 15000 });
   await page.waitForSelector('.lead-children .child-chip', { timeout: 15000 });
   out.leadSidebar = await page.$$eval('.child-threads .thread-title', (els) => els.map((e) => e.textContent));
-  // Il figlio chiede il permesso di creare il file: lo si approva dal suo thread
-  await page.waitForFunction(() => document.querySelector('.child-chip')?.textContent.includes('aspetta te'), { timeout: 20000 });
+  // Il figlio chiede il permesso di creare il file: lo si approva direttamente dalla chat del capo
+  await page.waitForSelector('.child-permission .btn.primary', { timeout: 20000 });
+  await shot('lead-child-permission');
+  await runAxe('lead-child-permission');
+  await page.click('.child-permission .btn.primary');
+  await page.waitForFunction(() => !document.querySelector('.child-permission'), { timeout: 20000 });
   await page.click('.child-chip');
   await page.waitForSelector('.child-panel');
-  await page.waitForSelector('.permission:not(.is-resolved) .btn.primary', { timeout: 15000 });
-  await page.click('.permission:not(.is-resolved) .btn.primary');
   await page.waitForFunction(() => document.querySelector('.child-changes .btn')?.textContent.includes('1 file'), { timeout: 20000 });
   await page.click('.child-changes .btn');
   await page.waitForSelector('.child-panel .diff');

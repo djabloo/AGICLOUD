@@ -125,6 +125,9 @@ export class LeadManager {
       : 'Lavori direttamente nella cartella del progetto.';
     child.enqueue(
       `${d.task}${note.trim() ? `\n\nNota di l'utente: ${note.trim()}` : ''}\n\n---\nCompito affidato dal capo (conversazione "${lead.meta.title}") tramite AgiCloud. ${where}\n` +
+        'Regole del server: AgiCloud e altri servizi sono in produzione su questa macchina. Non fermare, riavviare o modificare servizi ' +
+        '(PM2, Docker, Caddy) e non usare le porte gia\' occupate (3095 e\' AgiCloud): per le prove usa una porta libera sopra 3100 ' +
+        'e una cartella dati in /tmp, e chiudi alla fine i processi che hai avviato.\n' +
         'Alla fine scrivi un riepilogo breve: cosa hai fatto, file toccati, come hai verificato, cosa resta aperto.',
     );
     d.state = 'approved';
@@ -281,6 +284,7 @@ export class LeadManager {
       '- Ogni delega la approva l'utente: proponila con un motivo chiaro. Se rifiuta, continua da solo o chiedigli come preferisce.',
       '- Delega solo compiti separabili e autonomi (una funzione, dei test, una ricerca nel codice, una revisione). Il compito deve essere completo: l\'altro agente non vede questa conversazione.',
       '- Scegli l\'agente adatto: agenti con piano gratuito (Cursor, agy, OpenCode) per compiti semplici o ripetitivi, cosi\' si risparmia l\'abbonamento Claude.',
+      '- Il server ha servizi in produzione (AgiCloud sulla porta 3095, PM2, Docker): ne\' tu ne\' i thread devono fermarli o occuparne le porte. Per provare un server usate una porta libera sopra 3100 e dati in /tmp.',
       git
         ? '- Ogni thread lavora in una copia separata del progetto (git worktree, ramo proprio) partita dall\'ultimo commit: le modifiche non salvate nel progetto non ci sono. Le sue modifiche entrano nel progetto solo se l'utente sceglie "Unisci".'
         : '- Il progetto non e\' un repo git: i thread lavorano nella stessa cartella. Evita di affidare compiti che toccano gli stessi file in contemporanea.',
