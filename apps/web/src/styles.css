@@ -2751,3 +2751,131 @@ legend {
 .pii-credit {
   text-align: center;
 }
+
+/* ── Plugin Browser ──────────────────────────────────────────────────────── */
+.popup-main {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.browser {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.browser-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.browser-nav {
+  display: flex;
+  gap: 4px;
+}
+.browser-url {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.browser-url input {
+  min-height: 40px;
+}
+.browser-bar .status {
+  margin: 0;
+}
+.browser-tabs {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.browser-tabs ul {
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 4px 8px 0;
+  list-style: none;
+  overflow-x: auto;
+}
+.browser-tabs li {
+  display: flex;
+  align-items: center;
+  max-width: 220px;
+  border-radius: 8px 8px 0 0;
+}
+.browser-tabs li.is-active {
+  background: var(--surface);
+}
+.browser-tab,
+.browser-tab-close {
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.browser-tab {
+  overflow: hidden;
+  padding: 4px 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.browser-tab[aria-current='page'] {
+  font-weight: 600;
+}
+.browser-tab-close {
+  width: 32px;
+  color: var(--text-muted);
+}
+.browser-newtab {
+  width: 36px;
+  font-size: 1.1rem;
+}
+.browser-screen {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 8px;
+  background: #1b1f27;
+}
+.browser-screen:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+.browser-screen img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background: #fff;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.4);
+  touch-action: none;
+  user-select: none;
+  cursor: default;
+}
+.browser-wait {
+  color: #e8ecf3;
+}
+.browser-type {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.browser-type input {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 700px) {
+  .browser-bar .small-btn {
+    display: none;
+  }
+}

@@ -19,12 +19,13 @@ import { LOGIN_COMMANDS, Settings } from './settings.js';
 import { GuidedLogins } from './logins.js';
 import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
-import { attachTerminalSockets } from './terminal-socket.js';
+import { attachTerminalSockets, clientIp as wsClientIp } from './terminal-socket.js';
 import { LeadManager } from './lead.js';
 import { registerDesign } from './design.js';
 import { catalog as designCatalog, normalizeChoice } from '@agicloud/design';
 import { Plugins } from './plugins.js';
 import { piiPlugin, registerPii } from './pii.js';
+import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser } from './browser.js';
 
 const settings = new Settings();
 const store = new ThreadStore(settings);
@@ -122,11 +123,19 @@ const plugins = new Plugins(
       source: 'builtin',
     },
     piiPlugin,
+    browserPlugin,
   ],
   // Design era gia' in uso prima del sistema dei plugin: resta installato e attivo
   { design: { installed: true, enabled: true } },
 );
 plugins.register(app);
+
+// Browser condiviso: a plugin attivo ogni agente riceve gli strumenti Playwright sullo stesso Chromium
+store.extraMcpServers = async () => {
+  if (!plugins.isEnabled('browser')) return [];
+  await ensureBrowser().catch(() => {});
+  return [browserMcpServer()];
+};
 
 // Plugin Design: catalogo (/api/design, col token) e anteprime (/preview, col token dell'anteprima)
 registerDesign(app);
@@ -434,7 +443,9 @@ const server = serve({ fetch: app.fetch, hostname: config.host, port: config.por
   console.log(`AgiCloud su http://${info.address}:${info.port} — progetti in ${config.projectRoots.join(', ')}`);
 });
 
-attachTerminalSockets(server as Server, terminals, checkAccess);
+attachTerminalSockets(server as Server, terminals, checkAccess, [
+  browserUpgrade(checkAccess, wsClientIp, () => plugins.isEnabled('browser')),
+]);
 
 async function shutdown() {
   terminals.detachAll();

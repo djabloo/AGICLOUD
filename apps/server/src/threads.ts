@@ -428,7 +428,10 @@ export class Thread {
       threadId: this.id,
       env: this.store.settings.agentEnv(this.meta.agentId),
       resumeSessionId: this.meta.acpSessionId,
-      mcpServers: this.meta.lead && this.store.lead ? [this.store.lead.mcpServerFor(this)] : undefined,
+      mcpServers: [
+        ...(this.meta.lead && this.store.lead ? [this.store.lead.mcpServerFor(this)] : []),
+        ...((await this.store.extraMcpServers?.()) ?? []),
+      ],
       sessionMeta: this.meta.lead && this.store.lead ? this.store.lead.sessionMeta(this.meta.agentId) : undefined,
       onConfigOptions: (options) => {
         this.store.settings.rememberOptions(this.meta.agentId, options);
@@ -556,6 +559,8 @@ export class ThreadStore {
   onNotify?: (notice: Notice) => Promise<unknown> | void;
   /** Capo e thread affidati: impostato dal server */
   lead?: LeadManager;
+  /** Server MCP in piu' per tutti gli agenti (es. il Browser condiviso): impostato dal server */
+  extraMcpServers?: () => Promise<acp.McpServer[]>;
 
   constructor(readonly settings: Settings) {}
 
