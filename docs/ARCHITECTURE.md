@@ -28,7 +28,8 @@ Un'interfaccia web generalista per **più agenti di coding**, organizzata a sezi
 |---|---|---|
 | `packages/bridge` | ✅ funzionante | Avvia un agente ACP, apre la sessione, traduce gli update in eventi AG-UI, gestisce permessi, cancel e login |
 | `apps/server` | ✅ funzionante | HTTP (Hono): conversazioni, registro eventi AG-UI per conversazione, flusso SSE con ripresa, permessi, cancel, token di accesso |
-| `apps/web` | ✅ Chat, Terminale, File, Impostazioni | React + Vite, PWA installabile con notifiche push; responsive e accessibile |
+| `packages/design` | ✅ plugin Design | Skill, design system e regole craft da Open Design; kit copiato nel progetto |
+| `apps/web` | ✅ Chat, Terminale, File, Design, Impostazioni | React + Vite, PWA installabile con notifiche push; responsive e accessibile |
 
 ## Traduzione ACP → AG-UI (packages/bridge)
 
@@ -63,7 +64,7 @@ Scelte:
 ## Sezioni (MVP → dopo)
 
 1. **MVP**: Chat (multi-agente: scegli l'agente per conversazione), File/Repo, Terminale.
-2. **Dopo**: Team di agenti (un leader che delega), Attività/Kanban, Spaces/Pagine (idea da OpenDots), Plugin, agy.
+2. **Dopo**: Attività/Kanban, Spaces/Pagine (idea da OpenDots), altri plugin.
 
 ## Server ↔ interfaccia
 
@@ -107,6 +108,16 @@ Una conversazione **capo** (Claude Code, spunta "Conversazione capo" nel dialogo
 - Modifiche: `GET /api/threads/:id/changes` (tutto rispetto al punto di partenza, anche file nuovi), **Unisci** (`merge`: commit nella copia + `git merge --no-ff` nel ramo attuale; se fallisce `merge --abort`, progetto intatto) o **Scarta**. In entrambi i casi la copia e il ramo vengono rimossi.
 - UI: thread figli annidati sotto il capo nella lista, barra dei thread con stato nella chat del capo, nel figlio provenienza + modifiche (`apps/web/src/LeadViews.tsx`).
 - Prova: l'agente demo fa da finto capo ("delega") usando la stessa API; `scripts/ui-check` copre proposta, approvazione, permesso del figlio, diff, unione e riassunto.
+
+## Plugin Design (da Open Design)
+
+Contenuti di [open-design](https://github.com/nexu-io/open-design) (Apache 2.0) in `packages/design/content/`: 60 design system generici, 52 skill, 11 regole craft. Scelte di l'utente (2026-10-09): integrazione nativa (non l'MCP `od`, che vuole il loro demone), contenuti nella repo, **solo stili generici** (niente design system "ispirati a" marchi: AgiCloud diventera' un SaaS).
+- Aggiornamento: `npm run import -w @agicloud/design -- /percorso/open-design` riscrive `content/` dagli elenchi in `scripts/import.ts` e rigenera `catalog.json` e `NOTICE.md` (commit di origine).
+- Nuova conversazione → "Conversazione di design": skill e/o design system (`meta.design`). Alla **prima richiesta** il kit va in `<progetto>/.agicloud/design/` (skill completa, `DESIGN.md`, `tokens.css`, componenti, regole craft richieste) e davanti al messaggio dell'agente vanno poche righe che dicono cosa leggere e di scrivere pagine HTML in `design/`. In chat resta solo la richiesta di l'utente. Funziona con qualsiasi agente che legge file, senza MCP.
+- Le skill di Open Design chiedono blocchi `<artifact>` in chat (li estrae il loro demone): le istruzioni del kit dicono di scrivere file.
+- Anteprima dal vivo (`apps/web/src/DesignPreview.tsx`): barra "Anteprima design" nella chat, elenca gli HTML in `design/` e ricarica l'iframe quando cambia l'mtime (ogni 2 s mentre l'agente lavora).
+- `/preview/<token>/...` (`apps/server/src/design.ts`): token casuale per una sola cartella (progetto, design system o skill del catalogo), sola lettura, scade dopo 6 ore. CSP `sandbox allow-scripts` senza `allow-same-origin`: gli script della pagina (anche da CDN) girano in un'origine opaca e non vedono il token di AgiCloud (verificato: `localStorage` → `SecurityError`).
+- Sezione Design (`#/design`): catalogo con "Prova", che apre il dialogo con la scelta gia' fatta.
 
 ## Impostazioni
 

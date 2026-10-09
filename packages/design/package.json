@@ -1,0 +1,13 @@
+{
+  "name": "@agicloud/design",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "import": "node --import tsx scripts/import.ts"
+  },
+  "devDependencies": {
+    "yaml": "^2.8.1"
+  }
+}

@@ -28,6 +28,32 @@ export interface ThreadSummary {
   parentId: string | null;
   childState: 'running' | 'waiting' | 'done' | 'error' | 'idle' | null;
   worktree: { branch: string; state: 'open' | 'merged' | 'discarded' } | null;
+  /** Plugin Design: skill e design system scelti alla creazione */
+  design: DesignChoice | null;
+}
+
+export interface DesignChoice {
+  skill?: string;
+  system?: string;
+}
+
+/** Catalogo del plugin Design (packages/design, contenuti da Open Design) */
+export interface DesignCatalog {
+  source: { repo: string; commit: string };
+  systems: { id: string; name: string; category: string; description: string; craft: string[]; previews: string[]; kit: boolean }[];
+  skills: {
+    id: string;
+    name: string;
+    emoji?: string;
+    description: string;
+    mode: string;
+    category: string;
+    craft: string[];
+    needsSystem: boolean;
+    examplePrompt?: string;
+    example: boolean;
+  }[];
+  craft: string[];
 }
 
 export interface WorktreeChanges {
@@ -182,7 +208,12 @@ export const api = {
   updateThread: (id: string, patch: { title?: string; pinned?: boolean; archived?: boolean }) =>
     request<ThreadSummary>('PATCH', `/threads/${id}`, patch),
   searchThreads: (q: string) => request<SearchHit[]>('GET', `/threads/search?q=${encodeURIComponent(q)}`),
-  createThread: (agentId: string, cwd: string, lead = false) => request<ThreadSummary>('POST', '/threads', { agentId, cwd, lead }),
+  createThread: (agentId: string, cwd: string, lead = false, design: DesignChoice | null = null) =>
+    request<ThreadSummary>('POST', '/threads', { agentId, cwd, lead, design }),
+  designCatalog: () => request<DesignCatalog>('GET', '/design/catalog'),
+  /** URL di anteprima (sandbox, scade dopo qualche ora) per una cartella di progetto o un elemento del catalogo */
+  designPreview: (target: { dir: string } | { system: string } | { skill: string }) =>
+    request<{ url: string; expires: number }>('POST', '/design/previews', target),
   decideDelegation: (threadId: string, delegationId: string, approve: boolean, note: string) =>
     request<{ childId?: string }>('POST', `/threads/${threadId}/delegations/${delegationId}`, { approve, note }),
   threadChanges: (id: string) => request<WorktreeChanges>('GET', `/threads/${id}/changes`),

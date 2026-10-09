@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, ApiError, getToken, setToken, type AgentInfo, type TerminalSummary, type ThreadSummary } from './api';
+import { api, ApiError, getToken, setToken, type AgentInfo, type DesignChoice, type TerminalSummary, type ThreadSummary } from './api';
 import { Chat } from './Chat';
 import { Login } from './Login';
 import { NewThreadDialog } from './NewThread';
@@ -8,10 +8,11 @@ import { TerminalView } from './TerminalView';
 import { SettingsView } from './SettingsView';
 import { ThreadList } from './ThreadList';
 import { FilesView } from './FilesView';
+import { DesignView } from './DesignView';
 import { Icon, type IconName } from './icons';
 
 type Auth = 'checking' | 'ok' | 'needed';
-type Section = 'chat' | 'terminal' | 'files' | 'settings';
+type Section = 'chat' | 'terminal' | 'files' | 'design' | 'settings';
 
 interface Route {
   section: Section;
@@ -22,6 +23,7 @@ const SECTIONS: { id: Section; label: string; icon: IconName; ready: boolean }[]
   { id: 'chat', label: 'Chat', icon: 'chat', ready: true },
   { id: 'terminal', label: 'Terminale', icon: 'terminal', ready: true },
   { id: 'files', label: 'File', icon: 'files', ready: true },
+  { id: 'design', label: 'Design', icon: 'design', ready: true },
   { id: 'settings', label: 'Impostazioni', icon: 'settings', ready: true },
 ];
 
@@ -35,6 +37,7 @@ function routeFromHash(): Route {
   if (settings) return { section: 'settings', id: settings[1] ?? null };
   const files = location.hash.match(/^#\/files(?:\/(.+))?$/);
   if (files) return { section: 'files', id: files[1] ? decodeURIComponent(files[1]) : null };
+  if (/^#\/design\/?$/.test(location.hash)) return { section: 'design', id: null };
   return { section: 'chat', id: null };
 }
 
@@ -42,6 +45,7 @@ function hashFor(r: Route): string {
   if (r.section === 'terminal') return r.id ? `#/term/${r.id}` : '#/term';
   if (r.section === 'settings') return r.id ? `#/settings/${r.id}` : '#/settings';
   if (r.section === 'files') return r.id ? `#/files/${encodeURIComponent(r.id)}` : '#/files';
+  if (r.section === 'design') return '#/design';
   return r.id ? `#/t/${r.id}` : '';
 }
 
@@ -56,6 +60,8 @@ export function App() {
   const [dialog, setDialog] = useState<'thread' | 'terminal' | null>(null);
   const [terminalCwd, setTerminalCwd] = useState<string>();
   const [dialogError, setDialogError] = useState<string>();
+  /** Skill/design system scelti dalla galleria Design per la nuova conversazione */
+  const [designPreset, setDesignPreset] = useState<DesignChoice | null>(null);
   const [creating, setCreating] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const drawer = useRef<HTMLElement>(null);
@@ -134,15 +140,16 @@ export function App() {
       setTerminalCwd(undefined);
       setDialog('terminal');
     } else {
+      setDesignPreset(null);
       setDialog('thread');
     }
   };
 
-  const createThread = async (agentId: string, cwd: string, lead = false) => {
+  const createThread = async (agentId: string, cwd: string, lead = false, design: DesignChoice | null = null) => {
     setCreating(true);
     setDialogError(undefined);
     try {
-      const t = await api.createThread(agentId, cwd, lead);
+      const t = await api.createThread(agentId, cwd, lead, design);
       setThreads((ts) => [t, ...ts]);
       closeDialog();
       go({ section: 'chat', id: t.id });
@@ -197,6 +204,7 @@ export function App() {
   const inTerminals = route.section === 'terminal';
   const inSettings = route.section === 'settings';
   const inFiles = route.section === 'files';
+  const inDesign = route.section === 'design';
   const activeThread = route.section === 'chat' ? (threads.find((t) => t.id === route.id) ?? null) : null;
   const activeTerminal = inTerminals ? (terminals.find((t) => t.id === route.id) ?? null) : null;
   const agentLabel = (id: string) => agents.find((a) => a.id === id)?.label ?? id;
@@ -256,14 +264,14 @@ export function App() {
           </ul>
         </nav>
 
-        {!inSettings && !inFiles && (
+        {!inSettings && !inFiles && !inDesign && (
           <button type="button" className="btn primary new-btn" onClick={openNew}>
             <Icon name="plus" />
             <span>{newLabel}</span>
           </button>
         )}
 
-        {inSettings || inFiles ? null : inTerminals ? (
+        {inSettings || inFiles || inDesign ? null : inTerminals ? (
           <>
             <h2 className="sidebar-title" id="list-title">
               Terminali
@@ -310,6 +318,13 @@ export function App() {
       <main id="main" className="main" tabIndex={-1} inert={drawerOpen || undefined}>
         {inFiles ? (
           <FilesView path={route.id} onNavigate={(p) => go({ section: 'files', id: p })} />
+        ) : inDesign ? (
+          <DesignView
+            onTry={(choice) => {
+              setDesignPreset(choice);
+              setDialog('thread');
+            }}
+          />
         ) : inSettings ? (
           <SettingsView
             page={route.id}
@@ -373,6 +388,7 @@ export function App() {
         agents={agents}
         error={dialogError}
         busy={creating}
+        preset={designPreset}
         onClose={closeDialog}
         onCreate={createThread}
       />

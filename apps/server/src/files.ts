@@ -18,6 +18,9 @@ const MIME: Record<string, string> = {
   '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4',
   '.html': 'text/html', '.htm': 'text/html', '.md': 'text/markdown', '.json': 'application/json',
   '.txt': 'text/plain', '.csv': 'text/csv', '.zip': 'application/zip',
+  // per le anteprime del plugin Design (pagine con fogli di stile, script e font accanto)
+  '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript',
+  '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.otf': 'font/otf',
 };
 
 export function mimeOf(path: string): string {

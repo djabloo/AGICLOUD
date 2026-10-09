@@ -20,7 +20,8 @@ import { AgentSession, AuthRequiredError, custom, ev, getAgent } from '@agicloud
 import { config } from './config.js';
 import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
-import { readAttachment, resolveAttachment } from './uploads.js';
+import { excludeFromGit, readAttachment, resolveAttachment } from './uploads.js';
+import { installKit, kitPrompt, type DesignChoice } from '@agicloud/design';
 import type { Settings } from './settings.js';
 import type { Notice } from './push.js';
 import type { WorktreeInfo } from './worktrees.js';
@@ -62,6 +63,8 @@ interface ThreadMeta {
   worktree?: WorktreeInfo;
   /** Esito dell'ultimo turno: per lo stato dei thread affidati */
   lastOutcome?: 'done' | 'error' | 'cancelled';
+  /** Plugin Design: skill e design system scelti; il kit va nel progetto alla prima richiesta */
+  design?: DesignChoice;
 }
 
 export type RunOutcome = { stop?: string; error?: string };
@@ -121,6 +124,7 @@ export class Thread {
       /** Thread affidato: in corso, aspetta te, finito, errore */
       childState: this.meta.parentId ? this.childState() : null,
       worktree: this.meta.worktree ? { branch: this.meta.worktree.branch, state: this.meta.worktree.state } : null,
+      design: this.meta.design ?? null,
     };
   }
 
@@ -233,7 +237,15 @@ export class Thread {
       await this.ensureStarted();
       if (this.status !== 'ready' || !this.session) throw new HttpError(409, 'L\'agente non e\' disponibile');
       files = attachments.map((p) => ({ rel: p, ...resolveAttachment(this.meta.cwd, p) }));
-      content = buildPrompt(prompt, files, this.session.acceptsImages);
+      // Plugin Design: alla prima richiesta il kit va nel progetto e l'agente riceve le istruzioni
+      // per usarlo (in chat resta solo la tua richiesta)
+      let agentPrompt = prompt;
+      if (this.meta.design && !opts.auto && !this.events.some((e) => e.type === EventType.RUN_STARTED)) {
+        installKit(this.meta.cwd, this.meta.design);
+        excludeFromGit(this.meta.cwd);
+        agentPrompt = `${kitPrompt(this.meta.design)}\n\n${prompt}`;
+      }
+      content = buildPrompt(agentPrompt, files, this.session.acceptsImages);
     } catch (err) {
       this.busy = false;
       throw err;
@@ -575,7 +587,7 @@ export class ThreadStore {
   create(
     agentId: string,
     cwd: string,
-    extra: Pick<ThreadMeta, 'lead' | 'parentId' | 'task' | 'worktree'> & { title?: string } = {},
+    extra: Pick<ThreadMeta, 'lead' | 'parentId' | 'task' | 'worktree' | 'design'> & { title?: string } = {},
   ): Thread {
     try {
       getAgent(agentId);
@@ -595,6 +607,7 @@ export class ThreadStore {
         parentId: extra.parentId,
         task: extra.task,
         worktree: extra.worktree,
+        design: extra.design,
         createdAt: now,
         updatedAt: now,
         // Modalita'/modello predefiniti dalle Impostazioni: applicati all'avvio dell'agente

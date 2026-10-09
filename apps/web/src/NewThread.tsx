@@ -1,14 +1,17 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import type { AgentInfo } from './api';
+import type { AgentInfo, DesignCatalog, DesignChoice } from './api';
 import { ProjectPicker } from './ProjectPicker';
+import { loadDesignCatalog } from './DesignPreview';
 
 interface Props {
   open: boolean;
   agents: AgentInfo[];
   error?: string;
   busy: boolean;
+  /** Skill/design system gia' scelti (es. "Prova" dalla galleria Design) */
+  preset?: DesignChoice | null;
   onClose: () => void;
-  onCreate: (agentId: string, cwd: string, lead: boolean) => void;
+  onCreate: (agentId: string, cwd: string, lead: boolean, design: DesignChoice | null) => void;
 }
 
 const LAST_AGENT_KEY = 'agicloud_last_agent';
@@ -22,12 +25,35 @@ function lastAgent(): string {
 }
 
 /** Dialogo nativo: trappola del focus, Esc e ritorno del focus li gestisce il browser */
-export function NewThreadDialog({ open, agents, error, busy, onClose, onCreate }: Props) {
+export function NewThreadDialog({ open, agents, error, busy, preset, onClose, onCreate }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   const [agentId, setAgentId] = useState('');
   const [cwd, setCwd] = useState('');
   const [lead, setLead] = useState(false);
+  const [designOn, setDesignOn] = useState(false);
+  const [skill, setSkill] = useState('');
+  const [system, setSystem] = useState('');
+  const [catalog, setCatalog] = useState<DesignCatalog | null>(null);
+  const [catalogError, setCatalogError] = useState('');
+
+  // Ogni apertura riparte dalla scelta della galleria (o da nessun design)
+  useEffect(() => {
+    if (!open) return;
+    setDesignOn(Boolean(preset?.skill || preset?.system));
+    setSkill(preset?.skill ?? '');
+    setSystem(preset?.system ?? '');
+  }, [open, preset]);
+
+  useEffect(() => {
+    if (!designOn || catalog) return;
+    loadDesignCatalog()
+      .then((c) => {
+        setCatalog(c);
+        setCatalogError('');
+      })
+      .catch((err) => setCatalogError(err instanceof Error ? err.message : String(err)));
+  }, [designOn, catalog]);
 
   useEffect(() => {
     const d = ref.current;
@@ -53,7 +79,7 @@ export function NewThreadDialog({ open, agents, error, busy, onClose, onCreate }
     } catch {
       /* solo una comodita' */
     }
-    onCreate(agentId, cwd.trim(), canLead && lead);
+    onCreate(agentId, cwd.trim(), canLead && lead, designOn && (skill || system) ? { skill: skill || undefined, system: system || undefined } : null);
   };
 
   return (
@@ -92,6 +118,18 @@ export function NewThreadDialog({ open, agents, error, busy, onClose, onCreate }
           </label>
         )}
 
+        <label className="choice">
+          <input type="checkbox" checked={designOn} onChange={(e) => setDesignOn(e.target.checked)} aria-describedby={`${id}-design-hint`} />
+          <span className="choice-text">
+            <span>Conversazione di design</span>
+            <span className="hint" id={`${id}-design-hint`}>
+              L'agente usa una skill e uno stile di Open Design e scrive le pagine in design/, con anteprima dal vivo.
+            </span>
+          </span>
+        </label>
+
+        {designOn && <DesignFields catalog={catalog} error={catalogError} skill={skill} system={system} onSkill={setSkill} onSystem={setSystem} />}
+
         <ProjectPicker active={open} cwd={cwd} onChange={setCwd} />
 
         {error && (
@@ -110,5 +148,75 @@ export function NewThreadDialog({ open, agents, error, busy, onClose, onCreate }
         </div>
       </form>
     </dialog>
+  );
+}
+
+const MODE_LABEL: Record<string, string> = {
+  prototype: 'Pagine e prototipi',
+  deck: 'Presentazioni',
+  template: 'Modelli pronti',
+  'design-system': 'Brief, revisione e scrittura',
+};
+
+function groupBy<T>(items: T[], key: (t: T) => string): [string, T[]][] {
+  const groups = new Map<string, T[]>();
+  for (const it of items) groups.set(key(it), [...(groups.get(key(it)) ?? []), it]);
+  return [...groups];
+}
+
+function DesignFields(props: {
+  catalog: DesignCatalog | null;
+  error: string;
+  skill: string;
+  system: string;
+  onSkill: (v: string) => void;
+  onSystem: (v: string) => void;
+}) {
+  const { catalog, error, skill, system } = props;
+  const id = useId();
+  if (error) return <p className="form-error" role="alert">Catalogo design non disponibile: {error}</p>;
+  if (!catalog) return <p className="hint">Caricamento del catalogo…</p>;
+  const sk = catalog.skills.find((s) => s.id === skill);
+  const sys = catalog.systems.find((s) => s.id === system);
+  return (
+    <div className="design-choice">
+      <label>
+        Skill
+        <select value={skill} onChange={(e) => props.onSkill(e.target.value)} aria-describedby={`${id}-skill`}>
+          <option value="">Nessuna</option>
+          {groupBy(catalog.skills, (s) => MODE_LABEL[s.mode] ?? s.mode).map(([group, skills]) => (
+            <optgroup key={group} label={group}>
+              {skills.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+      <p className="hint" id={`${id}-skill`}>
+        {sk ? sk.description : 'Il modo di lavorare: tipo di pagina, presentazione, revisione…'}
+        {sk?.needsSystem && !system && ' Rende meglio con un design system.'}
+      </p>
+      <label>
+        Design system
+        <select value={system} onChange={(e) => props.onSystem(e.target.value)} aria-describedby={`${id}-system`}>
+          <option value="">Nessuno</option>
+          {groupBy(catalog.systems, (s) => s.category).map(([group, systems]) => (
+            <optgroup key={group} label={group}>
+              {systems.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+      <p className="hint" id={`${id}-system`}>
+        {sys ? sys.description : 'Lo stile: colori, caratteri e componenti da rispettare.'}
+      </p>
+    </div>
   );
 }

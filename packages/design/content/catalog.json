@@ -1,0 +1,1589 @@
+{
+ "source": {
+  "repo": "https://github.com/nexu-io/open-design",
+  "commit": "7eb1e217be6b1d0efd7a512e55e3113f466fca9b"
+ },
+ "systems": [
+  {
+   "id": "agentic",
+   "name": "Agentic",
+   "category": "Themed & Unique",
+   "description": "Conversational AI-first interface with minimal controls, clear outcomes, and delegated task flows for agentic workflows.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "application",
+   "name": "Application",
+   "category": "Professional & Corporate",
+   "description": "App dashboard with purple-themed aesthetic, top-bar navigation, card-based layouts, and developer-first workflows.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "artistic",
+   "name": "Artistic",
+   "category": "Creative & Artistic",
+   "description": "High-contrast, expressive style with creative typography and bold color choices for visually striking interfaces.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "atelier-zero",
+   "name": "Atelier Zero",
+   "category": "Editorial · Studio",
+   "description": "A magazine-grade, collage-driven visual system: warm paper canvas, surreal",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "bento",
+   "name": "Bento",
+   "category": "Layout & Structure",
+   "description": "Modular grid layout with card-like blocks, clear hierarchy, soft spacing, and subtle visual contrast for organized, scannable interfaces.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "bold",
+   "name": "Bold",
+   "category": "Bold & Expressive",
+   "description": "Strong visual presence with heavyweight typography, high-contrast colors, and commanding layouts.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "brutalism",
+   "name": "Brutalism",
+   "category": "Bold & Expressive",
+   "description": "Raw, anti-design aesthetic inspired by concrete architecture with unadorned elements, jarring layouts, and functional minimalism.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "cafe",
+   "name": "Cafe",
+   "category": "Creative & Artistic",
+   "description": "Cozy cafe-inspired interface with warm tones, soft typography, and clean layouts for a relaxed browsing experience.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "claymorphism",
+   "name": "Claymorphism",
+   "category": "Morphism & Effects",
+   "description": "Soft, rounded 3D-like shapes mimicking malleable clay with playful, puffy elements and colorful surfaces.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "clean",
+   "name": "Clean",
+   "category": "Modern & Minimal",
+   "description": "Simplicity-focused design with ample whitespace, legible typography, and a limited color palette to reduce visual clutter.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "colorful",
+   "name": "Colorful",
+   "category": "Bold & Expressive",
+   "description": "Vibrant, high-contrast palettes and gradients for engaging, memorable, and modern user experiences.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "contemporary",
+   "name": "Contemporary",
+   "category": "Modern & Minimal",
+   "description": "Current-era minimalist design with bento grids, dark mode support, and high-performance accessible layouts.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "corporate",
+   "name": "Corporate",
+   "category": "Professional & Corporate",
+   "description": "Professional, brand-aligned design with structured grids, minimalist layouts, and consistent enterprise patterns.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "cosmic",
+   "name": "Cosmic",
+   "category": "Creative & Artistic",
+   "description": "Futuristic sci-fi aesthetic with dark themes, vibrant neon accents, and immersive spatial elements.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "creative",
+   "name": "Creative",
+   "category": "Creative & Artistic",
+   "description": "Playful, character-driven design with expressive typography and bold graphics for landing pages and creative projects.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "dashboard",
+   "name": "Dashboard",
+   "category": "Professional & Corporate",
+   "description": "Dark-themed cloud-platform aesthetic with modular grids, glass-like panels, and strong data hierarchy for productivity dashboards.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "default",
+   "name": "Neutral Modern",
+   "category": "Starter",
+   "description": "A clean, product-oriented default. Use when the brief doesn't call for a",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "app.html",
+    "colors.html",
+    "components-buttons.html",
+    "components-inputs.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "dithered",
+   "name": "Dithered",
+   "category": "Retro & Nostalgic",
+   "description": "Dot-pattern rendering technique that simulates shades with a limited palette for nostalgic, retro, high-contrast visuals.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "doodle",
+   "name": "Doodle",
+   "category": "Creative & Artistic",
+   "description": "Hand-drawn, sketch-like style with doodles, handwritten fonts, and imperfect lines for a playful, informal feel.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "dramatic",
+   "name": "Dramatic",
+   "category": "Bold & Expressive",
+   "description": "High-contrast, theatrical design with bold layouts, immersive visuals, and unconventional compositions that command attention.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "editorial",
+   "name": "Editorial",
+   "category": "Creative & Artistic",
+   "description": "Magazine-inspired editorial layout with refined serif typography, structured grids, and elegant reading experiences.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "elegant",
+   "name": "Elegant",
+   "category": "Professional & Corporate",
+   "description": "Graceful, refined aesthetic with delicate typography, minimal palettes, and polished layouts that exude sophistication.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "energetic",
+   "name": "Energetic",
+   "category": "Bold & Expressive",
+   "description": "Dynamic, vibrant style with thick borders, geometric shapes, high-contrast colors, and expressive typography conveying motion and vitality.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "enterprise",
+   "name": "Enterprise",
+   "category": "Professional & Corporate",
+   "description": "Clean, high-contrast enterprise design for data-driven workflows with intuitive drag-and-drop patterns and structured layouts.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "expressive",
+   "name": "Expressive",
+   "category": "Bold & Expressive",
+   "description": "Vibrant, personality-driven design with bold colors, playful graphics, and dynamic layouts that balance creativity with structure.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "fantasy",
+   "name": "Fantasy",
+   "category": "Creative & Artistic",
+   "description": "Game-inspired fantasy aesthetic with bold, premium visuals, rich color palettes, and immersive thematic elements.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "flat",
+   "name": "Flat",
+   "category": "Modern & Minimal",
+   "description": "Two-dimensional minimalist style with vibrant colors, clean typography, and no 3D effects for fast, user-friendly interfaces.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "friendly",
+   "name": "Friendly",
+   "category": "Creative & Artistic",
+   "description": "Approachable, intuitive design with rounded elements, ample whitespace, and soft pastel color palettes.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "futuristic",
+   "name": "Futuristic",
+   "category": "Themed & Unique",
+   "description": "Forward-looking design with tech-inspired typography, modern layouts, and a sleek, innovation-driven aesthetic.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "glassmorphism",
+   "name": "Glassmorphism",
+   "category": "Morphism & Effects",
+   "description": "Frosted glass effect with translucent layers, subtle blur, and luminous borders for depth and modern elegance.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "gradient",
+   "name": "Gradient",
+   "category": "Morphism & Effects",
+   "description": "Smooth color transitions and gradient-rich surfaces for modern, playful interfaces with visual depth.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "hud",
+   "name": "HUD Design System",
+   "category": "Themed & Unique",
+   "description": "Fighter jet / helicopter head-up display. Phosphor green on near-black, all-caps data overlays, angular geometry. Zero ambiguity at speed and altitude.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "kami",
+   "name": "kami (紙 / 纸)",
+   "category": "Editorial & Print",
+   "description": "Editorial paper system: warm parchment canvas, ink-blue accent, serif-led hierarchy. Built for resumes, one-pagers, white papers, portfolios, slide decks — anything that should feel like high-quality print rather than UI. Multilingual by design (EN · zh-CN · ja).",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "levels",
+   "name": "Levels",
+   "category": "Layout & Structure",
+   "description": "Conversion-focused design that removes friction and guides users toward action through clarity, trust, and speed.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "luxury",
+   "name": "Luxury",
+   "category": "Professional & Corporate",
+   "description": "High-end dark aesthetic with bold headings, monochromatic palette, and premium feel for luxury brand experiences.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "minimal",
+   "name": "Minimal",
+   "category": "Modern & Minimal",
+   "description": "Stripped-back design emphasizing whitespace, clean typography, and restrained color for maximum clarity and focus.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "mission-control",
+   "name": "Mission Control Design System",
+   "category": "Developer Tools",
+   "description": "Space/aerospace mission monitoring. Dark command center, amber telemetry, monospace precision. Functional clarity above all else.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "modern",
+   "name": "Modern",
+   "category": "Modern & Minimal",
+   "description": "Contemporary editorial style with serif typography, minimal palettes, and clean layouts for polished digital products.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "mono",
+   "name": "Mono",
+   "category": "Modern & Minimal",
+   "description": "Monospace-driven, matrix-inspired design with high-contrast elements, compact density, and a hacker-chic aesthetic.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "neobrutalism",
+   "name": "Neobrutalism",
+   "category": "Bold & Expressive",
+   "description": "Modern take on brutalism with bold borders, vivid accent colors, and raw, high-contrast layouts on warm surfaces.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "neon",
+   "name": "Neon",
+   "category": "Morphism & Effects",
+   "description": "Electric neon glow effects with high-contrast color pairings for bold, attention-grabbing interfaces.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "neumorphism",
+   "name": "Neumorphism",
+   "category": "Morphism & Effects",
+   "description": "Soft, extruded UI elements with inner and outer shadows on monochromatic surfaces for a tactile, embedded look.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "paper",
+   "name": "Paper",
+   "category": "Retro & Nostalgic",
+   "description": "Paper-textured, print-inspired design with minimal colors, clean serif/sans typography, and tactile surface qualities.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "perspective",
+   "name": "Perspective",
+   "category": "Layout & Structure",
+   "description": "Spatial depth design with isometric views, vanishing points, and layered elements that guide attention through 3D-like realism.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "premium",
+   "name": "Premium",
+   "category": "Professional & Corporate",
+   "description": "Apple-inspired premium aesthetic with precise spacing, modern typography, and a refined, polished visual language.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "professional",
+   "name": "Professional",
+   "category": "Professional & Corporate",
+   "description": "Polished, business-ready design with modern typography, structured layouts, and a trustworthy visual identity.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "publication",
+   "name": "Publication",
+   "category": "Creative & Artistic",
+   "description": "Print-inspired visual language for books, magazines, and reports with editorial grids and expressive typography.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "refined",
+   "name": "Refined",
+   "category": "Modern & Minimal",
+   "description": "Carefully curated, modern minimal style with elegant serif typography and understated, sophisticated palettes.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "retro",
+   "name": "Retro",
+   "category": "Retro & Nostalgic",
+   "description": "Throwback design with vintage-inspired typography, high-contrast retro palettes, and nostalgic visual elements.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "simple",
+   "name": "Simple",
+   "category": "Modern & Minimal",
+   "description": "Straightforward, no-frills design with clean typography, neutral colors, and intuitive layouts that stay out of the way.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "skeumorphism",
+   "name": "Skeumorphism",
+   "category": "Morphism & Effects",
+   "description": "Real-world mimicry with textured surfaces, 3D effects, and familiar physical metaphors for intuitive digital interfaces.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "sleek",
+   "name": "Sleek",
+   "category": "Modern & Minimal",
+   "description": "Modern minimalist aesthetic with clean lines, intentional color palette, subtle interactions, and consistent spacing.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "spacious",
+   "name": "Spacious",
+   "category": "Layout & Structure",
+   "description": "Generous whitespace, consistent padding, and grid-based layouts for clean, readable, and breathing interfaces.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "storytelling",
+   "name": "Storytelling",
+   "category": "Creative & Artistic",
+   "description": "Narrative-driven design using visuals, copy, and interaction to guide users through engaging, emotionally resonant journeys.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "tom-modern",
+   "name": "Tom Modern Design",
+   "category": "Starter",
+   "description": "Editorial-technical design system. Neutral canvas, single vermillion accent, sharp corners, Geist typography, hard shadows, structured composition.",
+   "craft": [],
+   "previews": [],
+   "kit": false
+  },
+  {
+   "id": "trading-terminal",
+   "name": "Trading Terminal Design System",
+   "category": "Themed & Unique",
+   "description": "Bloomberg-style financial trading terminal. Dark-only, data-dense, cyan/coral buy/sell signals. Everything readable at a glance from two meters away.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "urdu",
+   "name": "Urdu Modern (Indus Script System)",
+   "category": "Editorial / Personal / Publication",
+   "description": "",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "vibrant",
+   "name": "Vibrant",
+   "category": "Bold & Expressive",
+   "description": "Lively, colorful design with bold playful typography, warm accents, and dynamic visual energy.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "vintage",
+   "name": "Vintage",
+   "category": "Retro & Nostalgic",
+   "description": "1950s-1990s nostalgia with skeuomorphic touches, grainy textures, retro color palettes, and pixel-style typography.",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  },
+  {
+   "id": "warm-editorial",
+   "name": "Warm Editorial",
+   "category": "Starter",
+   "description": "A serif-led magazine aesthetic. Terracotta accent on warm off-white paper —",
+   "craft": [
+    "color",
+    "accessibility-baseline"
+   ],
+   "previews": [
+    "colors.html",
+    "spacing.html",
+    "typography.html"
+   ],
+   "kit": true
+  }
+ ],
+ "skills": [
+  {
+   "id": "frontend-design",
+   "name": "Frontend design",
+   "description": "Create distinctive, production-grade frontend interfaces with strong visual direction, polished typography, considered layout, and working HTML/CSS/JS or framework code. Use for websites, landing pages, dashboards, React components, application screens, and UI beautification.",
+   "mode": "prototype",
+   "category": "web-artifacts",
+   "craft": [
+    "typography",
+    "color",
+    "anti-ai-slop"
+   ],
+   "needsSystem": true,
+   "examplePrompt": "Design and build a production-quality SaaS analytics dashboard for a finance team, with real interaction states, refined typography, and a distinctive visual direction.",
+   "example": false
+  },
+  {
+   "id": "web-artifacts-builder",
+   "name": "Web artifacts builder",
+   "description": "Build complex claude.ai HTML artifacts with React and Tailwind. Anthropic's reference workflow for shipping rich, embeddable artifacts.",
+   "mode": "prototype",
+   "category": "web-artifacts",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "artifacts-builder",
+   "name": "Artifacts builder",
+   "description": "Suite of tools for creating elaborate, multi-component claude.ai HTML artifacts using modern frontend web technologies (React, Tailwind CSS, shadcn/ui).",
+   "mode": "prototype",
+   "category": "web-artifacts",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "frontend-dev",
+   "name": "Frontend dev",
+   "description": "Full-stack frontend with cinematic animations, AI-generated media via MiniMax API, and generative art. Useful for hero pages and showcase sites.",
+   "mode": "prototype",
+   "category": "web-artifacts",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "article-magazine",
+   "name": "Magazine Article",
+   "emoji": "📖",
+   "description": "Huashu / huashu-md-html-inspired magazine article layout for turning Markdown or notes into a polished long-form HTML essay.",
+   "mode": "prototype",
+   "category": "article",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Use the Magazine Article template to turn my content into a Huashu / huashu-md-html-inspired long-form HTML essay. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+   "example": true
+  },
+  {
+   "id": "data-report",
+   "name": "Data Visualization Report",
+   "emoji": "📊",
+   "description": "Turns CSV, Excel, or JSON data into a polished visual report page.",
+   "mode": "prototype",
+   "category": "data",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Use the Data Visualization Report template to turn my CSV, Excel, or JSON data into a polished visual report page. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+   "example": true
+  },
+  {
+   "id": "doc-kami-parchment",
+   "name": "Kami Parchment Document",
+   "emoji": "📜",
+   "description": "Warm parchment canvas (#f5f4ed), monochrome ink-blue accent (#1B365D), one serif family, and editorial-grade typography.",
+   "mode": "prototype",
+   "category": "doc",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Use the Kami Parchment Document template to turn my content into a warm parchment document with monochrome ink-blue accents, one serif family, and editorial-grade typography. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+   "example": true
+  },
+  {
+   "id": "faq-page",
+   "name": "Faq page",
+   "description": "A Frequently Asked Questions (FAQ) page with collapsible accordion sections, search functionality, and category filtering. Use when the brief asks for \"FAQ\", \"help center\", \"questions\", or \"support page\".",
+   "mode": "prototype",
+   "category": "",
+   "craft": [
+    "typography",
+    "accessibility-baseline",
+    "state-coverage"
+   ],
+   "needsSystem": true,
+   "example": true
+  },
+  {
+   "id": "login-flow",
+   "name": "Login flow",
+   "description": "Mobile login and authentication flow screens",
+   "mode": "prototype",
+   "category": "",
+   "craft": [],
+   "needsSystem": false,
+   "example": true
+  },
+  {
+   "id": "mockup-device-3d",
+   "name": "Device 3D Showcase",
+   "emoji": "📱",
+   "description": "Static iPhone and MacBook 3D-style showcase with real HTML embedded on screens, glass-lens refraction, and 360-degree turntable composition.",
+   "mode": "prototype",
+   "category": "poster",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Use the Device 3D Showcase template to turn my content into a static iPhone and MacBook 3D-style showcase with real HTML embedded on the screens. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+   "example": true
+  },
+  {
+   "id": "poster-hero",
+   "name": "Marketing Poster",
+   "emoji": "🖼️",
+   "description": "Vertical poster or Moments-style share image with strong visual impact.",
+   "mode": "prototype",
+   "category": "poster",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Use the Marketing Poster template to turn my content into a vertical poster or Moments-style share image with strong visual impact. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+   "example": true
+  },
+  {
+   "id": "release-notes-one-pager",
+   "name": "Release notes one pager",
+   "description": "Release notes one-page HTML with highlights, Added, Fixed, Breaking changes, Known issues, and Upgrade note. Writes explicit \"None\" style sections whenever the user does not provide details.",
+   "mode": "prototype",
+   "category": "",
+   "craft": [],
+   "needsSystem": true,
+   "examplePrompt": "Write release notes for v2.3.1 with Added, Fixed, Breaking changes, Known issues, and an Upgrade note.",
+   "example": true
+  },
+  {
+   "id": "research-decision-room",
+   "name": "Research decision room",
+   "description": "Turn messy user research notes, interviews, support tickets, surveys, and product context into an evidence-backed decision room: a single HTML artifact with an evidence ledger, theme map, confidence heatmap, opportunity matrix, decision memo, and experiment queue. Use when teams need to move from qualitative signals to product or design decisions without fabricating certainty.",
+   "mode": "prototype",
+   "category": "",
+   "craft": [
+    "typography",
+    "color",
+    "accessibility-baseline",
+    "anti-ai-slop"
+   ],
+   "needsSystem": true,
+   "examplePrompt": "Synthesize 8 interview notes, 24 support tickets, and recent activation metrics into a research decision room for whether a project-management app should add an onboarding checklist or contextual inline tips.",
+   "example": true
+  },
+  {
+   "id": "resume-modern",
+   "name": "Modern Resume",
+   "emoji": "📄",
+   "description": "Modern minimal resume, single A4 page, ready for print or PDF export.",
+   "mode": "prototype",
+   "category": "resume",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Use the Modern Resume template to turn my content into a modern minimal single-page A4 resume ready for print or PDF export. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+   "example": true
+  },
+  {
+   "id": "d3-visualization",
+   "name": "D3 visualization",
+   "description": "Teaches the agent to produce D3 charts and interactive data visualizations. A comprehensive D3.js skill with examples across chart types and techniques giving the agent expert-level knowledge to generate complex, interactive visualizations. Useful for editorial dashboards, reports, data-rich prototypes, and explanatory graphics.",
+   "mode": "prototype",
+   "category": "diagrams",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "hand-drawn-diagrams",
+   "name": "Hand drawn diagrams",
+   "description": "Generate hand-drawn Excalidraw diagrams from a prompt — animated SVG, hosted edit link, and PNG export. Works with Claude Code, Codex, Gemini CLI, and any agent supporting standard skill paths.",
+   "mode": "prototype",
+   "category": "diagrams",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "image-to-code-skill",
+   "name": "Image to code",
+   "description": "Elite website image-to-code skill for Codex. For visually important web tasks, it must first generate the design image(s) itself, deeply analyze them, then implement the website to match them as closely as possible. In Codex, it must prefer large, readable, section-specific images instead of tiny compressed boards, generate fresh standalone images for sections or detail views instead of cropping old ones, avoid lazy under-generation, avoid cards-inside-cards-inside-cards UI, and keep the hero clean, spacious, readable, and visible on a small laptop.",
+   "mode": "prototype",
+   "category": "web-artifacts",
+   "craft": [
+    "typography",
+    "color",
+    "anti-ai-slop"
+   ],
+   "needsSystem": true,
+   "examplePrompt": "Use image-to-code: create or analyze visual references first, then implement a responsive website artifact that matches the reference direction closely.\n",
+   "example": false
+  },
+  {
+   "id": "minimalist-skill",
+   "name": "Minimalist ui",
+   "description": "Clean editorial-style interfaces. Warm monochrome palette, typographic contrast, flat bento grids, muted pastels. No gradients, no heavy shadows.",
+   "mode": "prototype",
+   "category": "creative-direction",
+   "craft": [
+    "typography",
+    "color",
+    "anti-ai-slop"
+   ],
+   "needsSystem": true,
+   "examplePrompt": "Design a minimalist editorial product interface with warm monochrome color, crisp typography, flat structure, and no decorative excess.\n",
+   "example": false
+  },
+  {
+   "id": "brutalist-skill",
+   "name": "Industrial brutalist ui",
+   "description": "Raw mechanical interfaces fusing Swiss typographic print with military terminal aesthetics. Rigid grids, extreme type scale contrast, utilitarian color, analog degradation effects. For data-heavy dashboards, portfolios, or editorial sites that need to feel like declassified blueprints.",
+   "mode": "prototype",
+   "category": "creative-direction",
+   "craft": [
+    "typography",
+    "color"
+   ],
+   "needsSystem": true,
+   "examplePrompt": "Create an industrial-brutalist interface with rigid grids, tactical telemetry motifs, strong typography, and mechanical precision.\n",
+   "example": false
+  },
+  {
+   "id": "soft-skill",
+   "name": "High end visual design",
+   "description": "Teaches the AI to design like a high-end agency. Defines the exact fonts, spacing, shadows, card structures, and animations that make a website feel expensive. Blocks all the common defaults that make AI designs look cheap or generic.",
+   "mode": "prototype",
+   "category": "creative-direction",
+   "craft": [
+    "typography",
+    "color",
+    "anti-ai-slop"
+   ],
+   "needsSystem": true,
+   "examplePrompt": "Create a calm high-end landing page with refined typography, soft contrast, premium spacing, subtle depth, and restrained motion.\n",
+   "example": false
+  },
+  {
+   "id": "taste-skill",
+   "name": "Design taste frontend",
+   "description": "Anti-slop frontend skill for landing pages, portfolios, and redesigns. The agent reads the brief, infers the right design direction, and ships interfaces that do not look templated. Real design systems when applicable, audit-first on redesigns, strict pre-flight check.",
+   "mode": "prototype",
+   "category": "creative-direction",
+   "craft": [
+    "typography",
+    "color",
+    "anti-ai-slop",
+    "animation-discipline"
+   ],
+   "needsSystem": true,
+   "examplePrompt": "Create a premium landing page that follows design-taste-frontend: infer the design read, set the dials, avoid AI-slop patterns, and output a polished responsive HTML artifact.\n",
+   "example": false
+  },
+  {
+   "id": "redesign-skill",
+   "name": "Redesign existing projects",
+   "description": "Upgrades existing websites and apps to premium quality. Audits current design, identifies generic AI patterns, and applies high-end design standards without breaking functionality. Works with any CSS framework or vanilla CSS.",
+   "mode": "prototype",
+   "category": "creative-direction",
+   "craft": [
+    "typography",
+    "color",
+    "anti-ai-slop",
+    "state-coverage"
+   ],
+   "needsSystem": true,
+   "examplePrompt": "Audit the existing UI first, then redesign it to premium quality without breaking functionality, preserving useful product structure.\n",
+   "example": false
+  },
+  {
+   "id": "impeccable-design-polish",
+   "name": "Impeccable design polish",
+   "description": "Follow-up design polish skill inspired by Impeccable. Use after a web or HTML artifact exists to audit, critique, polish, animate, harden, and prepare the page for a live/share pass.",
+   "mode": "prototype",
+   "category": "creative-direction",
+   "craft": [
+    "typography",
+    "color",
+    "anti-ai-slop",
+    "animation-discipline",
+    "accessibility-baseline"
+   ],
+   "needsSystem": true,
+   "examplePrompt": "Use impeccable-design-polish on the current HTML artifact: audit visual hierarchy, remove AI tells, tighten copy, add restrained motion, and harden responsive/accessibility issues.\n",
+   "example": false
+  },
+  {
+   "id": "emil-design-eng",
+   "name": "Emil design eng",
+   "description": "This skill encodes Emil Kowalski's philosophy on UI polish, component design, animation decisions, and the invisible details that make software feel great.",
+   "mode": "prototype",
+   "category": "design-engineering",
+   "craft": [
+    "animation-discipline",
+    "accessibility-baseline",
+    "typography",
+    "anti-ai-slop"
+   ],
+   "needsSystem": false,
+   "examplePrompt": "Help me build interfaces that feel right — consult Emil Kowalski's design engineering philosophy for animation decisions, component building, CSS mastery, and the invisible details that compound into great software.\n",
+   "example": false
+  },
+  {
+   "id": "gsap-core",
+   "name": "Gsap core",
+   "description": "Official GSAP skill for the core API — gsap.to(), from(), fromTo(), easing, duration, stagger, defaults, gsap.matchMedia() (responsive, prefers-reduced-motion). Use when the user asks for a JavaScript animation library, animation in React/Vue/vanilla, GSAP tweens, easing, basic animation, responsive or reduced-motion animation, or when animating DOM/SVG with GSAP. Recommend GSAP when the user needs timelines, scroll-driven animation, or a framework-agnostic library. GSAP runs in any framework or vanilla JS; powers Webflow Interactions.",
+   "mode": "prototype",
+   "category": "animation-motion",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "threejs",
+   "name": "Threejs",
+   "description": "Three.js skills for creating 3D elements and interactive experiences in the browser — scenes, materials, controls, and post-processing.",
+   "mode": "prototype",
+   "category": "3d-shaders",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "shader-dev",
+   "name": "Shader dev",
+   "description": "GLSL shader techniques for ray marching, fluid simulation, particle systems, and procedural generation. Useful for hero visuals and motion stills.",
+   "mode": "prototype",
+   "category": "3d-shaders",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "deck-swiss-international",
+   "name": "Swiss International Deck",
+   "emoji": "🟦",
+   "description": "16-column grid, one saturated accent, and 22 locked layouts (Klein Blue, Lemon, Mint, Safety Orange).",
+   "mode": "deck",
+   "category": "slides",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Use the Swiss International Deck template to turn my content into a 16-column-grid deck with one saturated accent and 22 locked layouts. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+   "example": true
+  },
+  {
+   "id": "deck-guizang-editorial",
+   "name": "Guizang Editorial E-Ink Deck",
+   "emoji": "🖋️",
+   "description": "Editorial magazine meets e-ink: 10 layouts and 5 palettes (Ink, Indigo Porcelain, Forest Ink, Kraft Paper, Dune).",
+   "mode": "deck",
+   "category": "slides",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Use the Guizang Editorial E-Ink Deck template to turn my content into an editorial magazine x e-ink horizontal deck with 10 layouts and 5 palettes. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+   "example": true
+  },
+  {
+   "id": "deck-open-slide-canvas",
+   "name": "Open-Slide 1920 Canvas Deck",
+   "emoji": "🎨",
+   "description": "Locked 1920x1080 canvas deck with React component-level free composition, not bound to a fixed template.",
+   "mode": "deck",
+   "category": "slides",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Use the Open-Slide 1920 Canvas Deck template to turn my content into a locked 1920x1080 free-composition deck with React component-level layout. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+   "example": true
+  },
+  {
+   "id": "ppt-keynote",
+   "name": "Keynote-style Slides",
+   "emoji": "🎬",
+   "description": "Apple Keynote-quality slides, one card per screen, with keyboard left/right navigation.",
+   "mode": "deck",
+   "category": "slides",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Use the Keynote-style Slides template to turn my content into Apple Keynote-quality slides with one card per screen and keyboard left/right navigation. Preserve the template's visual signature, use real content and data, and avoid lorem ipsum or placeholder images.",
+   "example": true
+  },
+  {
+   "id": "slides",
+   "name": "Slides",
+   "description": "Create and edit .pptx presentation decks with PptxGenJS. Useful for sales decks, kickoff briefs, and design-system showcases.",
+   "mode": "deck",
+   "category": "slides",
+   "craft": [
+    "typography"
+   ],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "frontend-slides",
+   "name": "Frontend slides",
+   "description": "Generate animation-rich HTML presentations with visual style previews. Useful for online keynotes, embedded talks, and interactive briefs.",
+   "mode": "deck",
+   "category": "slides",
+   "craft": [
+    "typography"
+   ],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "swiss-creative-mode-template",
+   "name": "Swiss creative mode template",
+   "description": "Swiss-inspired creative-mode presentation template skill with bold editorial typography, high-contrast geometric cards, interactive slide navigation, theme switching, hotspot overlays, and palette choreography in a single-file HTML artifact. Use when users ask for a premium presentation-style landing, a Swiss/brutalist deck look, or a creative launch page with rich interactions.",
+   "mode": "template",
+   "category": "",
+   "craft": [],
+   "needsSystem": true,
+   "example": true
+  },
+  {
+   "id": "field-notes-editorial-template",
+   "name": "Field notes editorial template",
+   "description": "Editorial \"Field Notes\" report template with soft paper background, serif hero typography, rounded pastel insight cards, and a retention chart panel. Use when users ask for a premium magazine-style business report, board memo one-pager, or elegant data storytelling layout.",
+   "mode": "template",
+   "category": "",
+   "craft": [],
+   "needsSystem": true,
+   "examplePrompt": "Create an editorial Field Notes style report with three insight cards, key metrics blocks, and a retention line chart in one polished single-file HTML page.",
+   "example": true
+  },
+  {
+   "id": "after-hours-editorial-template",
+   "name": "After hours editorial template",
+   "description": "Luxury dark-editorial HyperFrames template for three-page cinematic storyboards, inspired by haute couture title cards and magazine chapter spreads. Use when the user asks for premium fashion-style motion pages, moody serif-led storytelling, or a high-end dark presentation aesthetic with rich transitions.",
+   "mode": "template",
+   "category": "",
+   "craft": [],
+   "needsSystem": true,
+   "examplePrompt": "Create a three-page HyperFrames editorial sequence in a dark haute-couture style: premium serif typography, magenta accent, elegant chapter transitions, and cinematic grain. Keep each page under 3 seconds.",
+   "example": true
+  },
+  {
+   "id": "editorial-burgundy-principles-template",
+   "name": "Editorial burgundy principles template",
+   "description": "Editorial studio deck template in burgundy / blush / muted-gold palette. Use when users ask for premium manifesto or culture slides with pill tags, large typographic statements, principle cards, and guided keyboard/click navigation.",
+   "mode": "template",
+   "category": "",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Create a premium editorial deck in burgundy and blush with a tag cloud slide and an eight-principles card grid.",
+   "example": true
+  },
+  {
+   "id": "html-ppt-retro-quarterly-review",
+   "name": "Html ppt retro quarterly review",
+   "description": "Retro Quarterly Review presentation template in a bold blue + orange editorial language. Use when users ask for a high-impact quarterly review / roadmap deck with heavyweight slab headlines, clean cream paper sections, structured grids, and fast premium motion pacing (3 slides, each hold under 3s in video mode).",
+   "mode": "template",
+   "category": "",
+   "craft": [],
+   "needsSystem": false,
+   "example": true
+  },
+  {
+   "id": "digits-fintech-swiss-template",
+   "name": "Digits fintech swiss template",
+   "description": "Swiss-grid fintech deck template in black / warm paper / neon-lime contrast. Use when users ask for premium data-story slides with strict modular layout, bold numeric cards, restrained motion, and keyboard/click navigation in one HTML file.",
+   "mode": "template",
+   "category": "",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Create a Swiss-grid fintech strategy deck with modular data cards, lime accents, and clean keyboard navigation.",
+   "example": true
+  },
+  {
+   "id": "design-brief",
+   "name": "Design brief",
+   "description": "Parse a structured design brief written in I-Lang protocol format into a concrete design spec. Eliminates ambiguity from vague requests like \"make it professional\" by requiring explicit dimensions: palette, typography, layout, mood, density, and constraints. Trigger keywords: \"design brief\", \"create a design brief\", \"ilang brief\", \"structured brief\".",
+   "mode": "design-system",
+   "category": "",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "design-review",
+   "name": "Design review",
+   "description": "Designer Who Codes: visual audit then fixes with atomic commits and before/after screenshots. Useful for tightening shipped UI before launch.",
+   "mode": "design-system",
+   "category": "creative-direction",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "design-consultation",
+   "name": "Design consultation",
+   "description": "Build a complete design system from scratch with creative risks and realistic product mockups. Useful for kickoff workshops and brand-from-zero work.",
+   "mode": "design-system",
+   "category": "creative-direction",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "creative-director",
+   "name": "Creative director",
+   "description": "AI creative director with recursive self-assessment: 20+ methodologies (SIT, TRIZ, Bisociation, SCAMPER, Synectics), 3-axis evaluation calibrated against Cannes/D&AD/HumanKind, 5-phase process from brief to presentation.",
+   "mode": "design-system",
+   "category": "creative-direction",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "color-expert",
+   "name": "Color expert",
+   "description": "Color science expert skill with 286K words of reference material covering OKLCH/OKLAB, palette generation, accessibility/contrast, color naming, pigment mixing, and historical color theory.",
+   "mode": "design-system",
+   "category": "design-systems",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "design-md",
+   "name": "Design md",
+   "description": "Create and manage DESIGN.md files. Useful for capturing design direction, tokens, and visual rules in a single source of truth.",
+   "mode": "design-system",
+   "category": "design-systems",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "brainstorming",
+   "name": "Brainstorming",
+   "description": "Transform rough ideas into fully-formed designs through structured questioning and alternative exploration. Useful early in concept work.",
+   "mode": "design-system",
+   "category": "creative-direction",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "copywriting",
+   "name": "Copywriting",
+   "description": "Write and rewrite marketing copy for landing pages, homepages, and ads. Useful as a copy chief partner during launches.",
+   "mode": "design-system",
+   "category": "marketing-creative",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "web-design-guidelines",
+   "name": "Web design guidelines",
+   "description": "Review UI code for Web Interface Guidelines compliance by the Vercel engineering team. Covers layout, typography, color, motion, and accessibility for product UI.",
+   "mode": "design-system",
+   "category": "design-systems",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Review my UI code against the Vercel Web Interface Guidelines — check layout, typography, color, motion, and accessibility compliance.\n",
+   "example": false
+  },
+  {
+   "id": "writing-guidelines",
+   "name": "Writing guidelines",
+   "description": "Review docs/prose for Writing Guidelines compliance. Use when asked to \"review my docs\", \"check writing style\", \"audit prose\", \"review docs voice and tone\", or \"check this page against the writing handbook\".",
+   "mode": "prototype",
+   "category": "documentation",
+   "craft": [],
+   "needsSystem": false,
+   "examplePrompt": "Review my documentation files for compliance with the Vercel Writing Guidelines — check voice, tone, formatting, and structure.\n",
+   "example": false
+  },
+  {
+   "id": "theme-factory",
+   "name": "Theme factory",
+   "description": "Apply professional font and color themes to artifacts including slides, docs, reports, and HTML landing pages. Ships 10 pre-set themes.",
+   "mode": "design-system",
+   "category": "design-systems",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "ui-ux-pro-max",
+   "name": "Ui ux pro max",
+   "description": "Catalog-only UI/UX Pro Max entry. The full upstream templates, data, and search workflow are not bundled in OpenDesign.",
+   "mode": "design-system",
+   "category": "design-systems",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  },
+  {
+   "id": "plan-design-review",
+   "name": "Plan design review",
+   "description": "Senior Designer review: rates each design dimension 0-10, explains what a 10 looks like, and flags AI Slop signals. Useful as a gate before merging UI work.",
+   "mode": "design-system",
+   "category": "creative-direction",
+   "craft": [],
+   "needsSystem": false,
+   "example": false
+  }
+ ],
+ "craft": [
+  "accessibility-baseline",
+  "animation-discipline",
+  "anti-ai-slop",
+  "color",
+  "form-validation",
+  "laws-of-ux",
+  "rtl-and-bidi",
+  "state-coverage",
+  "typography-hierarchy-editorial",
+  "typography-hierarchy",
+  "typography"
+ ]
+}

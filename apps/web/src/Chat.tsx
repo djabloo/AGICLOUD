@@ -5,6 +5,7 @@ import { Markdown } from './markdown';
 import { Icon } from './icons';
 import { DiffStat, DiffView, diffStats } from './DiffView';
 import { ChildPanel, DelegationView, LeadChildren } from './LeadViews';
+import { DesignBar } from './DesignPreview';
 
 interface Props {
   thread: ThreadSummary;
@@ -133,6 +134,7 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
 
       {thread.lead && <LeadChildren lead={thread} threads={threads} />}
       {thread.parentId && <ChildPanel thread={thread} threads={threads} running={state.running} />}
+      {thread.design && <DesignBar thread={thread} running={state.running} />}
 
       <div className="transcript" ref={scroller} onScroll={onScroll} tabIndex={0} aria-label="Messaggi">
         {state.items.length === 0 && state.status !== 'error' && state.status !== 'auth_required' && (

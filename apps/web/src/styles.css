@@ -2397,3 +2397,84 @@ legend {
 .child-message:empty {
   display: none;
 }
+
+/* ── Plugin Design ───────────────────────────────────────────────────────── */
+.design-choice {
+  display: grid;
+  gap: 8px;
+}
+.design-choice label {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+}
+.design-choice select,
+.design-tools select {
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+}
+.design-choice .hint {
+  margin: 0;
+  font-weight: 400;
+}
+.design-bar {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.design-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 16px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.design-toggle .hint {
+  overflow: hidden;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.design-toggle[aria-expanded='true'] {
+  border-bottom: 1px solid var(--border);
+}
+.design-panel {
+  display: grid;
+  gap: 8px;
+  padding: 8px 16px 12px;
+}
+.design-panel > .hint,
+.design-panel .form-error {
+  margin: 0;
+}
+.design-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.design-frame {
+  width: 100%;
+  height: min(60vh, 640px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+@media (max-width: 700px) {
+  .design-frame {
+    height: 45dvh;
+  }
+}

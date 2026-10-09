@@ -21,6 +21,8 @@ import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
 import { attachTerminalSockets } from './terminal-socket.js';
 import { LeadManager } from './lead.js';
+import { registerDesign } from './design.js';
+import { normalizeChoice } from '@agicloud/design';
 
 const settings = new Settings();
 const store = new ThreadStore(settings);
@@ -102,6 +104,9 @@ app.onError((err, c) => {
   return c.json({ error: 'Errore interno' }, 500);
 });
 
+// Plugin Design: catalogo (/api/design, col token) e anteprime (/preview, col token dell'anteprima)
+registerDesign(app);
+
 // ── API ──────────────────────────────────────────────────────────────────────
 app.get('/api/session', (c) => c.json({ ok: true, authRequired: Boolean(config.authToken) }));
 
@@ -125,7 +130,13 @@ app.patch('/api/threads/:id', async (c) => {
 
 app.post('/api/threads', async (c) => {
   const body = await jsonBody(c);
-  const thread = store.create(String(body.agentId ?? ''), String(body.cwd ?? ''), { lead: body.lead === true });
+  let design;
+  try {
+    design = normalizeChoice(body.design) ?? undefined;
+  } catch (err) {
+    throw new HttpError(400, err instanceof Error ? err.message : String(err));
+  }
+  const thread = store.create(String(body.agentId ?? ''), String(body.cwd ?? ''), { lead: body.lead === true, design });
   return c.json(thread.summary(), 201);
 });
 
