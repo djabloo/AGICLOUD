@@ -286,6 +286,30 @@ export default async function ({ page }) {
   await page.setViewport({ width: 1366, height: 860 });
   out.steps.push('capo ok');
 
+  // Sessione di design: sta nella sezione Design (elenco a sinistra), non tra le conversazioni
+  const designId = await page.evaluate(async () => {
+    const h = { authorization: 'Bearer ' + localStorage.getItem('agicloud_token'), 'content-type': 'application/json' };
+    const cat = await (await fetch('/api/design/catalog', { headers: h })).json();
+    const r = await fetch('/api/threads', {
+      method: 'POST',
+      headers: h,
+      body: JSON.stringify({ agentId: 'demo', cwd: '/tmp/proj/demo', design: { skill: cat.skills[0].id, system: cat.systems[0].id } }),
+    });
+    return (await r.json()).id;
+  });
+  await page.goto(BASE + '#/t/' + designId, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction((id) => location.hash === '#/design/t/' + id, { timeout: 10000 }, designId);
+  await page.waitForSelector('.chat');
+  out.designInDesignList = await page.evaluate((id) => Boolean(document.querySelector('.sidebar [data-thread="' + id + '"]')), designId);
+  await shot('design-session');
+  await runAxe('design-session');
+  await page.goto(BASE + '#/', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.welcome, .chat');
+  await new Promise((r) => setTimeout(r, 500));
+  await page.waitForSelector('.sidebar .thread-row');
+  out.designInChatList = await page.evaluate((id) => Boolean(document.querySelector('.sidebar [data-thread="' + id + '"]')), designId);
+  out.steps.push('design ok');
+
   // File: crea, modifica, salva, anteprima
   await page.setViewport({ width: 1366, height: 860 });
   page.on('dialog', (d) => (d.type() === 'prompt' ? d.accept('nota.md') : d.accept()));

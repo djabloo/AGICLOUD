@@ -37,7 +37,9 @@ function routeFromHash(): Route {
   if (settings) return { section: 'settings', id: settings[1] ?? null };
   const files = location.hash.match(/^#\/files(?:\/(.+))?$/);
   if (files) return { section: 'files', id: files[1] ? decodeURIComponent(files[1]) : null };
-  if (/^#\/design\/?$/.test(location.hash)) return { section: 'design', id: null };
+  // #/design = galleria, #/design/t/<id> = una sessione di design
+  const design = location.hash.match(/^#\/design(?:\/t\/([\w-]+))?\/?$/);
+  if (design) return { section: 'design', id: design[1] ?? null };
   return { section: 'chat', id: null };
 }
 
@@ -45,7 +47,7 @@ function hashFor(r: Route): string {
   if (r.section === 'terminal') return r.id ? `#/term/${r.id}` : '#/term';
   if (r.section === 'settings') return r.id ? `#/settings/${r.id}` : '#/settings';
   if (r.section === 'files') return r.id ? `#/files/${encodeURIComponent(r.id)}` : '#/files';
-  if (r.section === 'design') return '#/design';
+  if (r.section === 'design') return r.id ? `#/design/t/${r.id}` : '#/design';
   return r.id ? `#/t/${r.id}` : '';
 }
 
@@ -101,6 +103,16 @@ export function App() {
     return () => clearInterval(t);
   }, [auth]);
 
+  // Link vecchi o notifiche (#/t/<id>) di una sessione di design: si apre nella sezione Design
+  useEffect(() => {
+    if (route.section !== 'chat' || !route.id) return;
+    const t = threads.find((x) => x.id === route.id);
+    if (t?.design) {
+      history.replaceState(null, '', hashFor({ section: 'design', id: t.id }));
+      setRoute({ section: 'design', id: t.id });
+    }
+  }, [route, threads]);
+
   useEffect(() => {
     const onHash = () => setRoute(routeFromHash());
     window.addEventListener('hashchange', onHash);
@@ -152,7 +164,7 @@ export function App() {
       const t = await api.createThread(agentId, cwd, lead, design);
       setThreads((ts) => [t, ...ts]);
       closeDialog();
-      go({ section: 'chat', id: t.id });
+      go({ section: t.design ? 'design' : 'chat', id: t.id });
     } catch (err) {
       setDialogError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -178,7 +190,7 @@ export function App() {
   const removeThread = async (id: string) => {
     await api.deleteThread(id).catch(() => {});
     setThreads((ts) => ts.filter((t) => t.id !== id));
-    if (route.id === id) go({ section: 'chat', id: null });
+    if (route.id === id) go({ section: route.section === 'design' ? 'design' : 'chat', id: null });
   };
 
   const removeTerminal = async (id: string) => {
@@ -205,7 +217,11 @@ export function App() {
   const inSettings = route.section === 'settings';
   const inFiles = route.section === 'files';
   const inDesign = route.section === 'design';
-  const activeThread = route.section === 'chat' ? (threads.find((t) => t.id === route.id) ?? null) : null;
+  const activeThread =
+    route.section === 'chat' || route.section === 'design' ? (threads.find((t) => t.id === route.id) ?? null) : null;
+  // Le sessioni di design stanno nella sezione Design, le altre in Chat
+  const designThreads = threads.filter((t) => t.design);
+  const chatThreads = threads.filter((t) => !t.design);
   const activeTerminal = inTerminals ? (terminals.find((t) => t.id === route.id) ?? null) : null;
   const agentLabel = (id: string) => agents.find((a) => a.id === id)?.label ?? id;
   const newLabel = inTerminals ? 'Nuovo terminale' : 'Nuova conversazione';
@@ -264,6 +280,33 @@ export function App() {
           </ul>
         </nav>
 
+        {inDesign && (
+          <>
+            <button
+              type="button"
+              className="btn primary new-btn"
+              aria-current={route.id === null ? 'page' : undefined}
+              onClick={() => go({ section: 'design', id: null })}
+            >
+              <Icon name="plus" />
+              <span>Nuova sessione di design</span>
+            </button>
+            {designThreads.length === 0 ? (
+              <p className="sidebar-empty">Nessuna sessione di design: scegli uno stile nella galleria e premi Prova</p>
+            ) : (
+              <ThreadList
+                threads={designThreads}
+                title="Sessioni di design"
+                activeId={route.id}
+                agentLabel={agentLabel}
+                onSelect={(tid) => go({ section: 'design', id: tid })}
+                onChanged={(t) => setThreads((ts) => ts.map((x) => (x.id === t.id ? t : x)))}
+                onDelete={(tid) => void removeThread(tid)}
+              />
+            )}
+          </>
+        )}
+
         {!inSettings && !inFiles && !inDesign && (
           <button type="button" className="btn primary new-btn" onClick={openNew}>
             <Icon name="plus" />
@@ -302,7 +345,7 @@ export function App() {
         ) : (
           <>
             <ThreadList
-              threads={threads}
+              threads={chatThreads}
               activeId={route.section === 'chat' ? route.id : null}
               agentLabel={agentLabel}
               onSelect={(tid) => go({ section: 'chat', id: tid })}
@@ -318,7 +361,7 @@ export function App() {
       <main id="main" className="main" tabIndex={-1} inert={drawerOpen || undefined}>
         {inFiles ? (
           <FilesView path={route.id} onNavigate={(p) => go({ section: 'files', id: p })} />
-        ) : inDesign ? (
+        ) : inDesign && !activeThread ? (
           <DesignView
             onTry={(choice) => {
               setDesignPreset(choice);

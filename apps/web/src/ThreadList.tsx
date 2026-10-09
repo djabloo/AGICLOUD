@@ -18,10 +18,12 @@ interface Props {
   onSelect: (id: string) => void;
   onChanged: (t: ThreadSummary) => void;
   onDelete: (id: string) => void;
+  /** Titolo dell'elenco principale (es. "Sessioni di design") */
+  title?: string;
 }
 
 /** Lista conversazioni: ricerca (titoli + testo), fissate in cima, archiviate a parte */
-export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged, onDelete }: Props) {
+export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged, onDelete, title = 'Conversazioni' }: Props) {
   const id = useId();
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<SearchHit[] | null>(null);
@@ -147,7 +149,7 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
             </>
           )}
           <h2 className="sidebar-title" id={`${id}-rec`}>
-            Conversazioni
+            {title}
           </h2>
           {recent.length === 0 ? (
             <p className="sidebar-empty">Nessuna conversazione recente</p>
@@ -280,7 +282,7 @@ function ThreadRow({
   }
 
   return (
-    <li className={`thread-row${nested ? ' has-children' : ''}${t.parentId ? ' is-child' : ''}`}>
+    <li className={`thread-row${nested ? ' has-children' : ''}${t.parentId ? ' is-child' : ''}`} data-thread={t.id}>
       <button type="button" className="thread-btn" aria-current={active ? 'page' : undefined} onClick={onSelect}>
         <span className="thread-title">
           {t.pinned && (
