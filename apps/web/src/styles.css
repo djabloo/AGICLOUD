@@ -2605,3 +2605,149 @@ legend {
   margin: 0;
   accent-color: var(--accent);
 }
+
+/* ── Plugin PII ──────────────────────────────────────────────────────────── */
+.pii {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pii-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 16px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+.pii-card {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.pii-card h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.pii-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.pii-mode legend {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.pii-field {
+  display: grid;
+  gap: 6px;
+}
+.pii-tags summary,
+.pii-decode summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: 600;
+}
+.pii-tag-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: 6px 12px;
+}
+.pii-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-weight: 400;
+}
+.pii-tag input {
+  width: 18px;
+  min-height: 18px;
+  accent-color: var(--accent);
+}
+.pii-msg-wrap:empty {
+  display: none;
+}
+.pii-msg {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-weight: 600;
+}
+.pii-msg-ok {
+  border-color: var(--ok);
+}
+.pii-msg-warn {
+  border-color: var(--warn);
+}
+.pii-msg-err {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.pii-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pii-views [aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.pii-out {
+  margin: 0;
+  max-height: 50vh;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+}
+.pii-marked mark {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: var(--accent-soft);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.pii-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pii-table th,
+.pii-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.pii-pages {
+  display: grid;
+  gap: 12px;
+}
+.pii-pages img {
+  width: 100%;
+  max-width: 800px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+.pii-credit {
+  text-align: center;
+}

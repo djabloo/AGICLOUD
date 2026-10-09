@@ -103,7 +103,8 @@ Funzioni facoltative (`apps/server/src/plugins.ts`): Impostazioni → Plugin con
 - Ogni plugin ha un manifest (nome, versione, descrizione, sezione del menu, crediti, cosa serve sul server, prefissi delle route) e ganci facoltativi `install`/`uninstall`/`health`.
 - A plugin spento le sue route rispondono 404, la sezione sparisce dal menu e le sue opzioni dai dialoghi.
 - Oggi il codice dei plugin sta nella repo (`source: 'builtin'`); in SaaS il catalogo dira' da dove scaricarli, il resto non cambia.
-- Plugin: **Design** (gia' in uso, resta attivo). In arrivo: PII, Browser condiviso, Verdict.
+- Plugin: **Design** (gia' in uso, resta attivo), **PII**. In arrivo: Browser condiviso, Verdict.
+- **PII** (`apps/server/src/pii.ts`, `apps/web/src/PiiView.tsx`): motore Rizzo-PII locale (`RIZZO_PII_URL`, default `127.0.0.1:5005`, container `rizzo-pii`). `/api/pii/engine/*` passa al motore solo gli endpoint in elenco (analyze, pdf, pdf/preview, pagine, file; niente impostazioni globali). Testo o documento (PDF/TXT/MD), categorie da lasciare in chiaro, PDF redatto con anteprima delle pagine, dizionario reversibile solo nel browser (`localStorage`), decodifica, "Salva per l'agente" in `<progetto>/pii-clean/` (il testo viene rianalizzato sul server senza dizionario; il PDF e' quello gia' redatto dal motore). Installare = controllare che il motore risponda.
 
 ## Capo e thread affidati
 

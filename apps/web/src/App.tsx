@@ -9,10 +9,11 @@ import { SettingsView } from './SettingsView';
 import { ThreadList } from './ThreadList';
 import { FilesView } from './FilesView';
 import { DesignView } from './DesignView';
+import { PiiView } from './PiiView';
 import { Icon, type IconName } from './icons';
 
 type Auth = 'checking' | 'ok' | 'needed';
-type Section = 'chat' | 'terminal' | 'files' | 'design' | 'settings';
+type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'settings';
 
 interface Route {
   section: Section;
@@ -25,6 +26,7 @@ const SECTIONS: { id: Section; label: string; icon: IconName; ready: boolean; pl
   { id: 'terminal', label: 'Terminale', icon: 'terminal', ready: true },
   { id: 'files', label: 'File', icon: 'files', ready: true },
   { id: 'design', label: 'Design', icon: 'design', ready: true, plugin: 'design' },
+  { id: 'pii', label: 'PII', icon: 'shield', ready: true, plugin: 'pii' },
   { id: 'settings', label: 'Impostazioni', icon: 'settings', ready: true },
 ];
 
@@ -38,6 +40,7 @@ function routeFromHash(): Route {
   if (settings) return { section: 'settings', id: settings[1] ?? null };
   const files = location.hash.match(/^#\/files(?:\/(.+))?$/);
   if (files) return { section: 'files', id: files[1] ? decodeURIComponent(files[1]) : null };
+  if (/^#\/pii\/?$/.test(location.hash)) return { section: 'pii', id: null };
   // #/design = galleria, #/design/t/<id> = una sessione di design
   const design = location.hash.match(/^#\/design(?:\/t\/([\w-]+))?\/?$/);
   if (design) return { section: 'design', id: design[1] ?? null };
@@ -48,6 +51,7 @@ function hashFor(r: Route): string {
   if (r.section === 'terminal') return r.id ? `#/term/${r.id}` : '#/term';
   if (r.section === 'settings') return r.id ? `#/settings/${r.id}` : '#/settings';
   if (r.section === 'files') return r.id ? `#/files/${encodeURIComponent(r.id)}` : '#/files';
+  if (r.section === 'pii') return '#/pii';
   if (r.section === 'design') return r.id ? `#/design/t/${r.id}` : '#/design';
   return r.id ? `#/t/${r.id}` : '';
 }
@@ -221,6 +225,7 @@ export function App() {
   const inSettings = route.section === 'settings';
   const inFiles = route.section === 'files';
   const inDesign = route.section === 'design';
+  const inPii = route.section === 'pii';
   const activeThread =
     route.section === 'chat' || route.section === 'design' ? (threads.find((t) => t.id === route.id) ?? null) : null;
   // Le sessioni di design stanno nella sezione Design, le altre in Chat
@@ -311,14 +316,14 @@ export function App() {
           </>
         )}
 
-        {!inSettings && !inFiles && !inDesign && (
+        {!inSettings && !inFiles && !inDesign && !inPii && (
           <button type="button" className="btn primary new-btn" onClick={openNew}>
             <Icon name="plus" />
             <span>{newLabel}</span>
           </button>
         )}
 
-        {inSettings || inFiles || inDesign ? null : inTerminals ? (
+        {inSettings || inFiles || inDesign || inPii ? null : inTerminals ? (
           <>
             <h2 className="sidebar-title" id="list-title">
               Terminali
@@ -365,6 +370,17 @@ export function App() {
       <main id="main" className="main" tabIndex={-1} inert={drawerOpen || undefined}>
         {inFiles ? (
           <FilesView path={route.id} onNavigate={(p) => go({ section: 'files', id: p })} />
+        ) : inPii ? (
+          pluginOn('pii') ? (
+            <PiiView />
+          ) : (
+            <section className="welcome" aria-labelledby="welcome-title">
+              <h1 id="welcome-title">PII non attivo</h1>
+              <p>
+                Il plugin PII e' spento o non installato. Puoi attivarlo in <a href="#/settings/plugin">Impostazioni → Plugin</a>.
+              </p>
+            </section>
+          )
         ) : inDesign && !pluginOn('design') ? (
           <section className="welcome" aria-labelledby="welcome-title">
             <h1 id="welcome-title">Design non attivo</h1>

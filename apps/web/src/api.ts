@@ -215,6 +215,48 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return res.status === 204 ? (undefined as T) : res.json();
 }
 
+/** Come request(), ma con corpo e risposta liberi (multipart, file binari) */
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const res = await fetch(`/api${path}`, {
+    ...init,
+    headers: { ...(memoryToken ? { authorization: `Bearer ${memoryToken}` } : {}), ...(init.headers as Record<string, string> | undefined) },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, data.error ?? data.detail ?? `Errore ${res.status}`);
+  }
+  return res;
+}
+
+export interface PiiTag {
+  tag: string;
+  it: string;
+  example: string;
+}
+
+export interface PiiSegment {
+  t: string;
+  label?: string;
+  ph?: string;
+}
+
+export interface PiiResult {
+  anonymized_text: string;
+  n_entities: number;
+  n_unique: number;
+  by_label: Record<string, number>;
+  mapping?: Record<string, string>;
+  segments: PiiSegment[];
+}
+
+export interface PiiPdf {
+  doc_id: string;
+  n_pages: number;
+  redactions: number;
+  residual?: number;
+  filename?: string;
+}
+
 export const api = {
   session: () => request<{ ok: boolean }>('GET', '/session'),
   agents: () => request<AgentInfo[]>('GET', '/agents'),
@@ -226,6 +268,33 @@ export const api = {
   searchThreads: (q: string) => request<SearchHit[]>('GET', `/threads/search?q=${encodeURIComponent(q)}`),
   createThread: (agentId: string, cwd: string, lead = false, design: DesignChoice | null = null) =>
     request<ThreadSummary>('POST', '/threads', { agentId, cwd, lead, design }),
+  piiTags: async () => ((await (await apiFetch('/pii/engine/settings')).json()) as { tags: PiiTag[] }).tags,
+  piiAnalyze: async (input: { text: string } | { file: File }, exclude: string[], mapping: boolean): Promise<PiiResult> => {
+    if ('text' in input) {
+      const res = await apiFetch('/pii/engine/analyze', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: input.text, exclude_tags: exclude, include_mapping: mapping }),
+      });
+      return res.json();
+    }
+    const fd = new FormData();
+    fd.append('file', input.file, input.file.name);
+    if (exclude.length) fd.append('exclude_tags', exclude.join(','));
+    fd.append('include_mapping', mapping ? '1' : '0');
+    return (await apiFetch('/pii/engine/analyze', { method: 'POST', body: fd })).json();
+  },
+  piiPdfPreview: async (file: File, exclude: string[]): Promise<PiiPdf> => {
+    const fd = new FormData();
+    fd.append('pdf', file, file.name);
+    if (exclude.length) fd.append('exclude_tags', exclude.join(','));
+    fd.append('include_mapping', '0');
+    return (await apiFetch('/pii/engine/pdf/preview', { method: 'POST', body: fd })).json();
+  },
+  piiPage: async (docId: string, page: number) => (await apiFetch(`/pii/engine/doc/${docId}/page/${page}.png`)).blob(),
+  piiDocFile: async (docId: string) => (await apiFetch(`/pii/engine/doc/${docId}/file.pdf`)).blob(),
+  piiSave: (body: { project: string; name: string; exclude_tags: string[]; text?: string; doc_id?: string }) =>
+    request<{ path: string; abs: string; size: number }>('POST', '/pii/save', body),
   plugins: () => request<PluginInfo[]>('GET', '/plugins'),
   installPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/install`),
   uninstallPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/uninstall`),

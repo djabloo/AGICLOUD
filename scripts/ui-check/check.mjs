@@ -210,6 +210,28 @@ export default async function ({ page }) {
   await page.click('.plugin-card .switch input');
   await page.waitForFunction(() => [...document.querySelectorAll('.section-btn')].some((b) => b.textContent.includes('Design')), { timeout: 5000 });
   out.pluginToggle = 'ok';
+  // PII: installazione (controlla il motore), anonimizzazione di un testo, dati trovati
+  await page.waitForSelector('.plugin-card');
+  const piiInstall = await page.evaluateHandle(() => [...document.querySelectorAll('.plugin-card')].find((c) => c.querySelector('h3').textContent === 'PII')?.querySelector('.btn.primary'));
+  await piiInstall.click();
+  await page.waitForFunction(() => [...document.querySelectorAll('.section-btn')].some((b) => b.textContent.includes('PII')), { timeout: 15000 });
+  await page.goto(BASE + '#/pii', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.pii textarea');
+  await page.type('.pii textarea', 'Mario Rossi, codice fiscale RSSMRA80A01H501U, scrive da mario.rossi@example.com');
+  await page.click('.pii .btn.primary');
+  await page.waitForSelector('.pii-out', { timeout: 60000 });
+  out.piiText = await page.$eval('.pii-out', (e) => e.textContent);
+  await page.click('.pii-views .btn:nth-child(3)');
+  await page.waitForSelector('.pii-table');
+  await shot('pii');
+  await runAxe('pii');
+  await page.$eval('.pii input.mono-input', (el) => { el.value = ''; });
+  await page.type('.pii input.mono-input', '/tmp/proj/demo');
+  await page.evaluate(() => [...document.querySelectorAll('.pii .btn.primary')].find((b) => b.textContent.includes('pii-clean')).click());
+  await page.waitForFunction(() => document.querySelector('.pii-msg')?.textContent.includes('Salvato in pii-clean/'), { timeout: 30000 });
+  out.piiSaved = await page.$eval('.pii-msg', (e) => e.textContent);
+  await page.goto(BASE + '#/settings', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.agent-card');
   out.steps.push('impostazioni ok');
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   await page.goto(BASE + '#/settings', { waitUntil: 'domcontentloaded' });
