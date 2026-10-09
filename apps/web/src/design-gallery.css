@@ -1,0 +1,281 @@
+/* Galleria della sezione Design: schede, filtri, miniature e dialogo dei dettagli.
+   Usa le variabili del tema di styles.css (--surface, --border, --accent...) per restare
+   leggibile chiaro e scuro, e le classi .btn / .hint / .form-error gia' definite li'. */
+
+.design-gallery {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.design-head {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px 12px;
+}
+.design-head h1 {
+  margin: 0 0 6px;
+}
+.design-head p {
+  margin: 0;
+  color: var(--text-muted);
+}
+.design-head .form-error {
+  margin-top: 10px;
+}
+
+.design-body {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ── Schede (tablist) ─────────────────────────────────────────────────────── */
+.gal-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.gal-tab {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.gal-tab:hover {
+  background: var(--surface-2);
+}
+/* Selezione segnalata anche dalla barra inferiore, non solo dal colore */
+.gal-tab[aria-selected='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: inset 0 -3px 0 0 var(--accent);
+}
+
+/* ── Ricerca e filtro ─────────────────────────────────────────────────────── */
+.gal-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.gal-filters {
+  flex: 1 1 320px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .gal-filters {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+.gal-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.gal-field select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.gal-count {
+  margin: 0 0 6px;
+  white-space: nowrap;
+}
+
+.gal-panel {
+  min-width: 0;
+}
+.gal-panel:focus-visible {
+  outline-offset: 4px;
+}
+
+/* ── Griglia delle schede ─────────────────────────────────────────────────── */
+.gal-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 16px;
+}
+.gal-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: border-color 0.15s ease;
+}
+.gal-card:hover {
+  border-color: var(--accent);
+}
+
+/* Miniatura: la pagina e' renderizzata a 4x e rimpicciolita a un quarto, quindi
+   entra in una cella qualsiasi senza calcoli in JavaScript */
+.gal-thumb {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #ffffff; /* le pagine di Open Design sono a tema chiaro */
+  border-bottom: 1px solid var(--border);
+}
+.gal-thumb .hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 8px;
+  text-align: center;
+}
+.gal-thumb-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 400%;
+  height: 400%;
+  border: 0;
+  transform: scale(0.25);
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+.gal-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+}
+.gal-name {
+  margin: 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+.gal-emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.gal-cat {
+  justify-self: start;
+  margin: 0;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.gal-desc {
+  margin: 0;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.gal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+.gal-actions .btn {
+  flex: 1 1 120px;
+}
+
+/* ── Stato vuoto e credito ────────────────────────────────────────────────── */
+.gal-empty {
+  margin: 0;
+  padding: 28px 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  text-align: center;
+}
+.gal-credit {
+  margin: 6px 0 0;
+  text-align: center;
+}
+.gal-credit a {
+  color: var(--accent);
+}
+
+/* ── Dialogo dei dettagli ─────────────────────────────────────────────────── */
+.dialog.gal-dialog {
+  width: min(100% - 24px, 880px);
+}
+.gal-detail {
+  display: grid;
+  gap: 12px;
+  max-height: calc(100dvh - 48px);
+  padding: 20px;
+  overflow-y: auto;
+}
+.gal-detail h2,
+.gal-detail > p {
+  margin: 0;
+}
+.gal-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gal-frame {
+  width: 100%;
+  height: min(56vh, 520px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+@media (max-width: 640px) {
+  .gal-frame {
+    height: 42dvh;
+  }
+}
+
+/* ── Preferenze utente ────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .gal-tab,
+  .gal-card {
+    transition: none;
+  }
+}
