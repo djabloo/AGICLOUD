@@ -97,6 +97,14 @@ Ogni terminale ha un **custode** (`apps/server/src/term-host.ts`): un processo s
 - Login di Claude: le shell partono con `apps/server/terminal.bashrc` (carica `.profile`/`.bashrc` e poi toglie `CLAUDE_CODE_OAUTH_TOKEN`), così `claude` nel terminale usa il login dell'account (claude.ai, Pro) come la chat. Il token resta in `~/.bashrc` perché serve al webhook-server (N8N-BUILDER).
 - All'avvio il server toglie dal proprio ambiente (ereditato da custodi e shell) le variabili di una sessione Claude Code "madre" (`CLAUDECODE`, `CLAUDE_CODE_*`…), ereditate se lo si avvia da dentro Claude Code.
 
+## Plugin
+
+Funzioni facoltative (`apps/server/src/plugins.ts`): Impostazioni → Plugin con Installa, interruttore Attivo/Spento, Disinstalla. Stato in `data/plugins.json`.
+- Ogni plugin ha un manifest (nome, versione, descrizione, sezione del menu, crediti, cosa serve sul server, prefissi delle route) e ganci facoltativi `install`/`uninstall`/`health`.
+- A plugin spento le sue route rispondono 404, la sezione sparisce dal menu e le sue opzioni dai dialoghi.
+- Oggi il codice dei plugin sta nella repo (`source: 'builtin'`); in SaaS il catalogo dira' da dove scaricarli, il resto non cambia.
+- Plugin: **Design** (gia' in uso, resta attivo). In arrivo: PII, Browser condiviso, Verdict.
+
 ## Capo e thread affidati
 
 Una conversazione **capo** (Claude Code, spunta "Conversazione capo" nel dialogo) puo' affidare compiti ad altri agenti. Scelte di l'utente (2026-10-09): il capo **chiede prima** ogni delega, ogni thread lavora in una **copia separata**, a fine thread **il capo riassume**.

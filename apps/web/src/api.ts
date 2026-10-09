@@ -9,6 +9,20 @@ export interface AgentInfo {
   note?: string;
 }
 
+export interface PluginInfo {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  section: { id: string; label: string } | null;
+  credits: { text: string; url: string } | null;
+  requires: string | null;
+  source: string;
+  installed: boolean;
+  enabled: boolean;
+  health: { ok: boolean; detail: string } | null;
+}
+
 export type ThreadStatus = 'idle' | 'starting' | 'ready' | 'running' | 'auth_required' | 'error';
 
 export interface ThreadSummary {
@@ -212,6 +226,10 @@ export const api = {
   searchThreads: (q: string) => request<SearchHit[]>('GET', `/threads/search?q=${encodeURIComponent(q)}`),
   createThread: (agentId: string, cwd: string, lead = false, design: DesignChoice | null = null) =>
     request<ThreadSummary>('POST', '/threads', { agentId, cwd, lead, design }),
+  plugins: () => request<PluginInfo[]>('GET', '/plugins'),
+  installPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/install`),
+  uninstallPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/uninstall`),
+  setPluginEnabled: (id: string, enabled: boolean) => request<PluginInfo[]>('POST', `/plugins/${id}/enabled`, { enabled }),
   designCatalog: () => request<DesignCatalog>('GET', '/design/catalog'),
   /** URL di anteprima (sandbox, scade dopo qualche ora) per una cartella di progetto o un elemento del catalogo */
   designPreview: (target: { dir: string } | { system: string } | { skill: string }) =>

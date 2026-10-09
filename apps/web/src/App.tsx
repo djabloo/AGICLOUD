@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, ApiError, getToken, setToken, type AgentInfo, type DesignChoice, type TerminalSummary, type ThreadSummary } from './api';
+import { api, ApiError, getToken, setToken, type AgentInfo, type DesignChoice, type PluginInfo, type TerminalSummary, type ThreadSummary } from './api';
 import { Chat } from './Chat';
 import { Login } from './Login';
 import { NewThreadDialog } from './NewThread';
@@ -19,11 +19,12 @@ interface Route {
   id: string | null;
 }
 
-const SECTIONS: { id: Section; label: string; icon: IconName; ready: boolean }[] = [
+/** plugin: la sezione compare solo se il plugin e' installato e attivo */
+const SECTIONS: { id: Section; label: string; icon: IconName; ready: boolean; plugin?: string }[] = [
   { id: 'chat', label: 'Chat', icon: 'chat', ready: true },
   { id: 'terminal', label: 'Terminale', icon: 'terminal', ready: true },
   { id: 'files', label: 'File', icon: 'files', ready: true },
-  { id: 'design', label: 'Design', icon: 'design', ready: true },
+  { id: 'design', label: 'Design', icon: 'design', ready: true, plugin: 'design' },
   { id: 'settings', label: 'Impostazioni', icon: 'settings', ready: true },
 ];
 
@@ -55,6 +56,8 @@ export function App() {
   const [auth, setAuth] = useState<Auth>('checking');
   const [authError, setAuthError] = useState<string>();
   const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [plugins, setPlugins] = useState<PluginInfo[]>([]);
+  const pluginOn = (id: string) => plugins.some((p) => p.id === id && p.enabled);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [terminals, setTerminals] = useState<TerminalSummary[]>([]);
   const [route, setRoute] = useState<Route>(routeFromHash);
@@ -70,8 +73,9 @@ export function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [a, t, term] = await Promise.all([api.agents(), api.threads(), api.terminals()]);
+      const [a, t, term, pl] = await Promise.all([api.agents(), api.threads(), api.terminals(), api.plugins()]);
       setAgents(a);
+      setPlugins(pl);
       setThreads(t);
       setTerminals(term);
       setAuth('ok');
@@ -262,7 +266,7 @@ export function App() {
 
         <nav aria-label="Sezioni">
           <ul className="sections">
-            {SECTIONS.map((s) => (
+            {SECTIONS.filter((s) => !s.plugin || pluginOn(s.plugin)).map((s) => (
               <li key={s.id}>
                 <button
                   type="button"
@@ -361,6 +365,13 @@ export function App() {
       <main id="main" className="main" tabIndex={-1} inert={drawerOpen || undefined}>
         {inFiles ? (
           <FilesView path={route.id} onNavigate={(p) => go({ section: 'files', id: p })} />
+        ) : inDesign && !pluginOn('design') ? (
+          <section className="welcome" aria-labelledby="welcome-title">
+            <h1 id="welcome-title">Design non attivo</h1>
+            <p>
+              Il plugin Design e' spento o non installato. Puoi attivarlo in <a href="#/settings/plugin">Impostazioni → Plugin</a>.
+            </p>
+          </section>
         ) : inDesign && !activeThread ? (
           <DesignView
             onTry={(choice) => {
@@ -371,6 +382,7 @@ export function App() {
         ) : inSettings ? (
           <SettingsView
             page={route.id}
+            onPluginsChanged={setPlugins}
             onOpenTerminal={(t) => {
               setTerminals((ts) => [t, ...ts]);
               go({ section: 'terminal', id: t.id });
@@ -432,6 +444,7 @@ export function App() {
         error={dialogError}
         busy={creating}
         preset={designPreset}
+        designEnabled={pluginOn('design')}
         onClose={closeDialog}
         onCreate={createThread}
       />

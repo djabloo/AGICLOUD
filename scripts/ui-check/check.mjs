@@ -200,6 +200,16 @@ export default async function ({ page }) {
   await runAxe('settings-theme');
   await page.click('.choice input[value=system]');
   out.themeReset = await page.evaluate(() => document.documentElement.dataset.theme ?? 'system');
+  // Plugin: spegnendo Design la sua sezione sparisce dal menu, riaccendendolo torna
+  await page.click('.settings-nav a[href="#/settings/plugin"]');
+  await page.waitForSelector('.plugin-card .switch input');
+  await shot('settings-plugins');
+  await runAxe('settings-plugins');
+  await page.click('.plugin-card .switch input');
+  await page.waitForFunction(() => ![...document.querySelectorAll('.section-btn')].some((b) => b.textContent.includes('Design')), { timeout: 5000 });
+  await page.click('.plugin-card .switch input');
+  await page.waitForFunction(() => [...document.querySelectorAll('.section-btn')].some((b) => b.textContent.includes('Design')), { timeout: 5000 });
+  out.pluginToggle = 'ok';
   out.steps.push('impostazioni ok');
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   await page.goto(BASE + '#/settings', { waitUntil: 'domcontentloaded' });

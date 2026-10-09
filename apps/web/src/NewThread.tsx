@@ -10,6 +10,8 @@ interface Props {
   busy: boolean;
   /** Skill/design system gia' scelti (es. "Prova" dalla galleria Design) */
   preset?: DesignChoice | null;
+  /** Plugin Design attivo: si puo' scegliere una conversazione di design */
+  designEnabled?: boolean;
   onClose: () => void;
   onCreate: (agentId: string, cwd: string, lead: boolean, design: DesignChoice | null) => void;
 }
@@ -25,7 +27,7 @@ function lastAgent(): string {
 }
 
 /** Dialogo nativo: trappola del focus, Esc e ritorno del focus li gestisce il browser */
-export function NewThreadDialog({ open, agents, error, busy, preset, onClose, onCreate }: Props) {
+export function NewThreadDialog({ open, agents, error, busy, preset, designEnabled = true, onClose, onCreate }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   const [agentId, setAgentId] = useState('');
@@ -79,7 +81,7 @@ export function NewThreadDialog({ open, agents, error, busy, preset, onClose, on
     } catch {
       /* solo una comodita' */
     }
-    onCreate(agentId, cwd.trim(), canLead && lead, designOn && (skill || system) ? { skill: skill || undefined, system: system || undefined } : null);
+    onCreate(agentId, cwd.trim(), canLead && lead, designEnabled && designOn && (skill || system) ? { skill: skill || undefined, system: system || undefined } : null);
   };
 
   return (
@@ -118,6 +120,7 @@ export function NewThreadDialog({ open, agents, error, busy, preset, onClose, on
           </label>
         )}
 
+        {designEnabled && (
         <label className="choice">
           <input type="checkbox" checked={designOn} onChange={(e) => setDesignOn(e.target.checked)} aria-describedby={`${id}-design-hint`} />
           <span className="choice-text">
@@ -127,8 +130,9 @@ export function NewThreadDialog({ open, agents, error, busy, preset, onClose, on
             </span>
           </span>
         </label>
+        )}
 
-        {designOn && <DesignFields catalog={catalog} error={catalogError} skill={skill} system={system} onSkill={setSkill} onSystem={setSystem} />}
+        {designEnabled && designOn && <DesignFields catalog={catalog} error={catalogError} skill={skill} system={system} onSkill={setSkill} onSystem={setSystem} />}
 
         <ProjectPicker active={open} cwd={cwd} onChange={setCwd} />
 

@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { api, setToken, type AgentStatus, type GeneralSettings, type TerminalSummary } from './api';
+import { api, setToken, type AgentStatus, type GeneralSettings, type PluginInfo, type TerminalSummary } from './api';
 import type { ConfigOption } from './transcript';
 import { Icon } from './icons';
 import { VaultSection } from './VaultSection';
 import { NotificationsSection } from './NotificationsSection';
 import { AgentLogin } from './AgentLogin';
 import { SearchSelect } from './SearchSelect';
+import { PluginsSection } from './PluginsSection';
 import { getTheme, setTheme, type ThemeChoice } from './theme';
 
 const LOGIN_TEXT: Record<AgentStatus['login']['state'], string> = {
@@ -14,12 +15,13 @@ const LOGIN_TEXT: Record<AgentStatus['login']['state'], string> = {
   unknown: 'Stato sconosciuto',
 };
 
-type PageId = 'agenti' | 'chiavi' | 'notifiche' | 'aspetto' | 'generale' | 'accesso';
+type PageId = 'agenti' | 'plugin' | 'chiavi' | 'notifiche' | 'aspetto' | 'generale' | 'accesso';
 
 const PAGES: { id: PageId; label: string; desc: string }[] = [
   { id: 'agenti', label: 'Agenti', desc: 'Login, stato e scelte predefinite' },
   { id: 'chiavi', label: 'Chiavi', desc: 'Portachiavi per processi e terminali' },
   { id: 'notifiche', label: 'Notifiche e app', desc: 'Avvisi sul telefono, installazione' },
+  { id: 'plugin', label: 'Plugin', desc: 'Installa, attiva o spegni le funzioni in piu\'' },
   { id: 'aspetto', label: 'Aspetto', desc: 'Tema chiaro o scuro' },
   { id: 'generale', label: 'Cartelle e pausa', desc: 'Progetti consentiti, pausa degli agenti' },
   { id: 'accesso', label: 'Accesso', desc: 'Esci da questo dispositivo' },
@@ -30,10 +32,12 @@ export function SettingsView({
   page,
   onOpenTerminal,
   onLogout,
+  onPluginsChanged,
 }: {
   page: string | null;
   onOpenTerminal: (t: TerminalSummary) => void;
   onLogout: () => void;
+  onPluginsChanged: (list: PluginInfo[]) => void;
 }) {
   const [agents, setAgents] = useState<AgentStatus[] | null>(null);
   const [general, setGeneral] = useState<GeneralSettings | null>(null);
@@ -135,6 +139,8 @@ export function SettingsView({
           {shown.id === 'chiavi' && <VaultSection />}
 
           {shown.id === 'notifiche' && <NotificationsSection />}
+
+          {shown.id === 'plugin' && <PluginsSection onChanged={onPluginsChanged} />}
 
           {shown.id === 'aspetto' && <AppearanceSection />}
 

@@ -22,7 +22,8 @@ import { HttpError, ThreadStore } from './threads.js';
 import { attachTerminalSockets } from './terminal-socket.js';
 import { LeadManager } from './lead.js';
 import { registerDesign } from './design.js';
-import { normalizeChoice } from '@agicloud/design';
+import { catalog as designCatalog, normalizeChoice } from '@agicloud/design';
+import { Plugins } from './plugins.js';
 
 const settings = new Settings();
 const store = new ThreadStore(settings);
@@ -104,6 +105,27 @@ app.onError((err, c) => {
   return c.json({ error: 'Errore interno' }, 500);
 });
 
+// Plugin: elenco, installa/attiva/disattiva; le route di un plugin spento rispondono 404.
+// Va registrato prima delle route dei plugin.
+const plugins = new Plugins(
+  [
+    {
+      id: 'design',
+      name: 'Design',
+      version: '1.0.0',
+      description:
+        'Galleria di stili e skill di design: l\'agente scrive le pagine nel progetto seguendo lo stile scelto, con anteprima dal vivo nella chat. Le sessioni di design hanno la loro sezione.',
+      section: { id: 'design', label: 'Design' },
+      credits: { text: 'Contenuti da Open Design (Apache 2.0)', url: designCatalog().source.repo },
+      routes: ['/api/design', '/preview/'],
+      source: 'builtin',
+    },
+  ],
+  // Design era gia' in uso prima del sistema dei plugin: resta installato e attivo
+  { design: { installed: true, enabled: true } },
+);
+plugins.register(app);
+
 // Plugin Design: catalogo (/api/design, col token) e anteprime (/preview, col token dell'anteprima)
 registerDesign(app);
 
@@ -133,6 +155,7 @@ app.post('/api/threads', async (c) => {
   let design;
   try {
     design = normalizeChoice(body.design) ?? undefined;
+    if (design) plugins.require('design');
   } catch (err) {
     throw new HttpError(400, err instanceof Error ? err.message : String(err));
   }
