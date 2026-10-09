@@ -64,8 +64,8 @@ function safeName(name: string): string {
   return `${stem || 'file'}${ext}`;
 }
 
-/** Repo git (anche in una cartella superiore): .agicloud/ nell'esclusione locale del repo */
-function excludeFromGit(cwd: string): void {
+/** Repo git (anche in una cartella superiore): .agicloud/ (allegati, copie dei thread) nell'esclusione locale del repo */
+export function excludeFromGit(cwd: string): void {
   let dir = cwd;
   for (;;) {
     const git = join(dir, '.git');

@@ -223,6 +223,55 @@ export default async function ({ page }) {
   out.guidedFocusAfter = await page.evaluate(() => document.activeElement?.textContent);
   out.steps.push('login guidato ok');
 
+  // Capo (agente demo come finto capo): proposta di delega, approvazione, thread figlio nella copia, unione
+  await page.setViewport({ width: 1366, height: 860 });
+  const leadId = await page.evaluate(async () => {
+    const r = await fetch('/api/threads', {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + localStorage.getItem('agicloud_token'), 'content-type': 'application/json' },
+      body: JSON.stringify({ agentId: 'demo', cwd: '/tmp/proj/capo', lead: true }),
+    });
+    return (await r.json()).id;
+  });
+  await page.goto(BASE + '#/t/' + leadId, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.querySelector('.status')?.textContent.includes('Pronto'), { timeout: 20000 });
+  await page.type('.composer textarea', 'delega');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.delegation-pending', { timeout: 15000 });
+  await shot('lead-proposal');
+  await runAxe('lead-proposal');
+  await page.click('.delegation-pending .btn.primary');
+  await page.waitForFunction(() => document.querySelector('.delegation-outcome a'), { timeout: 15000 });
+  await page.waitForSelector('.lead-children .child-chip', { timeout: 15000 });
+  out.leadSidebar = await page.$$eval('.child-threads .thread-title', (els) => els.map((e) => e.textContent));
+  // Il figlio chiede il permesso di creare il file: lo si approva dal suo thread
+  await page.waitForFunction(() => document.querySelector('.child-chip')?.textContent.includes('aspetta te'), { timeout: 20000 });
+  await page.click('.child-chip');
+  await page.waitForSelector('.child-panel');
+  await page.waitForSelector('.permission:not(.is-resolved) .btn.primary', { timeout: 15000 });
+  await page.click('.permission:not(.is-resolved) .btn.primary');
+  await page.waitForFunction(() => document.querySelector('.child-changes .btn')?.textContent.includes('1 file'), { timeout: 20000 });
+  await page.click('.child-changes .btn');
+  await page.waitForSelector('.child-panel .diff');
+  await shot('lead-child');
+  await runAxe('lead-child');
+  await page.click('.child-changes .btn.primary');
+  await page.waitForFunction(() => document.querySelector('.child-message')?.textContent.includes('unite'), { timeout: 15000 });
+  out.mergeMessage = await page.$eval('.child-message', (e) => e.textContent);
+  // Il capo ha ricevuto l'avviso automatico e ha "riassunto"
+  await page.click('.child-origin a');
+  await page.waitForFunction(() => document.querySelector('.transcript')?.textContent.includes('Riassunto per l'utente'), { timeout: 20000 });
+  out.leadSummary = await page.evaluate(() => [...document.querySelectorAll('.from-assistant')].pop()?.textContent.slice(0, 160));
+  await shot('lead-done');
+  await runAxe('lead-done');
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  await new Promise((r) => setTimeout(r, 300));
+  out.leadMobile = await page.evaluate(() => document.documentElement.scrollWidth);
+  await shot('lead-mobile');
+  await runAxe('lead-mobile');
+  await page.setViewport({ width: 1366, height: 860 });
+  out.steps.push('capo ok');
+
   // File: crea, modifica, salva, anteprima
   await page.setViewport({ width: 1366, height: 860 });
   page.on('dialog', (d) => (d.type() === 'prompt' ? d.accept('nota.md') : d.accept()));

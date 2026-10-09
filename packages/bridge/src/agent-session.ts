@@ -26,6 +26,10 @@ export interface AgentSessionOptions {
   authMethod?: string;
   /** Sessione ACP da riprendere (es. dopo un riavvio del server) */
   resumeSessionId?: string;
+  /** Server MCP da dare all'agente (es. gli strumenti del "capo" per delegare) */
+  mcpServers?: acp.McpServer[];
+  /** _meta della sessione, specifico dell'agente (es. per Claude: strumenti gia' autorizzati) */
+  sessionMeta?: Record<string, unknown>;
   /** Opzioni (modalita', modello...) cambiate, anche fuori da un turno */
   onConfigOptions?: (options: acp.SessionConfigOption[]) => void;
   /** Comandi slash offerti dall'agente (arrivano anche fuori da un turno) */
@@ -162,7 +166,11 @@ export class AgentSession {
 
     const caps = init.agentCapabilities;
     this._promptCaps = caps?.promptCapabilities;
-    const base: acp.NewSessionRequest = { cwd: this.opts.cwd, mcpServers: [] };
+    const base: acp.NewSessionRequest = {
+      cwd: this.opts.cwd,
+      mcpServers: this.opts.mcpServers ?? [],
+      ...(this.opts.sessionMeta ? { _meta: this.opts.sessionMeta } : {}),
+    };
     let origin: SessionOrigin = 'new';
     let resumeError: string | undefined;
     let opened: { configOptions?: acp.SessionConfigOption[] | null } | null = null;

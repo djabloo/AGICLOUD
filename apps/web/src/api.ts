@@ -22,6 +22,19 @@ export interface ThreadSummary {
   updatedAt: number;
   pinned: boolean;
   archived: boolean;
+  /** Conversazione capo: puo' affidare compiti ad altri agenti */
+  lead: boolean;
+  /** Thread affidato da un capo */
+  parentId: string | null;
+  childState: 'running' | 'waiting' | 'done' | 'error' | 'idle' | null;
+  worktree: { branch: string; state: 'open' | 'merged' | 'discarded' } | null;
+}
+
+export interface WorktreeChanges {
+  files: { path: string; added: number; removed: number }[];
+  patch: string;
+  truncated: boolean;
+  worktree: { branch: string; state: 'open' | 'merged' | 'discarded' } | null;
 }
 
 export interface SearchHit {
@@ -169,7 +182,12 @@ export const api = {
   updateThread: (id: string, patch: { title?: string; pinned?: boolean; archived?: boolean }) =>
     request<ThreadSummary>('PATCH', `/threads/${id}`, patch),
   searchThreads: (q: string) => request<SearchHit[]>('GET', `/threads/search?q=${encodeURIComponent(q)}`),
-  createThread: (agentId: string, cwd: string) => request<ThreadSummary>('POST', '/threads', { agentId, cwd }),
+  createThread: (agentId: string, cwd: string, lead = false) => request<ThreadSummary>('POST', '/threads', { agentId, cwd, lead }),
+  decideDelegation: (threadId: string, delegationId: string, approve: boolean, note: string) =>
+    request<{ childId?: string }>('POST', `/threads/${threadId}/delegations/${delegationId}`, { approve, note }),
+  threadChanges: (id: string) => request<WorktreeChanges>('GET', `/threads/${id}/changes`),
+  mergeThread: (id: string) => request<{ commit: string }>('POST', `/threads/${id}/merge`),
+  discardThread: (id: string) => request<void>('POST', `/threads/${id}/discard`),
   settings: (refresh = false) =>
     request<{ general: GeneralSettings; agents: AgentStatus[] }>('GET', `/settings${refresh ? '?refresh=1' : ''}`),
   saveGeneral: (g: Partial<GeneralSettings>) => request<GeneralSettings>('POST', '/settings/general', g),

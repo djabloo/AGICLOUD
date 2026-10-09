@@ -1,6 +1,15 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { api, type SearchHit, type ThreadSummary } from './api';
 import { Icon } from './icons';
+
+/** Stato di un thread affidato dal capo */
+export const CHILD_STATE_TEXT: Record<NonNullable<ThreadSummary['childState']>, string> = {
+  running: 'in corso',
+  waiting: 'aspetta te',
+  done: 'finito',
+  error: 'errore',
+  idle: 'fermo',
+};
 
 interface Props {
   threads: ThreadSummary[];
@@ -47,26 +56,47 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
     }
   };
 
-  const row = (t: ThreadSummary, snippet?: string) => (
+  // Thread affidati: annidati sotto il loro capo (se il capo c'e' ancora)
+  const isNested = (t: ThreadSummary) => Boolean(t.parentId && threads.some((p) => p.id === t.parentId));
+  const kidsOf = (t: ThreadSummary) => threads.filter((k) => k.parentId === t.id && !k.archived).sort((a, b) => a.createdAt - b.createdAt);
+
+  const row = (t: ThreadSummary, snippet?: string, nested = true) => {
+    const kids = nested && t.lead ? kidsOf(t) : [];
+    return (
     <ThreadRow
       key={t.id}
       thread={t}
       active={t.id === activeId}
-      meta={agentLabel(t.agentId)}
+      meta={
+        t.parentId && t.childState
+          ? `${agentLabel(t.agentId)} · ${CHILD_STATE_TEXT[t.childState]}`
+          : t.lead
+            ? `Capo · ${agentLabel(t.agentId)}`
+            : agentLabel(t.agentId)
+      }
+      nested={
+        kids.length > 0 && (
+          <ul className="threads child-threads" aria-label={`Thread affidati da ${t.title}`}>
+            {kids.map((k) => row(k, undefined, false))}
+          </ul>
+        )
+      }
       snippet={snippet}
       onSelect={() => onSelect(t.id)}
       onRename={(title) => update(t, { title }, 'Conversazione rinominata')}
       onPin={() => update(t, { pinned: !t.pinned }, t.pinned ? 'Tolta dalle fissate' : 'Fissata in cima')}
       onArchive={() => update(t, { archived: !t.archived }, t.archived ? 'Ripristinata' : 'Archiviata')}
       onDelete={() => {
-        if (confirm(`Eliminare "${t.title}"? La conversazione verra' cancellata.`)) onDelete(t.id);
+        const extra = t.worktree?.state === 'open' ? ' Anche la sua copia separata, con le modifiche non unite.' : '';
+        if (confirm(`Eliminare "${t.title}"? La conversazione verra' cancellata.${extra}`)) onDelete(t.id);
       }}
     />
-  );
+    );
+  };
 
   const searching = hits !== null;
-  const pinned = threads.filter((t) => t.pinned && !t.archived);
-  const recent = threads.filter((t) => !t.pinned && !t.archived);
+  const pinned = threads.filter((t) => t.pinned && !t.archived && !isNested(t));
+  const recent = threads.filter((t) => !t.pinned && !t.archived && !isNested(t));
   const archived = threads.filter((t) => t.archived);
 
   return (
@@ -97,7 +127,7 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
             <ul className="threads" aria-labelledby={`${id}-res`}>
               {hits.map((h) => {
                 const t = threads.find((x) => x.id === h.id);
-                return t ? row(t, h.snippet) : null;
+                return t ? row(t, h.snippet, false) : null;
               })}
             </ul>
           )}
@@ -138,7 +168,7 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
                 <span aria-hidden="true">{showArchived ? '▾' : '▸'}</span> Archiviate ({archived.length})
               </button>
               <ul className="threads" id={`${id}-arc`} hidden={!showArchived} aria-label="Conversazioni archiviate">
-                {archived.map((t) => row(t))}
+                {archived.map((t) => row(t, undefined, false))}
               </ul>
             </>
           )}
@@ -162,7 +192,9 @@ function ThreadRow({
   onPin,
   onArchive,
   onDelete,
+  nested,
 }: {
+  nested?: ReactNode;
   thread: ThreadSummary;
   active: boolean;
   meta: string;
@@ -248,7 +280,7 @@ function ThreadRow({
   }
 
   return (
-    <li className="thread-row">
+    <li className={`thread-row${nested ? ' has-children' : ''}${t.parentId ? ' is-child' : ''}`}>
       <button type="button" className="thread-btn" aria-current={active ? 'page' : undefined} onClick={onSelect}>
         <span className="thread-title">
           {t.pinned && (
@@ -260,7 +292,7 @@ function ThreadRow({
         </span>
         <span className="thread-meta">
           {meta} · {t.project}
-          {t.status === 'running' && <span className="thread-running"> · al lavoro</span>}
+          {t.status === 'running' && !t.parentId && <span className="thread-running"> · al lavoro</span>}
         </span>
         {snippet && <span className="thread-snippet">{snippet}</span>}
       </button>
@@ -293,6 +325,7 @@ function ThreadRow({
           </button>
         </div>
       )}
+      {nested}
     </li>
   );
 }

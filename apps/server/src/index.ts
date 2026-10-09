@@ -20,11 +20,14 @@ import { GuidedLogins } from './logins.js';
 import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
 import { attachTerminalSockets } from './terminal-socket.js';
+import { LeadManager } from './lead.js';
 
 const settings = new Settings();
 const store = new ThreadStore(settings);
 const push = new Push();
 store.onNotify = (n) => push.send(n).catch((err) => console.error('[push]', err));
+const lead = new LeadManager(store, settings);
+store.lead = lead;
 store.load();
 const terminals = new TerminalStore(() => settings.vaultEnv('terminals'));
 const app = new Hono<{ Bindings: HttpBindings }>();
@@ -82,6 +85,9 @@ function checkAccess(ip: string, given: string): Access {
   return 'ok';
 }
 
+// Strumenti del capo (lead-mcp.ts): fuori da /api, con il token della conversazione capo
+lead.register(app);
+
 app.use('/api/*', async (c, next) => {
   const header = c.req.header('authorization') ?? '';
   const access = checkAccess(clientIp(c), header.startsWith('Bearer ') ? header.slice(7) : '');
@@ -119,8 +125,24 @@ app.patch('/api/threads/:id', async (c) => {
 
 app.post('/api/threads', async (c) => {
   const body = await jsonBody(c);
-  const thread = store.create(String(body.agentId ?? ''), String(body.cwd ?? ''));
+  const thread = store.create(String(body.agentId ?? ''), String(body.cwd ?? ''), { lead: body.lead === true });
   return c.json(thread.summary(), 201);
+});
+
+// Capo: decisione su una proposta di delega
+app.post('/api/threads/:id/delegations/:did', async (c) => {
+  const body = await jsonBody(c);
+  return c.json(await lead.decide(c.req.param('id'), c.req.param('did'), body.approve === true, typeof body.note === 'string' ? body.note : ''));
+});
+
+// Thread affidato: modifiche nella sua copia, unisci nel progetto, scarta
+app.get('/api/threads/:id/changes', async (c) => c.json(await lead.changes(store.get(c.req.param('id')))));
+
+app.post('/api/threads/:id/merge', async (c) => c.json({ commit: await lead.merge(store.get(c.req.param('id'))) }));
+
+app.post('/api/threads/:id/discard', async (c) => {
+  await lead.discard(store.get(c.req.param('id')));
+  return c.body(null, 204);
 });
 
 app.post('/api/threads/:id/config', async (c) => {
@@ -140,6 +162,8 @@ app.post('/api/threads/:id/sleep', async (c) => {
 });
 
 app.delete('/api/threads/:id', async (c) => {
+  // Una copia separata ancora aperta se ne va con il thread (le modifiche non unite si perdono)
+  await lead.discard(store.get(c.req.param('id'))).catch(() => {});
   await store.remove(c.req.param('id'));
   return c.body(null, 204);
 });

@@ -15,7 +15,8 @@ export interface ToolLocation {
 }
 
 export type Item =
-  | { kind: 'message'; id: string; role: 'user' | 'assistant'; text: string }
+  /** auto: messaggio scritto da AgiCloud per il capo (es. "il thread X ha finito") */
+  | { kind: 'message'; id: string; role: 'user' | 'assistant'; text: string; auto?: boolean }
   | { kind: 'reasoning'; id: string; text: string }
   | {
       kind: 'tool';
@@ -32,7 +33,21 @@ export type Item =
   | { kind: 'permission'; id: string; title: string; options: PermissionOption[]; resolved?: string | null }
   | { kind: 'plan'; id: string; entries: { content: string; status: string; priority?: string }[] }
   | { kind: 'error'; id: string; message: string }
-  | { kind: 'attachments'; id: string; files: { name: string; path: string; size: number }[] };
+  | { kind: 'attachments'; id: string; files: { name: string; path: string; size: number }[] }
+  /** Capo: proposta di affidare un compito a un altro agente */
+  | {
+      kind: 'delegation';
+      id: string;
+      agentLabel: string;
+      title: string;
+      task: string;
+      reason: string;
+      state: 'pending' | 'approved' | 'rejected' | 'expired';
+      childId?: string;
+      note?: string;
+    }
+  /** Thread affidato: modifiche unite nel progetto o scartate */
+  | { kind: 'notice'; id: string; text: string; childId?: string };
 
 export interface ConfigOption {
   id: string;
@@ -170,6 +185,51 @@ function reduceCustom(state: Transcript, name: string, v: any): Transcript {
         items: [
           ...items,
           { kind: 'permission', id: v.requestId, title: v.toolCall?.title ?? 'Azione dell\'agente', options: v.options ?? [] },
+        ],
+      };
+
+    case 'agicloud.auto_message':
+      return { ...state, items: update(items, v.messageId, (it) => (it.kind === 'message' ? { ...it, auto: true } : it)) };
+
+    case 'agicloud.delegation':
+      return {
+        ...state,
+        items: [
+          ...items,
+          {
+            kind: 'delegation',
+            id: v.id,
+            agentLabel: v.agentLabel ?? v.agentId,
+            title: v.title ?? '',
+            task: v.task ?? '',
+            reason: v.reason ?? '',
+            state: v.state ?? 'pending',
+          },
+        ],
+      };
+
+    case 'agicloud.delegation_update':
+      return {
+        ...state,
+        items: update(items, v.id, (it) => (it.kind === 'delegation' ? { ...it, state: v.state, childId: v.childId ?? it.childId, note: v.note ?? it.note } : it)),
+      };
+
+    case 'agicloud.child_merged':
+      return {
+        ...state,
+        items: [...items, { kind: 'notice', id: `merged-${v.childId}`, text: `Modifiche di "${v.title}" unite nel progetto (commit ${v.commit}).`, childId: v.childId }],
+      };
+
+    case 'agicloud.worktree':
+      return {
+        ...state,
+        items: [
+          ...items,
+          {
+            kind: 'notice',
+            id: `wt-${items.length}`,
+            text: v.state === 'merged' ? `Modifiche unite nel progetto (commit ${v.commit}). La copia separata e' stata chiusa.` : 'Modifiche scartate. La copia separata e\' stata chiusa.',
+          },
         ],
       };
 

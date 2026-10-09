@@ -113,3 +113,76 @@ export function DiffView({ diff, href }: { diff: FileDiff; href?: string }) {
     </figure>
   );
 }
+
+/** Diff in formato git (unified), es. le modifiche di un thread nella sua copia: un riquadro per file */
+export function PatchView({ patch, hrefFor }: { patch: string; hrefFor?: (path: string) => string }) {
+  const files = useMemo(() => splitPatch(patch), [patch]);
+  return (
+    <>
+      {files.map((f) => (
+        <figure className="diff" key={f.path}>
+          <figcaption className="diff-head">
+            {hrefFor ? (
+              <a href={hrefFor(f.path)}>
+                <code>{f.path}</code>
+              </a>
+            ) : (
+              <code>{f.path}</code>
+            )}
+            {f.isNew && <span className="diff-new">nuovo file</span>}
+          </figcaption>
+          <div className="diff-body" role="group" aria-label={`Modifiche a ${f.path}`}>
+            {f.lines.slice(0, MAX_LINES).map((l, i) =>
+              l.startsWith('@@') ? (
+                <div key={i} className="dl dl-gap">
+                  {l}
+                </div>
+              ) : l.startsWith('+') ? (
+                <ins key={i} className="dl dl-add">
+                  <span className="dl-sign" aria-hidden="true">+</span>
+                  <span className="visually-hidden">aggiunta: </span>
+                  {l.slice(1) || ' '}
+                </ins>
+              ) : l.startsWith('-') ? (
+                <del key={i} className="dl dl-del">
+                  <span className="dl-sign" aria-hidden="true">−</span>
+                  <span className="visually-hidden">rimossa: </span>
+                  {l.slice(1) || ' '}
+                </del>
+              ) : (
+                <div key={i} className="dl">
+                  <span className="dl-sign" aria-hidden="true"> </span>
+                  {l.slice(1) || ' '}
+                </div>
+              ),
+            )}
+            {f.lines.length > MAX_LINES && <div className="dl dl-gap">… diff troncato ({f.lines.length - MAX_LINES} righe non mostrate)</div>}
+          </div>
+        </figure>
+      ))}
+    </>
+  );
+}
+
+function splitPatch(patch: string): { path: string; isNew: boolean; lines: string[] }[] {
+  const out: { path: string; isNew: boolean; lines: string[] }[] = [];
+  let cur: { path: string; isNew: boolean; lines: string[] } | null = null;
+  let inHunk = false;
+  for (const line of patch.split('\n')) {
+    if (line.startsWith('diff --git ')) {
+      cur = { path: line.replace(/^diff --git a\/(.*) b\/.*$/, '$1'), isNew: false, lines: [] };
+      out.push(cur);
+      inHunk = false;
+    } else if (!cur) continue;
+    else if (!inHunk) {
+      if (line.startsWith('new file')) cur.isNew = true;
+      else if (line.startsWith('+++ b/')) cur.path = line.slice(6);
+      else if (line.startsWith('@@')) {
+        inHunk = true;
+        cur.lines.push(line);
+      } else if (line.startsWith('Binary files')) cur.lines.push('@@ file binario');
+    } else if (line.startsWith('\\')) continue; // "\ No newline at end of file"
+    else if (line) cur.lines.push(line);
+  }
+  return out;
+}

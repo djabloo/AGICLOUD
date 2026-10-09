@@ -9,7 +9,7 @@ docker rm -f agicloud-uitest >/dev/null 2>&1 || true
 docker run -d --rm --name agicloud-uitest --network n8n_default --user "$(id -u):$(id -g)" \
   -v "$PWD":/app:ro -w /app -e HOST=0.0.0.0 -e PORT=3095 -e AUTH_TOKEN=prova-locale-123 \
   -e AGICLOUD_DEMO_AGENT=1 -e DATA_DIR=/tmp/data -e PROJECT_ROOTS=/tmp/proj -e HOME=/tmp \
-  agicloud-uitest:latest sh -c 'mkdir -p /tmp/proj/demo && exec node --import tsx apps/server/src/index.ts' >/dev/null
+  agicloud-uitest:latest sh -c 'mkdir -p /tmp/proj/demo /tmp/proj/capo && cd /tmp/proj/capo && git init -q && echo prova > README.md && git add -A && git -c user.name=t -c user.email=t@t commit -qm init && cd /app && exec node --import tsx apps/server/src/index.ts' >/dev/null
 trap 'docker rm -f agicloud-uitest >/dev/null 2>&1' EXIT
 sleep 5
 DARK=$([ "${1:-}" = "--dark" ] && echo 1 || echo 0) OUT=${OUT:-data/ui-check} node scripts/ui-check/check.mjs

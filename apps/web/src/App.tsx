@@ -138,11 +138,11 @@ export function App() {
     }
   };
 
-  const createThread = async (agentId: string, cwd: string) => {
+  const createThread = async (agentId: string, cwd: string, lead = false) => {
     setCreating(true);
     setDialogError(undefined);
     try {
-      const t = await api.createThread(agentId, cwd);
+      const t = await api.createThread(agentId, cwd, lead);
       setThreads((ts) => [t, ...ts]);
       closeDialog();
       go({ section: 'chat', id: t.id });
@@ -326,6 +326,7 @@ export function App() {
           <Chat
             key={activeThread.id}
             thread={activeThread}
+            threads={threads}
             agentLabel={agentLabel(activeThread.agentId)}
             onDelete={() => removeThread(activeThread.id)}
             onOpenTerminal={() => {

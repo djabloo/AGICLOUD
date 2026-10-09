@@ -8,7 +8,7 @@ interface Props {
   error?: string;
   busy: boolean;
   onClose: () => void;
-  onCreate: (agentId: string, cwd: string) => void;
+  onCreate: (agentId: string, cwd: string, lead: boolean) => void;
 }
 
 const LAST_AGENT_KEY = 'agicloud_last_agent';
@@ -27,6 +27,7 @@ export function NewThreadDialog({ open, agents, error, busy, onClose, onCreate }
   const id = useId();
   const [agentId, setAgentId] = useState('');
   const [cwd, setCwd] = useState('');
+  const [lead, setLead] = useState(false);
 
   useEffect(() => {
     const d = ref.current;
@@ -42,6 +43,8 @@ export function NewThreadDialog({ open, agents, error, busy, onClose, onCreate }
   }, [agents, agentId]);
 
   const selected = agents.find((a) => a.id === agentId);
+  /** Per ora il capo e' solo Claude Code: gli strumenti MCP e i permessi preautorizzati sono suoi */
+  const canLead = agentId === 'claude';
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!agentId || !cwd.trim()) return;
@@ -50,7 +53,7 @@ export function NewThreadDialog({ open, agents, error, busy, onClose, onCreate }
     } catch {
       /* solo una comodita' */
     }
-    onCreate(agentId, cwd.trim());
+    onCreate(agentId, cwd.trim(), canLead && lead);
   };
 
   return (
@@ -76,6 +79,18 @@ export function NewThreadDialog({ open, agents, error, busy, onClose, onCreate }
           </div>
           {selected?.note && <p className="hint">{selected.note}</p>}
         </fieldset>
+
+        {canLead && (
+          <label className="choice lead-choice">
+            <input type="checkbox" checked={lead} onChange={(e) => setLead(e.target.checked)} aria-describedby={`${id}-lead-hint`} />
+            <span className="choice-text">
+              <span>Conversazione capo</span>
+              <span className="hint" id={`${id}-lead-hint`}>
+                Puo' proporti di affidare compiti ad altri agenti, ognuno in una copia separata del progetto. Approvi tu ogni delega.
+              </span>
+            </span>
+          </label>
+        )}
 
         <ProjectPicker active={open} cwd={cwd} onChange={setCwd} />
 

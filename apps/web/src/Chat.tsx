@@ -4,9 +4,12 @@ import { emptyTranscript, reduce, type ConfigOption, type Item, type SlashComman
 import { Markdown } from './markdown';
 import { Icon } from './icons';
 import { DiffStat, DiffView, diffStats } from './DiffView';
+import { ChildPanel, DelegationView, LeadChildren } from './LeadViews';
 
 interface Props {
   thread: ThreadSummary;
+  /** Tutte le conversazioni: per i thread affidati dal capo e il loro stato */
+  threads: ThreadSummary[];
   agentLabel: string;
   onDelete: () => void;
   onOpenTerminal: () => void;
@@ -24,7 +27,7 @@ const STATUS_TEXT: Record<string, string> = {
 
 type Action = { type: 'event'; event: Parameters<typeof reduce>[1] } | { type: 'reset' };
 
-export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
+export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: Props) {
   const [state, dispatch] = useReducer(
     (s: typeof emptyTranscript, a: Action) => (a.type === 'reset' ? emptyTranscript : reduce(s, a.event)),
     emptyTranscript,
@@ -53,6 +56,10 @@ export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
       if (it.kind === 'permission' && it.resolved === undefined && !seenPermissions.current.has(it.id)) {
         seenPermissions.current.add(it.id);
         setAnnounce((a) => ({ ...a, assertive: `Permesso richiesto: ${it.title}` }));
+      }
+      if (it.kind === 'delegation' && it.state === 'pending' && !seenPermissions.current.has(it.id)) {
+        seenPermissions.current.add(it.id);
+        setAnnounce((a) => ({ ...a, assertive: `Il capo propone di affidare "${it.title}" a ${it.agentLabel}` }));
       }
       if (it.kind === 'error' && !seenErrors.current.has(it.id)) {
         seenErrors.current.add(it.id);
@@ -92,7 +99,10 @@ export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
         <div className="chat-heading">
           <h1 id="chat-title">{thread.title}</h1>
           <p className="chat-meta">
-            <span>{state.agentName ?? agentLabel}</span>
+            <span>
+              {thread.lead && 'Capo · '}
+              {state.agentName ?? agentLabel}
+            </span>
             <span aria-hidden="true"> · </span>
             <span title={thread.cwd}>
               <span className="visually-hidden">Progetto </span>
@@ -121,6 +131,9 @@ export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
         </button>
       </header>
 
+      {thread.lead && <LeadChildren lead={thread} threads={threads} />}
+      {thread.parentId && <ChildPanel thread={thread} threads={threads} running={state.running} />}
+
       <div className="transcript" ref={scroller} onScroll={onScroll} tabIndex={0} aria-label="Messaggi">
         {state.items.length === 0 && state.status !== 'error' && state.status !== 'auth_required' && (
           <p className="empty">{state.status === 'starting' ? 'Avvio dell\'agente…' : 'Scrivi il primo messaggio.'}</p>
@@ -137,7 +150,7 @@ export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
         <ol className="items">
           {state.items.map((it) => (
             <li key={it.id} className={`item item-${it.kind}${it.kind === 'message' ? ` from-${it.role}` : ''}`}>
-              <ItemView item={it} threadId={thread.id} cwd={thread.cwd} />
+              <ItemView item={it} threadId={thread.id} cwd={thread.cwd} threads={threads} />
             </li>
           ))}
         </ol>
@@ -173,13 +186,35 @@ export function Chat({ thread, agentLabel, onDelete, onOpenTerminal }: Props) {
   );
 }
 
-function ItemView({ item, threadId, cwd }: { item: Item; threadId: string; cwd: string }) {
+function ItemView({ item, threadId, cwd, threads }: { item: Item; threadId: string; cwd: string; threads: ThreadSummary[] }) {
   switch (item.kind) {
     case 'message':
+      if (item.auto) {
+        return (
+          <details className="auto-message">
+            <summary>Messaggio automatico di AgiCloud</summary>
+            <p className="user-text">{item.text}</p>
+          </details>
+        );
+      }
       return (
         <article className="message" aria-label={item.role === 'user' ? 'Tu' : 'Agente'}>
           {item.role === 'user' ? <p className="user-text">{item.text}</p> : <Markdown text={item.text} />}
         </article>
+      );
+    case 'delegation':
+      return <DelegationView item={item} threadId={threadId} threads={threads} />;
+    case 'notice':
+      return (
+        <p className="notice notice-info">
+          {item.text}
+          {item.childId && (
+            <>
+              {' '}
+              <a href={`#/t/${item.childId}`}>Apri il thread</a>
+            </>
+          )}
+        </p>
       );
     case 'reasoning':
       return (

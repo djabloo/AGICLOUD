@@ -23,6 +23,8 @@ import { resolveProject } from './projects.js';
 import { readAttachment, resolveAttachment } from './uploads.js';
 import type { Settings } from './settings.js';
 import type { Notice } from './push.js';
+import type { WorktreeInfo } from './worktrees.js';
+import type { LeadManager } from './lead.js';
 
 export { HttpError } from './errors.js';
 
@@ -50,7 +52,19 @@ interface ThreadMeta {
   pinned?: boolean;
   /** Nascosta dalla lista principale (non cancellata) */
   archived?: boolean;
+  /** Conversazione "capo": puo' affidare compiti ad altri agenti (strumenti MCP di AgiCloud) */
+  lead?: boolean;
+  /** Thread affidato da un capo: id della conversazione capo */
+  parentId?: string;
+  /** Compito ricevuto dal capo */
+  task?: string;
+  /** Copia separata del progetto in cui lavora il thread affidato */
+  worktree?: WorktreeInfo;
+  /** Esito dell'ultimo turno: per lo stato dei thread affidati */
+  lastOutcome?: 'done' | 'error' | 'cancelled';
 }
+
+export type RunOutcome = { stop?: string; error?: string };
 
 /** Stato "vivo" mandato alla UI fuori dal registro (non salvato, cambia spesso) */
 export interface ThreadState {
@@ -73,6 +87,12 @@ export class Thread {
   private idleTimer: NodeJS.Timeout | null = null;
   private log: WriteStream | null = null;
   private readonly listeners = new Set<Listener>();
+  /** Messaggi in attesa che l'agente finisca il turno (es. avvisi di AgiCloud al capo) */
+  private readonly queue: { prompt: string; auto: boolean }[] = [];
+  /** Richieste di permesso non ancora risolte */
+  private readonly openPermissions = new Set<string>();
+  /** Un turno e' in preparazione o in corso */
+  private busy = false;
 
   constructor(
     readonly meta: ThreadMeta,
@@ -96,7 +116,38 @@ export class Thread {
       updatedAt,
       pinned: this.meta.pinned === true,
       archived: this.meta.archived === true,
+      lead: this.meta.lead === true,
+      parentId: this.meta.parentId ?? null,
+      /** Thread affidato: in corso, aspetta te, finito, errore */
+      childState: this.meta.parentId ? this.childState() : null,
+      worktree: this.meta.worktree ? { branch: this.meta.worktree.branch, state: this.meta.worktree.state } : null,
     };
+  }
+
+  childState(): 'running' | 'waiting' | 'done' | 'error' | 'idle' {
+    if (this.openPermissions.size > 0) return 'waiting';
+    if (this.busy || this.queue.length) return 'running';
+    if (this.status === 'error' || this.status === 'auth_required' || this.meta.lastOutcome === 'error') return 'error';
+    if (this.meta.lastOutcome === 'done') return 'done';
+    return 'idle';
+  }
+
+  /** Ultima risposta dell'agente (per il capo) */
+  lastReply(): string {
+    const msgs = this.searchText();
+    for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i]!.role === 'assistant' && msgs[i]!.text.trim()) return msgs[i]!.text;
+    return '';
+  }
+
+  /** Come run(), ma se l'agente sta lavorando il messaggio parte appena finisce */
+  enqueue(prompt: string, auto = false): void {
+    this.queue.push({ prompt, auto });
+    if (!this.busy && this.queue.length === 1) this.enqueueNext();
+  }
+
+  /** Evento nel registro della conversazione (usato dal capo per le proposte di delega) */
+  record(name: string, value: unknown): void {
+    this.emit(custom(name, value));
   }
 
   /** Rinomina, fissa, archivia */
@@ -159,18 +210,35 @@ export class Thread {
     if (lastRun?.type === EventType.RUN_STARTED) {
       this.emit(ev(EventType.RUN_ERROR, { message: 'Turno interrotto dal riavvio del server' }));
     }
+    // Proposte di delega rimaste in sospeso: dopo un riavvio non si possono piu' decidere
+    const open = new Set<string>();
+    for (const e of this.events as (BaseEvent & { name?: string; value?: { id?: string } })[]) {
+      if (e.type !== EventType.CUSTOM || !e.value?.id) continue;
+      if (e.name === 'agicloud.delegation') open.add(e.value.id);
+      else if (e.name === 'agicloud.delegation_update') open.delete(e.value.id);
+    }
+    for (const id of open) this.emit(custom('delegation_update', { id, state: 'expired' }));
     this.emit(custom('thread_status', { status: 'idle' }));
   }
 
   /** attachments: percorsi relativi in .agicloud/uploads (gia' caricati) */
-  async run(prompt: string, attachments: string[] = []): Promise<string> {
-    if (this.status === 'running') throw new HttpError(409, 'L\'agente sta gia\' lavorando: attendi o interrompi');
-    await this.ensureStarted();
-    if (this.status !== 'ready' || !this.session) throw new HttpError(409, 'L\'agente non e\' disponibile');
-
-    const files = attachments.map((p) => ({ rel: p, ...resolveAttachment(this.meta.cwd, p) }));
-    const content = buildPrompt(prompt, files, this.session.acceptsImages);
-    if (!this.meta.customTitle && !this.events.some((e) => e.type === EventType.RUN_STARTED)) {
+  /** auto: messaggio scritto da AgiCloud (es. "il thread X ha finito"), non da te */
+  async run(prompt: string, attachments: string[] = [], opts: { auto?: boolean } = {}): Promise<string> {
+    if (this.status === 'running' || this.busy) throw new HttpError(409, 'L\'agente sta gia\' lavorando: attendi o interrompi');
+    // Occupato da subito: tra l'avvio dell'agente e l'inizio del turno non deve partire un altro messaggio
+    this.busy = true;
+    let files: { rel: string; abs: string; size: number }[];
+    let content: acp.ContentBlock[];
+    try {
+      await this.ensureStarted();
+      if (this.status !== 'ready' || !this.session) throw new HttpError(409, 'L\'agente non e\' disponibile');
+      files = attachments.map((p) => ({ rel: p, ...resolveAttachment(this.meta.cwd, p) }));
+      content = buildPrompt(prompt, files, this.session.acceptsImages);
+    } catch (err) {
+      this.busy = false;
+      throw err;
+    }
+    if (!this.meta.customTitle && !opts.auto && !this.events.some((e) => e.type === EventType.RUN_STARTED)) {
       this.meta.title = (prompt || files.map((f) => basename(f.rel)).join(', ')).slice(0, 80);
     }
     this.touch();
@@ -182,6 +250,7 @@ export class Thread {
     this.emit(ev(EventType.TEXT_MESSAGE_START, { messageId, role: 'user' }));
     this.emit(ev(EventType.TEXT_MESSAGE_CONTENT, { messageId, delta: prompt }));
     this.emit(ev(EventType.TEXT_MESSAGE_END, { messageId }));
+    if (opts.auto) this.emit(custom('auto_message', { messageId }));
     if (files.length) {
       this.emit(custom('attachments', { messageId, files: files.map((f) => ({ name: attachmentName(f.rel), path: f.rel, size: f.size })) }));
     }
@@ -198,6 +267,7 @@ export class Thread {
           else if (x.type === EventType.RUN_FINISHED) outcome = { stop: x.result?.stopReason };
           else if (x.type === EventType.RUN_ERROR) outcome = { error: x.message };
           else if (x.type === EventType.CUSTOM && x.name === 'agicloud.permission_request') {
+            this.openPermissions.add(x.value?.requestId);
             this.notify(`Permesso richiesto · ${this.meta.title}`, x.value?.toolCall?.title ?? 'L\'agente chiede conferma');
           }
         }
@@ -205,9 +275,15 @@ export class Thread {
         outcome = { error: err instanceof Error ? err.message : String(err) };
         this.emit(ev(EventType.RUN_ERROR, { message: outcome.error }));
       } finally {
+        this.busy = false;
+        this.openPermissions.clear();
+        this.meta.lastOutcome = outcome.error ? 'error' : outcome.stop === 'cancelled' ? 'cancelled' : 'done';
         if (this.status === 'running') this.setStatus(this.session ? 'ready' : 'idle');
         this.touch();
         this.scheduleIdle();
+        // Altri messaggi in coda: si prosegue; il capo viene avvisato solo a coda vuota
+        if (this.queue.length) setTimeout(() => this.enqueueNext(), 0);
+        else this.store.lead?.onRunFinished(this, outcome);
         // Interrotto da te: niente notifica
         if (outcome.error) this.notify(`Errore · ${this.meta.title}`, outcome.error.split('\n')[0]!);
         else if (outcome.stop && outcome.stop !== 'cancelled') {
@@ -216,6 +292,15 @@ export class Thread {
       }
     })();
     return runId;
+  }
+
+  private enqueueNext(): void {
+    const next = this.queue.shift();
+    if (!next) return;
+    void this.run(next.prompt, [], { auto: next.auto }).catch((err) => {
+      this.queue.length = 0; // agente non disponibile: i messaggi in coda non partirebbero comunque
+      this.emit(ev(EventType.RUN_ERROR, { message: String(err instanceof Error ? err.message : err) }));
+    });
   }
 
   async setConfig(configId: string, value: ConfigValue): Promise<void> {
@@ -240,6 +325,7 @@ export class Thread {
     if (!this.session?.respondPermission(requestId, optionId)) {
       throw new HttpError(404, 'Richiesta di permesso non trovata o gia\' risolta');
     }
+    this.openPermissions.delete(requestId);
     this.emit(custom('permission_resolved', { requestId, optionId }));
   }
 
@@ -296,6 +382,8 @@ export class Thread {
       threadId: this.id,
       env: this.store.settings.agentEnv(this.meta.agentId),
       resumeSessionId: this.meta.acpSessionId,
+      mcpServers: this.meta.lead && this.store.lead ? [this.store.lead.mcpServerFor(this)] : undefined,
+      sessionMeta: this.meta.lead && this.store.lead ? this.store.lead.sessionMeta(this.meta.agentId) : undefined,
       onConfigOptions: (options) => {
         this.store.settings.rememberOptions(this.meta.agentId, options);
         this.meta.configOptions = options;
@@ -420,6 +508,8 @@ export class ThreadStore {
 
   /** Notifiche (push sul telefono): impostato dal server */
   onNotify?: (notice: Notice) => Promise<unknown> | void;
+  /** Capo e thread affidati: impostato dal server */
+  lead?: LeadManager;
 
   constructor(readonly settings: Settings) {}
 
@@ -473,7 +563,20 @@ export class ThreadStore {
     return t;
   }
 
-  create(agentId: string, cwd: string): Thread {
+  /** Thread affidati da un capo */
+  children(parentId: string): Thread[] {
+    return [...this.threads.values()].filter((t) => t.meta.parentId === parentId).sort((a, b) => a.meta.createdAt - b.meta.createdAt);
+  }
+
+  find(id: string): Thread | undefined {
+    return this.threads.get(id);
+  }
+
+  create(
+    agentId: string,
+    cwd: string,
+    extra: Pick<ThreadMeta, 'lead' | 'parentId' | 'task' | 'worktree'> & { title?: string } = {},
+  ): Thread {
     try {
       getAgent(agentId);
     } catch {
@@ -485,7 +588,13 @@ export class ThreadStore {
         id: randomUUID(),
         agentId,
         cwd: resolveProject(cwd),
-        title: 'Nuova conversazione',
+        // Il capo tiene il suo titolo (non quello del primo messaggio): si riconosce nella lista
+        title: extra.title ?? (extra.lead ? `Capo · ${basename(resolveProject(cwd))}` : 'Nuova conversazione'),
+        customTitle: extra.title || extra.lead ? true : undefined,
+        lead: extra.lead || undefined,
+        parentId: extra.parentId,
+        task: extra.task,
+        worktree: extra.worktree,
         createdAt: now,
         updatedAt: now,
         // Modalita'/modello predefiniti dalle Impostazioni: applicati all'avvio dell'agente

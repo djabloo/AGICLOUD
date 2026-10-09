@@ -1,8 +1,12 @@
 // Agente ACP finto per prove e test dell'interfaccia: niente modelli, risposte prevedibili.
 // Offre opzioni (modalita', modello), comandi slash, ripresa di sessione, tool call e permessi.
-//   "crea ... file" nel messaggio -> tool call con richiesta di permesso; altrimenti risponde in eco.
+//   "crea ... file" nel messaggio -> tool call con richiesta di permesso (e scrive davvero demo.txt);
+//   "delega" -> fa il finto capo con l'API di AgiCloud (se ha ricevuto il server MCP "agicloud");
+//   altrimenti risponde in eco.
 
 import { randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import * as acp from '@agentclientprotocol/sdk';
 
@@ -11,6 +15,24 @@ interface DemoSession {
   model: string;
   turns: number;
   abort: AbortController | null;
+  cwd: string;
+  /** API del capo (dal server MCP "agicloud" passato da AgiCloud) */
+  lead?: { url: string; token: string };
+}
+
+function leadFrom(params: { mcpServers?: acp.McpServer[] }): DemoSession['lead'] {
+  const srv = params.mcpServers?.find((m) => m.name === 'agicloud' && 'env' in m) as acp.McpServerStdio | undefined;
+  const env = Object.fromEntries((srv?.env ?? []).map((e) => [e.name, e.value]));
+  return env.AGICLOUD_LEAD_URL ? { url: env.AGICLOUD_LEAD_URL, token: env.AGICLOUD_LEAD_TOKEN ?? '' } : undefined;
+}
+
+async function leadCall(lead: NonNullable<DemoSession['lead']>, method: string, path: string, body?: unknown): Promise<any> {
+  const res = await fetch(lead.url + path, {
+    method,
+    headers: { 'x-lead-token': lead.token, 'content-type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return res.json();
 }
 
 const sessions = new Map<string, DemoSession>();
@@ -54,10 +76,10 @@ const sleep = (ms: number, signal: AbortSignal) =>
     signal.addEventListener('abort', () => (clearTimeout(t), reject(new Error('cancelled'))), { once: true });
   });
 
-function open(sessionId: string): DemoSession {
+function open(sessionId: string, cwd = '.'): DemoSession {
   let s = sessions.get(sessionId);
   if (!s) {
-    s = { mode: 'default', model: 'veloce', turns: 0, abort: null };
+    s = { mode: 'default', model: 'veloce', turns: 0, abort: null, cwd };
     sessions.set(sessionId, s);
   }
   return s;
@@ -77,7 +99,8 @@ acp
   }))
   .onRequest(acp.methods.agent.session.new, (ctx) => {
     const sessionId = randomUUID();
-    const s = open(sessionId);
+    const s = open(sessionId, ctx.params.cwd);
+    s.lead = leadFrom(ctx.params);
     setTimeout(() => {
       void ctx.client.notify(acp.methods.client.session.update, {
         sessionId,
@@ -87,7 +110,8 @@ acp
     return { sessionId, configOptions: configOptions(s) };
   })
   .onRequest(acp.methods.agent.session.resume, (ctx) => {
-    const s = open(ctx.params.sessionId);
+    const s = open(ctx.params.sessionId, ctx.params.cwd);
+    s.lead = leadFrom(ctx.params);
     setTimeout(() => {
       void ctx.client.notify(acp.methods.client.session.update, {
         sessionId: ctx.params.sessionId,
@@ -137,6 +161,7 @@ acp
           });
           allowed = res.outcome.outcome === 'selected' && res.outcome.optionId === 'yes';
         }
+        if (allowed) writeFileSync(join(s.cwd, 'demo.txt'), 'riga uno\nriga DUE\nriga tre\nriga quattro\n');
         await say({
           sessionUpdate: 'tool_call_update',
           toolCallId: 'demo-1',
@@ -146,6 +171,28 @@ acp
             : [{ type: 'content', content: { type: 'text', text: 'rifiutato' } }],
         });
         await write(allowed ? 'Fatto.' : 'Ok, non lo creo.');
+      } else if (s.lead && /^delega/i.test(text)) {
+        const { id, error } = await leadCall(s.lead, 'POST', '/delegate', {
+          agente: 'demo',
+          titolo: 'Crea demo.txt',
+          compito: 'crea il file demo.txt',
+          motivo: 'prova del capo',
+        });
+        if (!id) {
+          await write(`Delega non riuscita: ${error}`);
+        } else {
+          await write('Ho proposto la delega, aspetto la tua risposta. ');
+          let d: { state: string; text: string };
+          do {
+            await sleep(500, signal);
+            d = await leadCall(s.lead, 'GET', `/delegations/${id}`);
+          } while (d.state === 'pending');
+          await write(d.text);
+        }
+      } else if (s.lead && text.includes('[Messaggio automatico di AgiCloud]')) {
+        const childId = text.match(/id ([0-9a-f-]{36})/)?.[1];
+        const r = childId ? await leadCall(s.lead, 'GET', `/threads/${childId}`) : null;
+        await write(`Riassunto per l'utente: ${r?.text?.split('\n')[0] ?? 'thread non trovato'}`);
       } else if (text.startsWith('/piano')) {
         await say({ sessionUpdate: 'plan', entries: [
           { content: 'Leggere il codice', status: 'completed', priority: 'high' },

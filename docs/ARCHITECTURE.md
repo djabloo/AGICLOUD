@@ -96,6 +96,18 @@ Ogni terminale ha un **custode** (`apps/server/src/term-host.ts`): un processo s
 - Login di Claude: le shell partono con `apps/server/terminal.bashrc` (carica `.profile`/`.bashrc` e poi toglie `CLAUDE_CODE_OAUTH_TOKEN`), così `claude` nel terminale usa il login dell'account (claude.ai, Pro) come la chat. Il token resta in `~/.bashrc` perché serve al webhook-server (N8N-BUILDER).
 - All'avvio il server toglie dal proprio ambiente (ereditato da custodi e shell) le variabili di una sessione Claude Code "madre" (`CLAUDECODE`, `CLAUDE_CODE_*`…), ereditate se lo si avvia da dentro Claude Code.
 
+## Capo e thread affidati
+
+Una conversazione **capo** (Claude Code, spunta "Conversazione capo" nel dialogo) puo' affidare compiti ad altri agenti. Scelte di l'utente (2026-10-09): il capo **chiede prima** ogni delega, ogni thread lavora in una **copia separata**, a fine thread **il capo riassume**.
+- Strumenti: `apps/server/src/lead-mcp.ts`, server MCP stdio passato all'agente in `session/new` (`mcpServers`): `delega`, `stato_thread`, `leggi_thread`, `scrivi_thread`. Parla con `/lead-api/*` (fuori da `/api`) con un token per conversazione capo, tenuto solo in memoria. Le istruzioni (regole, agenti disponibili, progetto) arrivano nel campo `instructions` dell'MCP.
+- Per Claude gli strumenti sono preautorizzati (`_meta.claudeCode.options.allowedTools`): l'unica conferma e' la scheda di AgiCloud.
+- `delega` crea una proposta (evento `agicloud.delegation`, notifica push) e l'MCP controlla ogni 2 s finche' l'utente decide (`POST /api/threads/:id/delegations/:did`); scade dopo 30 minuti o al riavvio del server.
+- Approvata: `apps/server/src/worktrees.ts` crea `<repo>/.agicloud/worktrees/<nome>` sul ramo `agc/<nome>` dall'ultimo commit (le modifiche non salvate del progetto non ci sono); il thread figlio (`parentId`) parte con il compito. Se il progetto non e' un repo git con commit, lavora nella stessa cartella.
+- Fine turno del figlio: il capo riceve un messaggio automatico (`agicloud.auto_message`, mostrato chiuso in chat) e riassume. I messaggi al capo mentre lavora vanno in coda (`Thread.enqueue`).
+- Modifiche: `GET /api/threads/:id/changes` (tutto rispetto al punto di partenza, anche file nuovi), **Unisci** (`merge`: commit nella copia + `git merge --no-ff` nel ramo attuale; se fallisce `merge --abort`, progetto intatto) o **Scarta**. In entrambi i casi la copia e il ramo vengono rimossi.
+- UI: thread figli annidati sotto il capo nella lista, barra dei thread con stato nella chat del capo, nel figlio provenienza + modifiche (`apps/web/src/LeadViews.tsx`).
+- Prova: l'agente demo fa da finto capo ("delega") usando la stessa API; `scripts/ui-check` copre proposta, approvazione, permesso del figlio, diff, unione e riassunto.
+
 ## Impostazioni
 
 Divise in voci (`#/settings/<voce>`): Agenti, Chiavi, Notifiche e app, Aspetto, Cartelle e pausa, Accesso. Su telefono prima l'elenco, poi la voce con "‹ Tutte le impostazioni"; da 900px elenco e voce affiancati. Al cambio di voce il focus va al titolo.

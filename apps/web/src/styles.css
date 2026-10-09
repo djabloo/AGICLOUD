@@ -2237,3 +2237,163 @@ legend {
 .theme-swatch-system {
   background: linear-gradient(135deg, #ffffff 50%, #121826 50%);
 }
+
+/* ── Capo e thread affidati ──────────────────────────────────────────────── */
+.thread-row.has-children {
+  flex-wrap: wrap;
+}
+.child-threads {
+  flex-basis: 100%;
+  margin: 2px 0 4px 14px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+}
+.is-child .thread-title {
+  font-weight: 500;
+}
+.lead-choice {
+  margin-top: 12px;
+}
+.delegation {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.delegation:not(.delegation-pending) {
+  border-width: 1px;
+  border-color: var(--border);
+}
+.delegation-kicker {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.delegation-title {
+  margin: 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+.delegation-agent,
+.delegation-outcome {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.delegation-outcome {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.delegation-task summary,
+.auto-message summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: 600;
+}
+.delegation-task p {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.delegation-note-label {
+  font-size: 0.9rem;
+}
+.auto-message {
+  padding: 0 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+.auto-message summary {
+  font-weight: 400;
+  font-size: 0.9rem;
+}
+.auto-message p {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+.notice-info {
+  max-width: 820px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.lead-children {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.lead-children ul {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+}
+.child-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.child-chip-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.child-chip-state {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.child-running .status-dot {
+  background: var(--accent);
+}
+.child-waiting .status-dot {
+  background: var(--warn);
+}
+.child-done .status-dot {
+  background: var(--ok);
+}
+.child-error .status-dot {
+  background: var(--danger);
+}
+.child-panel {
+  display: grid;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.child-origin {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.child-changes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.child-panel [id$='-diff'] {
+  max-height: 50vh;
+  overflow: auto;
+}
+.child-message:empty {
+  display: none;
+}
