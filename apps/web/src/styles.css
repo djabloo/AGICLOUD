@@ -2564,3 +2564,24 @@ legend {
 .config-panel .cfg-results {
   inset: auto 0 calc(100% + 4px);
 }
+.term-link .icon-btn {
+  width: 36px;
+  padding: 0;
+}
+@media (pointer: coarse) {
+  .term-link .icon-btn {
+    width: 44px;
+  }
+}
+.term-links-clear {
+  justify-self: end;
+  min-height: 32px;
+  padding: 2px 8px;
+  border: 0;
+  background: transparent;
+  color: #8cc8ff;
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}

@@ -345,6 +345,11 @@ export default async function ({ page }) {
   await page.waitForFunction(() => document.querySelector('.xterm-rows')?.textContent.includes('INVIATO-DAL-RIQUADRO'), { timeout: 10000 });
   await shot('terminal-links');
   await runAxe('terminal-links');
+  // Cestino: il link sparisce dalla barra e non ricompare
+  await page.click('.term-link .icon-btn');
+  await page.waitForFunction(() => !document.querySelector('.term-links'), { timeout: 5000 });
+  await new Promise((r) => setTimeout(r, 800));
+  out.linkDismissed = !(await page.$('.term-links'));
   out.steps.push('link e testo del terminale ok');
   await shot('terminal');
   await runAxe('terminal');

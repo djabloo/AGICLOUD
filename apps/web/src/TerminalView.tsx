@@ -49,6 +49,27 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
   const [conn, setConn] = useState<Conn>('connecting');
   const [srMode, setSrMode] = useState(readSrMode);
   const [links, setLinks] = useState<string[]>([]);
+  // Link tolti dalla barra (cestino): restano tolti per questo terminale, anche riaprendolo
+  const dismissKey = `agicloud_term_links_${terminal.id}`;
+  const [dismissed, setDismissed] = useState<string[]>(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem(dismissKey) ?? '[]');
+    } catch {
+      return [];
+    }
+  });
+  const dismiss = (urls: string[]) => {
+    const next = [...new Set([...dismissed, ...urls])].slice(-200);
+    setDismissed(next);
+    try {
+      sessionStorage.setItem(dismissKey, JSON.stringify(next));
+    } catch {
+      /* solo una comodita' */
+    }
+    setAnnounce(urls.length === 1 ? 'Link tolto dalla barra' : 'Link tolti dalla barra');
+    host.current?.querySelector<HTMLElement>('textarea')?.focus();
+  };
+  const shownLinks = links.filter((u) => !dismissed.includes(u));
   const [textOpen, setTextOpen] = useState(false);
   const [announce, setAnnounce] = useState('');
 
@@ -242,9 +263,9 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
         </div>
       </header>
 
-      {links.length > 0 && (
+      {shownLinks.length > 0 && (
         <div className="term-links" role="region" aria-label="Link nel terminale">
-          {links.map((url) => (
+          {shownLinks.map((url) => (
             <div key={url} className="term-link">
               <span className="term-link-url" title={url}>
                 {url}
@@ -259,8 +280,17 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
               >
                 Copia<span className="visually-hidden"> il link</span>
               </button>
+              <button type="button" className="btn small-btn icon-btn" onClick={() => dismiss([url])}>
+                <Icon name="trash" />
+                <span className="visually-hidden">Togli il link {url} dalla barra</span>
+              </button>
             </div>
           ))}
+          {shownLinks.length > 1 && (
+            <button type="button" className="term-links-clear" onClick={() => dismiss(shownLinks)}>
+              Togli tutti i link
+            </button>
+          )}
         </div>
       )}
 
