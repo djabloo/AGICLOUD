@@ -2516,3 +2516,51 @@ legend {
   display: block;
   font-weight: 400;
 }
+.cfg-combo {
+  position: relative;
+}
+.cfg-results {
+  position: absolute;
+  inset: calc(100% + 4px) 0 auto;
+  z-index: 20;
+  max-height: min(320px, 45vh);
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
+}
+.cfg-results [role='option'] {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text);
+}
+.cfg-results [aria-selected='true'] {
+  background: var(--accent-soft);
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.cfg-results .is-current {
+  font-weight: 600;
+}
+.cfg-result-group,
+.cfg-noresult {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+.cfg-noresult {
+  padding: 8px 10px;
+}
+/* Nella barra della chat (in fondo allo schermo) i risultati si aprono verso l'alto */
+.config-panel .cfg-results {
+  inset: auto 0 calc(100% + 4px);
+}

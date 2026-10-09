@@ -55,6 +55,18 @@ export default async function ({ page }) {
   const modelSelect = (await page.$$('.config-bar select'))[1];
   await modelSelect.select('lento');
   await page.waitForFunction(() => document.querySelectorAll('.config-bar select')[1]?.value === 'lento');
+  // Tendina lunga: il campo Cerca mostra i risultati e Invio sceglie il primo
+  await page.click('.config-toggle');
+  await page.type('.config-panel .cfg-filter', 'prova 7');
+  await page.waitForSelector('.cfg-results [role=option]');
+  out.searchResults = await page.$$eval('.cfg-results [role=option]', (els) => els.map((e) => e.textContent));
+  await shot('search-select');
+  await runAxe('search-select');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelectorAll('.config-bar select')[1]?.value === 'prova-7');
+  await (await page.$$('.config-bar select'))[1].select('lento');
+  await page.waitForFunction(() => document.querySelectorAll('.config-bar select')[1]?.value === 'lento');
+  await page.click('.config-toggle');
   await page.type('.composer textarea', '/pi');
   await page.waitForSelector('.suggestions [role=option]');
   out.suggestions = await page.$$eval('.suggestions .suggestion-name', (els) => els.map((e) => e.textContent));

@@ -59,6 +59,8 @@ function configOptions(s: DemoSession): acp.SessionConfigOption[] {
       options: [
         { value: 'lento', name: 'Lento' },
         { value: 'veloce', name: 'Veloce' },
+        // Tanti modelli finti: per provare il campo "Cerca" delle tendine lunghe
+        ...Array.from({ length: 10 }, (_, i) => ({ value: `prova-${i + 1}`, name: `Modello di prova ${i + 1}` })),
       ],
     },
   ];
