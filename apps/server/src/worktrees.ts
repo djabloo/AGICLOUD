@@ -72,7 +72,10 @@ export async function createWorktree(projectCwd: string, slug: string): Promise<
   const path = join(root, '.agicloud', 'worktrees', name);
   const branch = `agc/${name}`;
   await git(root, ['worktree', 'add', '-b', branch, path, base]);
-  return { info: { root, path, branch, base, state: 'open' }, cwd: join(path, relative(root, realpathSync(projectCwd))) };
+  // La sottocartella del progetto puo' non esserci nella copia (ignorata da git, es. data/workspaces
+  // dentro il repo di AgiCloud): allora il thread lavora dalla radice della copia
+  const sub = join(path, relative(root, realpathSync(projectCwd)));
+  return { info: { root, path, branch, base, state: 'open' }, cwd: existsSync(sub) ? sub : path };
 }
 
 /** Tutto il lavoro della copia rispetto al punto di partenza (anche file nuovi e commit fatti dall'agente) */

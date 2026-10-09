@@ -107,12 +107,19 @@ export class LeadManager {
     const wt = await createWorktree(lead.meta.cwd, slug).catch((err) => {
       throw new HttpError(409, `Copia separata non creata: ${err instanceof Error ? err.message : err}`);
     });
-    const child = this.store.create(d.agentId, wt?.cwd ?? lead.meta.cwd, {
-      parentId: lead.id,
-      task: d.task,
-      title: d.title,
-      worktree: wt?.info,
-    });
+    let child;
+    try {
+      child = this.store.create(d.agentId, wt?.cwd ?? lead.meta.cwd, {
+        parentId: lead.id,
+        task: d.task,
+        title: d.title,
+        worktree: wt?.info,
+      });
+    } catch (err) {
+      // Niente copie orfane: la proposta resta in sospeso e si puo' riprovare
+      if (wt) await discardWorktree(wt.info).catch(() => {});
+      throw err;
+    }
     const where = wt
       ? `Lavori in una copia separata del progetto (ramo ${wt.info.branch}): fai tutte le modifiche qui, non serve fare commit. Le modifiche entreranno nel progetto solo se l'utente le unisce.`
       : 'Lavori direttamente nella cartella del progetto.';
