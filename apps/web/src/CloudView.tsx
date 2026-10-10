@@ -1,6 +1,6 @@
 // Plugin Cloud: i server Hetzner, le immagini e i costi; nuove VPS da un'immagine.
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { api, type CloudImage, type CloudOverview, type CloudServer } from './api';
+import { api, type CloudBuildJob, type CloudImage, type CloudOverview, type CloudServer } from './api';
 import { copyText } from './termText';
 
 const eur = (n: number) => n.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
@@ -24,6 +24,7 @@ export function CloudView() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [newFrom, setNewFrom] = useState<string | null>(null);
+  const [newNode, setNewNode] = useState(false);
 
   const load = async () => {
     try {
@@ -84,6 +85,8 @@ export function CloudView() {
 
         {data && (
           <>
+            <NodeImageSection data={data} onChanged={load} onNewNode={() => setNewNode(true)} />
+
             <section className="pii-card" aria-labelledby={`${id}-srv`}>
               <div className="group-head">
                 <h2 id={`${id}-srv`}>Server</h2>
@@ -124,6 +127,7 @@ export function CloudView() {
                           {i.type === 'backup' ? 'Backup' : 'Snapshot'} · {i.description}
                           {i.from && <span className="hint"> · da {i.from}</span>}
                           {i.nodeImage && <span className="cloud-badge">immagine dei nodi</span>}
+                          {i.agicloudNode && <span className="cloud-badge cloud-badge-prod">immagine AgiCloud in uso</span>}
                         </td>
                         <td>{date(i.created)}</td>
                         <td>{i.sizeGb.toFixed(1)} GB</td>
@@ -132,7 +136,7 @@ export function CloudView() {
                           <button type="button" className="btn small-btn" onClick={() => setNewFrom(String(i.id))}>
                             Nuova VPS da qui
                           </button>
-                          {i.type === 'snapshot' && !i.nodeImage && (
+                          {i.type === 'snapshot' && !i.nodeImage && !i.agicloudNode && (
                             <button
                               type="button"
                               className="btn small-btn"
@@ -182,7 +186,210 @@ export function CloudView() {
           }}
         />
       )}
+
+      {data && newNode && (
+        <NewAgicloudNodeDialog
+          data={data}
+          onClose={() => setNewNode(false)}
+          onCreated={() => void load()}
+        />
+      )}
     </section>
+  );
+}
+
+/** Immagine da cui nascono le VPS AgiCloud: stato, pulsante per costruirla, registro in diretta */
+function NodeImageSection({ data, onChanged, onNewNode }: { data: CloudOverview; onChanged: () => void; onNewNode: () => void }) {
+  const id = useId();
+  const [job, setJob] = useState<CloudBuildJob | null>(null);
+  const [error, setError] = useState('');
+  const current = data.images.find((i) => i.agicloudNode);
+
+  // Un lavoro gia' in corso (es. ricaricando la pagina): lo si ritrova e si continua a seguirlo
+  useEffect(() => {
+    api.cloudBuildStatus().then(setJob).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (job?.state !== 'running') return;
+    const t = window.setInterval(async () => {
+      try {
+        const j = await api.cloudBuildStatus();
+        setJob(j);
+        if (j?.state === 'done') onChanged();
+      } catch {
+        /* si riprova al prossimo giro */
+      }
+    }, 2000);
+    return () => window.clearInterval(t);
+  }, [job?.state]);
+
+  const start = async () => {
+    setError('');
+    try {
+      setJob(await api.cloudBuildStart());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  return (
+    <section className="pii-card" aria-labelledby={`${id}-t`}>
+      <div className="group-head">
+        <h2 id={`${id}-t`}>Immagine AgiCloud</h2>
+        <div className="agent-actions">
+          {current && (
+            <button type="button" className="btn small-btn primary" onClick={onNewNode}>
+              Nuova VPS AgiCloud
+            </button>
+          )}
+          <button type="button" className="btn small-btn" disabled={job?.state === 'running'} onClick={() => void start()}>
+            {job?.state === 'running' ? 'Costruzione in corso…' : 'Costruisci immagine'}
+          </button>
+        </div>
+      </div>
+      <p className="hint">
+        {current
+          ? `In uso: "${current.description}" del ${date(current.created)}. Una nuova VPS AgiCloud nasce gia' con il server e gli agenti installati.`
+          : 'Nessuna immagine ancora costruita: serve prima di poter creare una VPS AgiCloud pronta all\'uso.'}
+      </p>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      {job && (
+        <details className="pii-card" open={job.state !== 'done'}>
+          <summary>
+            {job.state === 'running' ? 'Costruzione in corso…' : job.state === 'error' ? 'Costruzione non riuscita' : 'Ultima costruzione: riuscita'}
+          </summary>
+          <pre className="cloud-build-log" aria-live={job.state === 'running' ? 'polite' : undefined}>
+            {job.log.join('\n') || 'In avvio…'}
+          </pre>
+        </details>
+      )}
+    </section>
+  );
+}
+
+function NewAgicloudNodeDialog({ data, onClose, onCreated }: { data: CloudOverview; onClose: () => void; onCreated: () => void }) {
+  const id = useId();
+  const ref = useRef<HTMLDialogElement>(null);
+  const types = data.serverTypes;
+  const [name, setName] = useState('cliente-1');
+  const [location, setLocation] = useState('nbg1');
+  const [type, setType] = useState(() => (types.find((t) => t.name === 'cax11') ?? types[0])?.name ?? '');
+  const [backups, setBackups] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<{ ipv4: string | null; activationUrl: string | null } | null>(null);
+  const [copied, setCopied] = useState('');
+
+  useEffect(() => {
+    ref.current?.showModal();
+  }, []);
+
+  const t = types.find((x) => x.name === type);
+  const base = t?.prices[location] ?? 0;
+  const monthly = base * (backups ? 1.2 : 1);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const r = await api.cloudCreateAgicloudNode({ name, type, location, backups });
+      setResult(r);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <dialog ref={ref} className="dialog" aria-labelledby={`${id}-t`} onClose={onClose}>
+      {result ? (
+        <div>
+          <h2 id={`${id}-t`}>VPS "{name}" creata</h2>
+          <p>Si sta avviando: la prima richiesta https puo' impiegare qualche secondo in piu' per il certificato.</p>
+          {result.activationUrl && (
+            <>
+              <label htmlFor={`${id}-link`}>Link di attivazione (una sola volta, da aprire tu o da mandare al cliente)</label>
+              <div className="secret-row">
+                <input id={`${id}-link`} className="mono-input" readOnly value={result.activationUrl} onFocus={(e) => e.currentTarget.select()} />
+                <button type="button" className="btn" onClick={() => void copyText(result.activationUrl!).then((ok) => setCopied(ok ? 'Link copiato' : 'Copia non riuscita'))}>
+                  Copia
+                </button>
+              </div>
+              <p className="hint" aria-live="polite">
+                {copied}
+              </p>
+            </>
+          )}
+          <div className="dialog-actions">
+            <button type="button" className="btn primary" onClick={onClose}>
+              Chiudi
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={(e) => void submit(e)}>
+          <h2 id={`${id}-t`}>Nuova VPS AgiCloud</h2>
+          <p className="hint">Nasce gia' con AgiCloud e gli agenti installati; al primo accesso mostra il link di attivazione.</p>
+          <div className="pii-field">
+            <label htmlFor={`${id}-name`}>Nome</label>
+            <input id={`${id}-name`} value={name} onChange={(e) => setName(e.target.value.toLowerCase())} className="mono-input" />
+          </div>
+          <div className="pii-field">
+            <label htmlFor={`${id}-loc`}>Posto</label>
+            <select id={`${id}-loc`} value={location} onChange={(e) => setLocation(e.target.value)}>
+              {data.locations.map((l) => (
+                <option key={l.name} value={l.name}>
+                  {l.city} ({l.country}) · {l.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="pii-field">
+            <label htmlFor={`${id}-type`}>Tipo</label>
+            <select id={`${id}-type`} value={type} onChange={(e) => setType(e.target.value)}>
+              {types
+                .filter((x) => x.prices[location] !== undefined)
+                .map((x) => (
+                  <option key={x.name} value={x.name}>
+                    {x.name} · {x.cores} vCPU · {x.memory} GB · {x.disk} GB · {x.arch} · {eur(x.prices[location]!)}/mese
+                  </option>
+                ))}
+            </select>
+          </div>
+          <label className="choice">
+            <input type="checkbox" checked={backups} onChange={(e) => setBackups(e.target.checked)} />
+            <span className="choice-text">
+              <span>Backup giornalieri</span>
+              <span className="hint">7 copie, +20% sul prezzo del server</span>
+            </span>
+          </label>
+          <p className="cloud-price">
+            Costo: <strong>{eur(monthly)} al mese</strong> (IVA inclusa, a ore finche' la tieni)
+          </p>
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="dialog-actions">
+            <button type="button" className="btn" onClick={onClose}>
+              Annulla
+            </button>
+            <button type="submit" className="btn primary" disabled={busy || !name || !type}>
+              {busy ? 'Creazione…' : `Crea per ${eur(monthly)}/mese`}
+            </button>
+          </div>
+        </form>
+      )}
+    </dialog>
   );
 }
 

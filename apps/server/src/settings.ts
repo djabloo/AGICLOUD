@@ -19,6 +19,8 @@ interface SettingsFile {
   agentDefaults: Record<string, Record<string, ConfigValue>>;
   /** Ultime opzioni viste per agente: servono a mostrare le scelte possibili */
   agentOptions: Record<string, acp.SessionConfigOption[]>;
+  /** Plugin Cloud: snapshot da usare per le nuove VPS AgiCloud (l'ultima costruita con "Costruisci immagine") */
+  nodeImage?: number;
 }
 
 /** Variabili d'ambiente impostabili per agente (solo queste: niente iniezioni arbitrarie) */
@@ -117,6 +119,15 @@ export class Settings {
   /** Valore di una chiave per un plugin del server (es. Verdict); mai al browser */
   vaultValue(name: string): string | undefined {
     return this.vault[name]?.value;
+  }
+
+  nodeImage(): number | undefined {
+    return this.data.nodeImage;
+  }
+
+  setNodeImage(id: number): void {
+    this.data.nodeImage = id;
+    this.save();
   }
 
   /** Elenco per la UI: mai il valore, solo le ultime 4 cifre per riconoscerla */

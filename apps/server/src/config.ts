@@ -1,7 +1,15 @@
-import { mkdirSync, realpathSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const env = process.env;
+
+function readSecret(path: string): string {
+  try {
+    return existsSync(path) ? readFileSync(path, 'utf8').trim() : '';
+  } catch {
+    return '';
+  }
+}
 
 const dataDir = resolve(env.DATA_DIR || 'data');
 const workspacesRoot = resolve(env.WORKSPACES_ROOT || `${dataDir}/workspaces`);
@@ -11,8 +19,16 @@ mkdirSync(`${dataDir}/threads`, { recursive: true });
 export const config = {
   host: env.HOST || '127.0.0.1',
   port: Number(env.PORT || 3095),
-  /** Token di accesso (Bearer). Obbligatorio se il server non ascolta solo in locale. */
-  authToken: env.AUTH_TOKEN || '',
+  /**
+   * Token di accesso (Bearer). Obbligatorio se il server non ascolta solo in locale.
+   * Dall'ambiente, oppure dal file creato al primo accesso con il link di attivazione (nodi).
+   */
+  authToken: env.AUTH_TOKEN || readSecret(`${dataDir}/auth-token`),
+  /** Codice di attivazione monouso (nodi nuovi): finche' non c'e' un token, serve per crearlo */
+  setupToken: env.SETUP_TOKEN || readSecret(`${dataDir}/setup-token`),
+  /** File in cui si salva il token creato con l'attivazione */
+  authTokenFile: `${dataDir}/auth-token`,
+  setupTokenFile: `${dataDir}/setup-token`,
   /** Conversazioni salvate (metadati + registro eventi) */
   threadsDir: `${dataDir}/threads`,
   /** Cartella per i progetti nuovi creati dall'interfaccia */
@@ -38,6 +54,7 @@ export const config = {
 
 // Il token non deve finire nell'ambiente di agenti e terminali
 delete process.env.AUTH_TOKEN;
+delete process.env.SETUP_TOKEN;
 
 /**
  * Variabili di una sessione Claude Code (es. se il server e' stato avviato da dentro Claude Code).
@@ -48,7 +65,7 @@ export const LEAKED_SESSION_VARS = /^(CLAUDECODE|CLAUDE_CODE_.+|CLAUDE_AGENT_SDK
 for (const name of Object.keys(process.env)) if (LEAKED_SESSION_VARS.test(name)) delete process.env[name];
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
-if (!LOCAL_HOSTS.has(config.host) && !config.authToken) {
+if (!LOCAL_HOSTS.has(config.host) && !config.authToken && !config.setupToken) {
   console.error(`Rifiuto di ascoltare su ${config.host} senza AUTH_TOKEN.`);
   process.exit(1);
 }

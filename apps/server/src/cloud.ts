@@ -9,6 +9,7 @@
 
 import type { Hono } from 'hono';
 import { HttpError } from './errors.js';
+import { randomBytes } from 'node:crypto';
 import type { PluginSpec } from './plugins.js';
 import type { Settings } from './settings.js';
 
@@ -45,7 +46,7 @@ async function list(token: string, path: string, key: string): Promise<Json[]> {
 const gross = (p: Json | undefined, k = 'price_monthly') => Number(p?.[k]?.gross ?? 0);
 
 /** Stato completo per la sezione Cloud, con i costi mensili stimati (IVA inclusa) */
-async function overview(token: string) {
+async function overview(token: string, ourNodeImage?: number) {
   const [servers, snapshots, backups, volumes, pricing, types, locations] = await Promise.all([
     list(token, '/servers', 'servers'),
     list(token, '/images?type=snapshot', 'images'),
@@ -97,6 +98,8 @@ async function overview(token: string) {
     // I backup sono compresi nel 20% del server; gli snapshot si pagano a GB
     monthly: i.type === 'snapshot' ? Number(i.image_size ?? 0) * imgGb : 0,
     arch: i.architecture,
+    /** E' l'immagine da cui nascono le nuove VPS AgiCloud (costruita da qui) */
+    agicloudNode: Number(i.id) === ourNodeImage,
   });
   const vols = volumes.map((v) => ({ id: v.id, name: v.name, sizeGb: v.size, server: v.server, monthly: v.size * volGb }));
   const total = srv.reduce((a, s) => a + s.monthly, 0) + snapshots.reduce((a, i) => a + Number(i.image_size ?? 0) * imgGb, 0) + vols.reduce((a, v) => a + v.monthly, 0);
@@ -119,6 +122,7 @@ async function overview(token: string) {
       .sort((a, b) => a.cores - b.cores || a.memory - b.memory),
     locations: locations.map((l) => ({ name: l.name, city: l.city, country: l.country })),
     nodeImage: NODE_IMAGE,
+    agicloudNodeImage: ourNodeImage ?? null,
   };
 }
 
@@ -175,7 +179,31 @@ export function registerCloud(app: Hono<any>, settings: Settings): void {
     return n;
   };
 
-  app.get('/api/cloud', async (c) => c.json(await overview(token())));
+  app.get('/api/cloud', async (c) => c.json(await overview(token(), settings.nodeImage())));
+
+  // Nuova VPS gia' pronta con AgiCloud: dall'ultima immagine costruita, con il link di attivazione
+  app.post('/api/cloud/servers/agicloud-node', async (c) => {
+    const imageId = settings.nodeImage();
+    if (!imageId) throw new HttpError(409, 'Nessuna immagine AgiCloud ancora costruita: usa "Costruisci immagine"');
+    const body = (await c.req.json().catch(() => ({}))) as Json;
+    const name = String(body.name ?? '').trim();
+    if (!/^[a-z0-9][a-z0-9-]{1,62}$/.test(name)) throw new HttpError(400, 'Nome: lettere minuscole, numeri e trattini (es. cliente-1)');
+    const t = token();
+    const setup = randomBytes(16).toString('hex');
+    const res = await hz(t, 'POST', '/servers', {
+      name,
+      server_type: String(body.type ?? ''),
+      location: String(body.location ?? ''),
+      image: imageId,
+      labels: { [WORKER_LABEL]: 'worker' },
+      user_data: `#cloud-config\nruncmd:\n  - [ /usr/local/sbin/agicloud-firstboot, "", "${setup}" ]\n`,
+      start_after_create: true,
+    });
+    if (body.backups === true) await hz(t, 'POST', `/servers/${res.server.id}/actions/enable_backup`).catch(() => {});
+    const ip = res.server.public_net?.ipv4?.ip as string | undefined;
+    const activationUrl = ip ? `https://${ip.split('.').join('-')}.sslip.io/?setup=${setup}` : null;
+    return c.json({ id: res.server.id, ipv4: ip ?? null, activationUrl });
+  });
 
   // Accendi / spegni (ordinato) / riavvia: anche il server principale (Hetzner chiede comunque conferma a noi)
   app.post('/api/cloud/servers/:id/power', async (c) => {
@@ -239,6 +267,7 @@ export function registerCloud(app: Hono<any>, settings: Settings): void {
   app.delete('/api/cloud/images/:id', async (c) => {
     const id = num(c.req.param('id'));
     if (String(id) === NODE_IMAGE) throw new HttpError(409, 'E\' l\'immagine dei nodi: non si elimina da qui');
+    if (id === settings.nodeImage()) throw new HttpError(409, 'E\' l\'immagine AgiCloud in uso: costruiscine una nuova prima di eliminare questa');
     const img = (await hz(token(), 'GET', `/images/${id}`)).image;
     if (img.type !== 'snapshot') throw new HttpError(409, 'Si eliminano solo gli snapshot (i backup li gestisce Hetzner)');
     if (c.req.query('confirm') !== 'elimina') throw new HttpError(400, 'Conferma mancante');

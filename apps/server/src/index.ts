@@ -1,6 +1,6 @@
 import type { Server } from 'node:http';
-import { timingSafeEqual } from 'node:crypto';
-import { readFileSync, existsSync } from 'node:fs';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { readFileSync, existsSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { serve, type HttpBindings } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -28,6 +28,7 @@ import { Plugins } from './plugins.js';
 import { piiPlugin, registerPii } from './pii.js';
 import { registerVerdict, verdictMcpServer, verdictPlugin } from './verdict.js';
 import { cloudPlugin, registerCloud } from './cloud.js';
+import { NodeImageBuilder, registerNodeImageBuild } from './node-image.js';
 import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser, registerBrowserStart } from './browser.js';
 
 const settings = new Settings();
@@ -81,7 +82,8 @@ type Access = 'ok' | 'missing' | 'denied' | 'blocked';
 
 /** Controllo del token condiviso da API e WebSocket dei terminali */
 function checkAccess(ip: string, given: string): Access {
-  if (!config.authToken) return 'ok';
+  // Nodo non ancora attivato: niente accesso finche' non si crea il token col link di attivazione
+  if (!config.authToken) return config.setupToken ? 'missing' : 'ok';
   const f = failures.get(ip);
   if (f && f.count >= FAIL_LIMIT && f.until > Date.now()) return 'blocked';
   if (!given) return 'missing';
@@ -97,6 +99,28 @@ function checkAccess(ip: string, given: string): Access {
 
 // Strumenti del capo (lead-mcp.ts): fuori da /api, con il token della conversazione capo
 lead.register(app);
+
+// Attivazione di un nodo nuovo: il codice monouso del link crea il token definitivo, mostrato una volta.
+// Prima del controllo del token (che a nodo non attivato non c'e' ancora).
+app.post('/api/setup', async (c) => {
+  const ip = clientIp(c);
+  const f = failures.get(ip);
+  if (f && f.count >= FAIL_LIMIT && f.until > Date.now()) return c.json({ error: 'Troppi tentativi: riprova tra qualche minuto' }, 429);
+  if (config.authToken || !config.setupToken) return c.json({ error: 'Questo AgiCloud e\' gia\' attivato: entra con il tuo token' }, 409);
+  const body = (await c.req.json().catch(() => ({}))) as { setup?: unknown };
+  const a = Buffer.from(String(body.setup ?? ''));
+  const b = Buffer.from(config.setupToken);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    failures.set(ip, { count: (f && f.until > Date.now() ? f.count : 0) + 1, until: Date.now() + FAIL_WINDOW_MS });
+    return c.json({ error: 'Link di attivazione non valido' }, 401);
+  }
+  const token = randomBytes(32).toString('base64url');
+  writeFileSync(config.authTokenFile, token + '\n', { mode: 0o600 });
+  rmSync(config.setupTokenFile, { force: true });
+  config.authToken = token;
+  config.setupToken = '';
+  return c.json({ token });
+});
 
 app.use('/api/*', async (c, next) => {
   const header = c.req.header('authorization') ?? '';
@@ -157,9 +181,10 @@ registerBrowserStart(app);
 registerVerdict(app, settings);
 registerHandover(app, store, limits);
 registerCloud(app, settings);
+registerNodeImageBuild(app, settings, new NodeImageBuilder());
 
 // ── API ──────────────────────────────────────────────────────────────────────
-app.get('/api/session', (c) => c.json({ ok: true, authRequired: Boolean(config.authToken) }));
+app.get('/api/session', (c) => c.json({ ok: true, authRequired: Boolean(config.authToken), setupPending: !config.authToken && Boolean(config.setupToken) }));
 
 app.get('/api/agents', (c) =>
   c.json(Object.values(AGENTS).map(({ id, label, native, note }) => ({ id, label, native, note }))),

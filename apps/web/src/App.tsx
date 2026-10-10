@@ -13,6 +13,7 @@ import { PiiView } from './PiiView';
 import { BrowserSection } from './BrowserSection';
 import { VerdictView } from './VerdictView';
 import { CloudView } from './CloudView';
+import { SetupDone } from './Login';
 import { Icon, type IconName } from './icons';
 
 type Auth = 'checking' | 'ok' | 'needed';
@@ -109,6 +110,21 @@ export function App() {
         setAuthError('Server non raggiungibile');
       }
     }
+  }, []);
+
+  // Link di attivazione di un nodo nuovo (?setup=...): crea il token e lo mostra una volta
+  const [newToken, setNewToken] = useState<string | null>(null);
+  useEffect(() => {
+    const setup = new URLSearchParams(location.search).get('setup');
+    if (!setup) return;
+    history.replaceState(null, '', location.pathname + location.hash);
+    api
+      .setup(setup)
+      .then((r) => {
+        setToken(r.token);
+        setNewToken(r.token);
+      })
+      .catch((err) => setAuthError(err instanceof Error ? err.message : String(err)));
   }, []);
 
   useEffect(() => {
@@ -225,6 +241,7 @@ export function App() {
     if (route.id === id) go({ section: 'terminal', id: null });
   };
 
+  if (newToken) return <SetupDone token={newToken} onContinue={() => { setNewToken(null); void refresh(); }} />;
   if (auth === 'checking') return <p className="boot">Caricamento…</p>;
   if (auth === 'needed') {
     return (

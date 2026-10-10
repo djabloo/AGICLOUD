@@ -317,6 +317,8 @@ export interface CloudImage {
   nodeImage: boolean;
   monthly: number;
   arch: string;
+  /** E' l'immagine da cui nascono le nuove VPS AgiCloud (costruita da qui) */
+  agicloudNode: boolean;
 }
 
 export interface CloudOverview {
@@ -327,6 +329,17 @@ export interface CloudOverview {
   serverTypes: { name: string; cores: number; memory: number; disk: number; arch: string; prices: Record<string, number> }[];
   locations: { name: string; city: string; country: string }[];
   nodeImage: string;
+  agicloudNodeImage: number | null;
+}
+
+export interface CloudBuildJob {
+  id: string;
+  state: 'running' | 'done' | 'error';
+  log: string[];
+  startedAt: number;
+  finishedAt?: number;
+  imageId?: number;
+  error?: string;
 }
 
 export const api = {
@@ -371,6 +384,7 @@ export const api = {
     request<VerdictResult>('POST', '/verdict/decide', body),
   limits: () => request<{ claude: ClaudeLimit | null }>('GET', '/limits'),
   handover: (threadId: string, agentId: string) => request<ThreadSummary>('POST', `/threads/${threadId}/handover`, { agentId }),
+  setup: (setup: string) => request<{ token: string }>('POST', '/setup', { setup }),
   cloud: () => request<CloudOverview>('GET', '/cloud'),
   cloudPower: (id: number, action: 'on' | 'off' | 'reboot') => request<void>('POST', `/cloud/servers/${id}/power`, { action }),
   cloudBackups: (id: number, enabled: boolean) => request<void>('POST', `/cloud/servers/${id}/backups`, { enabled }),
@@ -380,6 +394,10 @@ export const api = {
   cloudDeleteImage: (id: number) => request<void>('DELETE', `/cloud/images/${id}?confirm=elimina`),
   cloudCreate: (body: { name: string; type: string; location: string; image: string; backups: boolean }) =>
     request<{ id: number; ipv4: string | null }>('POST', '/cloud/servers', body),
+  cloudCreateAgicloudNode: (body: { name: string; type: string; location: string; backups: boolean }) =>
+    request<{ id: number; ipv4: string | null; activationUrl: string | null }>('POST', '/cloud/servers/agicloud-node', body),
+  cloudBuildStart: () => request<CloudBuildJob>('POST', '/cloud/build', {}),
+  cloudBuildStatus: () => request<CloudBuildJob | null>('GET', '/cloud/build'),
   plugins: () => request<PluginInfo[]>('GET', '/plugins'),
   installPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/install`),
   uninstallPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/uninstall`),
