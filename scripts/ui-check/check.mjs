@@ -242,7 +242,8 @@ export default async function ({ page }) {
   await page.waitForSelector('.attach-menu button');
   await shot('attach-menu');
   await runAxe('attach-menu');
-  await page.evaluate(() => [...document.querySelectorAll('.attach-menu button')][1].click());
+  out.attachMenu = await page.$$eval('.attach-menu button', (els) => els.map((e) => e.textContent));
+  await page.evaluate(() => [...document.querySelectorAll('.attach-menu button')].find((b) => b.textContent.includes('anonimizzati')).click());
   await page.waitForSelector('dialog[open] .pii-pick input', { timeout: 10000 });
   await page.click('dialog[open] .pii-pick input');
   await shot('pii-picker');

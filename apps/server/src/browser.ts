@@ -109,6 +109,26 @@ export async function stopBrowser(): Promise<void> {
   }
 }
 
+/** Ultima scheda guardata da l'utente: e' quella che finisce nello screenshot */
+let lastViewed: string | null = null;
+
+/** Screenshot PNG della scheda che si sta guardando (per allegarlo in chat) */
+export async function browserScreenshot(): Promise<Buffer> {
+  await ensureBrowser();
+  const tabs = await pages();
+  const t = tabs.find((p) => p.id === lastViewed) ?? tabs[0];
+  if (!t?.webSocketDebuggerUrl) throw new Error('Nessuna scheda aperta nel browser');
+  const link = new PageLink(t.webSocketDebuggerUrl, () => {});
+  try {
+    await link.ready();
+    const r = await link.send('Page.captureScreenshot', { format: 'png' });
+    if (!r?.data) throw new Error('Screenshot non riuscito');
+    return Buffer.from(r.data, 'base64');
+  } finally {
+    link.close();
+  }
+}
+
 async function pages(): Promise<Target[]> {
   return (await cdpJson<Target[]>('/json/list')).filter((t) => t.type === 'page');
 }
@@ -241,6 +261,7 @@ class Viewer {
     if (!t?.webSocketDebuggerUrl || this.closed) return;
     this.link?.close();
     this.targetId = targetId;
+    lastViewed = targetId;
     const link = new PageLink(t.webSocketDebuggerUrl, (method, params) => {
       if (method === 'Page.screencastFrame') {
         this.send({ type: 'frame', data: params.data, meta: params.metadata });
@@ -448,8 +469,12 @@ const START_PAGE = `<!doctype html>
   <ul>${QUICK_LINKS.map(([n, u]) => `<li><a href="${u}">${n}</a></li>`).join('')}</ul>
 </main></body></html>`;
 
-/** Pagina iniziale delle schede nuove */
+/** Pagina iniziale delle schede nuove e screenshot della scheda guardata */
 export function registerBrowserStart(app: Hono<any>): void {
+  app.get('/api/browser/screenshot', async (c) => {
+    c.header('Content-Type', 'image/png');
+    return c.body(new Uint8Array(await browserScreenshot()));
+  });
   app.get('/browser-start', (c) => {
     c.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action https:; base-uri 'none'");
     return c.html(START_PAGE);

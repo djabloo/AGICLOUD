@@ -1,5 +1,5 @@
 import { useEffect, useId, useReducer, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { api, followEvents, type FileEntry, type ThreadSummary } from './api';
+import { api, apiFetch, followEvents, type FileEntry, type ThreadSummary } from './api';
 import { emptyTranscript, reduce, type ConfigOption, type Item, type SlashCommand } from './transcript';
 import { Markdown } from './markdown';
 import { Icon } from './icons';
@@ -511,6 +511,56 @@ function Composer({
     area.current?.focus();
   };
   const [attachMenu, setAttachMenu] = useState(false);
+  /** Il plugin Browser e' attivo: si puo' allegare lo screenshot della pagina condivisa */
+  const [browserOn, setBrowserOn] = useState(false);
+  useEffect(() => {
+    if (attachMenu) api.plugins().then((ps) => setBrowserOn(ps.some((p) => p.id === 'browser' && p.enabled))).catch(() => {});
+  }, [attachMenu]);
+  const canCapture = typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getDisplayMedia);
+
+  const stamp = () => new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
+
+  /** Screenshot di una scheda, finestra o schermo scelti da te (il browser chiede il permesso) */
+  const captureScreen = async () => {
+    setAttachMenu(false);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.muted = true;
+      await video.play();
+      // Un attimo perche' sparisca il riquadro di scelta del browser
+      await new Promise((r) => setTimeout(r, 400));
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d')!.drawImage(video, 0, 0);
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
+      if (!blob) throw new Error('immagine vuota');
+      await addFiles([new File([blob], `screenshot-${stamp()}.png`, { type: 'image/png' })]);
+    } catch (err) {
+      // Annullato da te: nessun messaggio
+      if (err instanceof DOMException && err.name === 'NotAllowedError') return;
+      setFileMsg(`Screenshot non riuscito: ${err instanceof Error ? err.message : err}`);
+    } finally {
+      area.current?.focus();
+    }
+  };
+
+  /** Screenshot della pagina aperta nel Browser condiviso */
+  const captureBrowser = async () => {
+    setAttachMenu(false);
+    setFileMsg('Screenshot del Browser…');
+    try {
+      const blob = await (await apiFetch('/browser/screenshot')).blob();
+      await addFiles([new File([blob], `browser-${stamp()}.png`, { type: 'image/png' })]);
+    } catch (err) {
+      setFileMsg(`Screenshot del Browser non riuscito: ${err instanceof Error ? err.message : err}`);
+    } finally {
+      area.current?.focus();
+    }
+  };
   const [piiOpen, setPiiOpen] = useState(false);
   const attachBtn = useRef<HTMLButtonElement>(null);
   // Menu degli allegati: un clic fuori lo chiude
@@ -676,6 +726,16 @@ function Composer({
             >
               Dal dispositivo…
             </button>
+            {canCapture && (
+              <button type="button" onClick={() => void captureScreen()}>
+                Cattura schermo…
+              </button>
+            )}
+            {browserOn && (
+              <button type="button" onClick={() => void captureBrowser()}>
+                Screenshot del Browser condiviso
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
