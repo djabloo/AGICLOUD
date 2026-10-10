@@ -27,6 +27,7 @@ import { catalog as designCatalog, normalizeChoice } from '@agicloud/design';
 import { Plugins } from './plugins.js';
 import { piiPlugin, registerPii } from './pii.js';
 import { registerVerdict, verdictMcpServer, verdictPlugin } from './verdict.js';
+import { cloudPlugin, registerCloud } from './cloud.js';
 import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser, registerBrowserStart } from './browser.js';
 
 const settings = new Settings();
@@ -129,6 +130,7 @@ const plugins = new Plugins(
     piiPlugin,
     browserPlugin,
     verdictPlugin(settings),
+    cloudPlugin(settings),
   ],
   // Design era gia' in uso prima del sistema dei plugin: resta installato e attivo
   { design: { installed: true, enabled: true } },
@@ -154,6 +156,7 @@ registerPii(app);
 registerBrowserStart(app);
 registerVerdict(app, settings);
 registerHandover(app, store, limits);
+registerCloud(app, settings);
 
 // ── API ──────────────────────────────────────────────────────────────────────
 app.get('/api/session', (c) => c.json({ ok: true, authRequired: Boolean(config.authToken) }));

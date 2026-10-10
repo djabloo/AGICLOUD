@@ -288,6 +288,47 @@ export interface ClaudeLimit {
   message?: string;
 }
 
+export interface CloudServer {
+  id: number;
+  name: string;
+  status: string;
+  type: string;
+  cores: number;
+  memory: number;
+  disk: number;
+  arch: string;
+  location: string;
+  ipv4: string | null;
+  created: string;
+  backups: boolean;
+  protected: boolean;
+  worker: boolean;
+  monthly: number;
+  image: string | null;
+}
+
+export interface CloudImage {
+  id: number;
+  type: 'snapshot' | 'backup';
+  description: string;
+  sizeGb: number;
+  created: string;
+  from: string | null;
+  nodeImage: boolean;
+  monthly: number;
+  arch: string;
+}
+
+export interface CloudOverview {
+  servers: CloudServer[];
+  images: CloudImage[];
+  volumes: { id: number; name: string; sizeGb: number; server: number | null; monthly: number }[];
+  monthlyTotal: number;
+  serverTypes: { name: string; cores: number; memory: number; disk: number; arch: string; prices: Record<string, number> }[];
+  locations: { name: string; city: string; country: string }[];
+  nodeImage: string;
+}
+
 export const api = {
   session: () => request<{ ok: boolean }>('GET', '/session'),
   agents: () => request<AgentInfo[]>('GET', '/agents'),
@@ -330,6 +371,15 @@ export const api = {
     request<VerdictResult>('POST', '/verdict/decide', body),
   limits: () => request<{ claude: ClaudeLimit | null }>('GET', '/limits'),
   handover: (threadId: string, agentId: string) => request<ThreadSummary>('POST', `/threads/${threadId}/handover`, { agentId }),
+  cloud: () => request<CloudOverview>('GET', '/cloud'),
+  cloudPower: (id: number, action: 'on' | 'off' | 'reboot') => request<void>('POST', `/cloud/servers/${id}/power`, { action }),
+  cloudBackups: (id: number, enabled: boolean) => request<void>('POST', `/cloud/servers/${id}/backups`, { enabled }),
+  cloudSnapshot: (id: number) => request<void>('POST', `/cloud/servers/${id}/snapshot`, {}),
+  cloudRebuild: (id: number, image: string) => request<void>('POST', `/cloud/servers/${id}/rebuild`, { image }),
+  cloudDelete: (id: number, confirm: string) => request<void>('DELETE', `/cloud/servers/${id}?confirm=${encodeURIComponent(confirm)}`),
+  cloudDeleteImage: (id: number) => request<void>('DELETE', `/cloud/images/${id}?confirm=elimina`),
+  cloudCreate: (body: { name: string; type: string; location: string; image: string; backups: boolean }) =>
+    request<{ id: number; ipv4: string | null }>('POST', '/cloud/servers', body),
   plugins: () => request<PluginInfo[]>('GET', '/plugins'),
   installPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/install`),
   uninstallPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/uninstall`),
