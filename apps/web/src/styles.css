@@ -3113,3 +3113,48 @@ legend {
   min-width: 64px;
   font-variant-numeric: tabular-nums;
 }
+
+/* Capo di riserva: avviso limite e passaggio di consegne */
+.handover-bar {
+  display: grid;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  border-left: 4px solid var(--warn);
+  background: var(--surface);
+}
+.handover-bar.is-blocked {
+  border-left-color: var(--danger);
+}
+.handover-bar.is-done {
+  border-left-color: var(--accent);
+  font-size: 0.95rem;
+}
+.handover-title {
+  margin: 0;
+  font-weight: 600;
+}
+.handover-bar select {
+  min-height: 40px;
+}
+
+/* Titoli nelle risposte degli agenti (livello 2 per i lettori di schermo, dimensione come scritta) */
+.md .md-h {
+  margin: 1em 0 0.4em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.md .md-h1 {
+  font-size: 1.35rem;
+}
+.md .md-h2 {
+  font-size: 1.2rem;
+}
+.md .md-h3 {
+  font-size: 1.08rem;
+}
+.md .md-h4,
+.md .md-h5,
+.md .md-h6 {
+  font-size: 1rem;
+}

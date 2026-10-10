@@ -6,6 +6,7 @@ import { Icon } from './icons';
 import { DiffStat, DiffView, diffStats } from './DiffView';
 import { ChildPanel, DelegationView, LeadChildren } from './LeadViews';
 import { SearchSelect } from './SearchSelect';
+import { HandoverBar } from './HandoverBar';
 import { DesignBar } from './DesignPreview';
 
 interface Props {
@@ -39,6 +40,7 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
   const [sendError, setSendError] = useState('');
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
+  const [handoverOpen, setHandoverOpen] = useState(false);
   /** Lontano dal fondo: compare la freccia per tornarci */
   const [awayFromBottom, setAwayFromBottom] = useState(false);
 
@@ -133,6 +135,10 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
           {STATUS_TEXT[state.status] ?? state.status}
           {!connected && <span className="status-offline"> — riconnessione…</span>}
         </p>
+        <button type="button" className="btn icon-btn" aria-expanded={handoverOpen} onClick={() => setHandoverOpen((v) => !v)}>
+          <Icon name="swap" />
+          <span className="visually-hidden">Passa il lavoro a un altro agente</span>
+        </button>
         <button type="button" className="btn icon-btn" onClick={onOpenTerminal}>
           <Icon name="terminal" />
           <span className="visually-hidden">Apri un terminale in questa cartella</span>
@@ -149,6 +155,15 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
         </button>
       </header>
 
+      <HandoverBar
+        thread={thread}
+        threads={threads}
+        manual={handoverOpen}
+        onManualClose={() => setHandoverOpen(false)}
+        onMoved={(t) => {
+          location.hash = `#/t/${t.id}`;
+        }}
+      />
       {thread.lead && <LeadChildren lead={thread} threads={threads} />}
       {thread.parentId && <ChildPanel thread={thread} threads={threads} running={state.running} />}
       {thread.design && <DesignBar thread={thread} running={state.running} />}
@@ -225,7 +240,7 @@ function ItemView({ item, threadId, cwd, threads }: { item: Item; threadId: stri
       }
       return (
         <article className="message" aria-label={item.role === 'user' ? 'Tu' : 'Agente'}>
-          {item.role === 'user' ? <p className="user-text">{item.text}</p> : <Markdown text={item.text} />}
+          {item.role === 'user' ? <p className="user-text">{item.text}</p> : <Markdown text={item.text} chat />}
         </article>
       );
     case 'delegation':
@@ -237,7 +252,7 @@ function ItemView({ item, threadId, cwd, threads }: { item: Item; threadId: stri
           {item.childId && (
             <>
               {' '}
-              <a href={`#/t/${item.childId}`}>Apri il thread</a>
+              <a href={`#/t/${item.childId}`}>{item.linkLabel ?? 'Apri il thread'}</a>
             </>
           )}
         </p>

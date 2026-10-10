@@ -366,6 +366,50 @@ export default async function ({ page }) {
   out.designInChatList = await page.evaluate((id) => Boolean(document.querySelector('.sidebar [data-thread="' + id + '"]')), designId);
   out.steps.push('design ok');
 
+  // Capo di riserva: il demo imita Claude che finisce il limite, poi passaggio di consegne
+  const limLead = await page.evaluate(async () => {
+    const r = await fetch('/api/threads', {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + localStorage.getItem('agicloud_token'), 'content-type': 'application/json' },
+      body: JSON.stringify({ agentId: 'demo', cwd: '/tmp/proj/capo', lead: true }),
+    });
+    return (await r.json()).id;
+  });
+  await page.setViewport({ width: 1366, height: 860 });
+  await page.goto(BASE + '#/t/' + limLead, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.querySelector('.status')?.textContent.includes('Pronto'), { timeout: 20000 });
+  await page.type('.composer textarea', '/limite');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.handover-bar.is-blocked', { timeout: 40000 });
+  out.limitBanner = await page.$eval('.handover-bar', (e) => e.textContent.slice(0, 160));
+  await shot('handover-limit');
+  await runAxe('handover-limit');
+  // OpenCode nel contenitore di prova non c'e': il passaggio deve fermarsi con un errore chiaro
+  await page.select('.handover-bar select', 'opencode');
+  await page.click('.handover-bar .btn.primary');
+  await page.waitForSelector('.handover-bar .form-error', { timeout: 20000 });
+  out.handoverFail = await page.$eval('.handover-bar .form-error', (e) => e.textContent);
+  // Il demo imita gli altri agenti: si passa a un secondo demo (lo stesso agente non e' tra le scelte, lo si forza)
+  await page.evaluate(() => {
+    const sel = document.querySelector('.handover-bar select');
+    const o = document.createElement('option');
+    o.value = 'demo';
+    o.textContent = 'Demo';
+    sel.appendChild(o);
+  });
+  await page.select('.handover-bar select', 'demo');
+  await page.click('.handover-bar .btn.primary');
+  await page.waitForFunction((old) => location.hash.startsWith('#/t/') && !location.hash.includes(old), { timeout: 10000 }, limLead);
+  await page.waitForSelector('.chat');
+  out.handoverTitle = await page.$eval('#chat-title', (e) => e.textContent);
+  out.handoverOld = await page.evaluate(async (old) => {
+    const r = await fetch('/api/threads', { headers: { authorization: 'Bearer ' + localStorage.getItem('agicloud_token') } });
+    return (await r.json()).find((t) => t.id === old)?.handedOverTo ? 'collegato' : 'NO';
+  }, limLead);
+  await shot('handover-new');
+  await runAxe('handover-new');
+  out.steps.push('capo di riserva ok');
+
   // File: crea, modifica, salva, anteprima
   await page.setViewport({ width: 1366, height: 860 });
   page.on('dialog', (d) => (d.type() === 'prompt' ? d.accept('nota.md') : d.accept()));
@@ -452,7 +496,7 @@ export default async function ({ page }) {
   }
   return { data: out, type: 'application/json' };
 }`;
-const res = await fetch(process.env.BROWSERLESS || 'http://127.0.0.1:3030/function', { method: 'POST', headers: { 'content-type': 'application/javascript' }, body: code });
+const res = await fetch(process.env.BROWSERLESS || 'http://127.0.0.1:3030/function?timeout=600000', { method: 'POST', headers: { 'content-type': 'application/javascript' }, body: code });
 const text = await res.text();
 let data;
 try { data = JSON.parse(text); data = data.data ?? data; } catch { console.log(res.status, text.slice(0, 2000)); process.exit(1); }

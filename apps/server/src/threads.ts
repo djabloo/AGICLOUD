@@ -26,6 +26,7 @@ import type { Settings } from './settings.js';
 import type { Notice } from './push.js';
 import type { WorktreeInfo } from './worktrees.js';
 import type { LeadManager } from './lead.js';
+import type { Limits } from './handover.js';
 
 export { HttpError } from './errors.js';
 
@@ -67,6 +68,12 @@ interface ThreadMeta {
   design?: DesignChoice;
   /** Plugin Browser: conversazione accanto al browser condiviso (l'agente lo usa con Playwright) */
   browser?: boolean;
+  /** Passaggio di consegne: conversazione da cui arriva il lavoro */
+  handoverFrom?: string;
+  /** Punto del registro in cui e' iniziato il lavoro ricevuto (per riassumerlo al ritorno) */
+  handoverStart?: number;
+  /** Passaggio di consegne: conversazione che ha preso il lavoro */
+  handedOverTo?: string;
 }
 
 export type RunOutcome = { stop?: string; error?: string };
@@ -131,6 +138,8 @@ export class Thread {
       worktree: this.meta.worktree ? { branch: this.meta.worktree.branch, state: this.meta.worktree.state } : null,
       design: this.meta.design ?? null,
       browser: this.meta.browser === true,
+      handoverFrom: this.meta.handoverFrom ?? null,
+      handedOverTo: this.meta.handedOverTo ?? null,
     };
   }
 
@@ -151,6 +160,12 @@ export class Thread {
     if (this.status === 'error' || this.status === 'auth_required' || this.meta.lastOutcome === 'error') return 'error';
     if (this.meta.lastOutcome === 'done') return 'done';
     return 'idle';
+  }
+
+  /** Thread affidato che passa a un altro capo (passaggio di consegne) */
+  reparent(parentId: string): void {
+    this.meta.parentId = parentId;
+    this.saveMeta();
   }
 
   /** Ultima risposta dell'agente (per il capo) */
@@ -301,6 +316,13 @@ export class Thread {
           if (x.type === EventType.TEXT_MESSAGE_CONTENT && reply.length < 300) reply += x.delta ?? '';
           else if (x.type === EventType.RUN_FINISHED) outcome = { stop: x.result?.stopReason };
           else if (x.type === EventType.RUN_ERROR) outcome = { error: x.message };
+          else if (x.type === EventType.CUSTOM && x.name === 'agicloud.acp.usage_update' && LIMIT_AGENTS.has(this.meta.agentId)) {
+            const changed = this.store.limits?.fromMeta(x.value?._meta?.['_claude/rateLimit']);
+            if (changed?.status === 'allowed_warning') {
+              const pct = changed.utilization !== null ? ` (${Math.round(changed.utilization * 100)}%)` : '';
+              this.notify(`Claude: limite quasi finito${pct}`, 'Se serve, dalla conversazione puoi passare il lavoro a un altro agente');
+            }
+          }
           else if (x.type === EventType.CUSTOM && x.name === 'agicloud.permission_request') {
             this.openPermissions.set(x.value?.requestId, {
               title: x.value?.toolCall?.title ?? 'Azione dell\'agente',
@@ -332,7 +354,17 @@ export class Thread {
         if (this.queue.length) setTimeout(() => this.enqueueNext(), 0);
         else this.store.lead?.onRunFinished(this, outcome);
         // Interrotto da te: niente notifica
-        if (outcome.error) this.notify(`Errore · ${this.meta.title}`, outcome.error.split('\n')[0]!);
+        // Limite dell'abbonamento di Claude: si propone il passaggio di consegne
+        if (
+          outcome.error &&
+          LIMIT_AGENTS.has(this.meta.agentId) &&
+          this.store.limits &&
+          // dal testo dell'errore oppure dallo stato del limite appena ricevuto ("rejected")
+          (this.store.limits.fromError(outcome.error) || this.store.limits.get().claude?.blocked)
+        ) {
+          this.emit(custom('limit_reached', { ...this.store.limits.get().claude, message: '' }));
+          this.notify(`Claude ha finito il limite · ${this.meta.title}`, 'Apri la conversazione per passare il lavoro a un altro agente');
+        } else if (outcome.error) this.notify(`Errore · ${this.meta.title}`, outcome.error.split('\n')[0]!);
         else if (outcome.stop && outcome.stop !== 'cancelled') {
           this.notify(`Fatto · ${this.meta.title}`, reply.replace(/\s+/g, ' ').trim().slice(0, 140) || 'L\'agente ha finito');
         }
@@ -419,6 +451,15 @@ export class Thread {
     this.clearIdle();
     await this.session?.close();
     await new Promise<void>((r) => (this.log ? this.log.end(r) : r()));
+  }
+
+  /** Aspetta che l'agente sia acceso; errore chiaro se non parte (es. non installato o senza login) */
+  async ready(): Promise<void> {
+    await this.ensureStarted();
+    if (this.status !== 'ready') {
+      const last = [...this.events].reverse().find((e) => e.type === EventType.CUSTOM && (e as any).name === 'agicloud.thread_status') as any;
+      throw new HttpError(409, `${getAgent(this.meta.agentId).label} non si avvia: ${last?.value?.message?.split('\n')[0] ?? this.status}`);
+    }
   }
 
   /** Accende l'agente subito (alla creazione): opzioni e comandi sono pronti prima del primo messaggio */
@@ -582,6 +623,8 @@ export class ThreadStore {
   lead?: LeadManager;
   /** Server MCP in piu' per tutti gli agenti (es. il Browser condiviso): impostato dal server */
   extraMcpServers?: () => Promise<acp.McpServer[]>;
+  /** Limiti dell'abbonamento di Claude (capo di riserva): impostato dal server */
+  limits?: Limits;
   /** Strumenti dei plugin preautorizzati per Claude: impostato dal server */
   extraAllowedTools?: () => string[];
 
@@ -649,7 +692,7 @@ export class ThreadStore {
   create(
     agentId: string,
     cwd: string,
-    extra: Pick<ThreadMeta, 'lead' | 'parentId' | 'task' | 'worktree' | 'design' | 'browser'> & { title?: string } = {},
+    extra: Pick<ThreadMeta, 'lead' | 'parentId' | 'task' | 'worktree' | 'design' | 'browser' | 'handoverFrom'> & { title?: string } = {},
   ): Thread {
     try {
       getAgent(agentId);
@@ -671,6 +714,7 @@ export class ThreadStore {
         worktree: extra.worktree,
         design: extra.design,
         browser: extra.browser || undefined,
+        handoverFrom: extra.handoverFrom,
         createdAt: now,
         updatedAt: now,
         // Modalita'/modello predefiniti dalle Impostazioni: applicati all'avvio dell'agente
@@ -719,6 +763,9 @@ function compact(events: BaseEvent[]): BaseEvent[] {
   }
   return out;
 }
+
+/** Agenti di cui si seguono i limiti dell'abbonamento (demo: solo per le prove, imita Claude) */
+const LIMIT_AGENTS = new Set(['claude', 'demo']);
 
 /** Istruzioni per l'agente di una chat del Browser (aggiunte al primo messaggio, non mostrate in chat) */
 const BROWSER_PROMPT =

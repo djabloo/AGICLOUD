@@ -97,6 +97,14 @@ Ogni terminale ha un **custode** (`apps/server/src/term-host.ts`): un processo s
 - Login di Claude: le shell partono con `apps/server/terminal.bashrc` (carica `.profile`/`.bashrc` e poi toglie `CLAUDE_CODE_OAUTH_TOKEN`), così `claude` nel terminale usa il login dell'account (claude.ai, Pro) come la chat. Il token resta in `~/.bashrc` perché serve al webhook-server (N8N-BUILDER).
 - All'avvio il server toglie dal proprio ambiente (ereditato da custodi e shell) le variabili di una sessione Claude Code "madre" (`CLAUDECODE`, `CLAUDE_CODE_*`…), ereditate se lo si avvia da dentro Claude Code.
 
+## Capo di riserva (limiti di Claude e passaggio di consegne)
+
+`apps/server/src/handover.ts`, `apps/web/src/HandoverBar.tsx`.
+- **Limiti**: Claude manda a ogni turno `_claude/rateLimit` dentro `usage_update` (allowed / allowed_warning / rejected, utilizzo, `resetsAt`, tipo five_hour/seven_day...); un turno oltre il limite fallisce con un errore "rate_limit". AgiCloud tiene l'ultimo stato (`GET /api/limits`), avvisa con una notifica quando diventa "quasi finito" e, al limite, scrive in chat e manda una notifica.
+- **Passaggio di consegne** (`POST /api/threads/:id/handover {agentId}`): dossier costruito dalla conversazione senza modelli (richiesta iniziale, piano, thread affidati con stato e modifiche aperte, ultimi 12 messaggi), conversazione nuova sullo stesso progetto con l'altro agente (capo se lo era l'originale), thread affidati spostati al nuovo capo, dossier come messaggio automatico. Prima si controlla che il nuovo agente parta davvero (`Thread.ready()`): se non parte, non si sposta niente.
+- **Ritorno**: dalla conversazione ricevuta, quando Claude e' di nuovo disponibile, "Ripassa a Claude" torna alla conversazione originale (che ricorda tutto) con il riassunto di quanto fatto nel frattempo e i thread affidati.
+- Riquadro in chat: avviso (quasi finito / finito con l'ora di azzeramento) con "Passa il lavoro a…"; pulsante ⇄ nell'intestazione per passarlo quando vuoi. Prova: il demo con `/limite` imita Claude.
+
 ## Plugin
 
 Funzioni facoltative (`apps/server/src/plugins.ts`): Impostazioni → Plugin con Installa, interruttore Attivo/Spento, Disinstalla. Stato in `data/plugins.json`.

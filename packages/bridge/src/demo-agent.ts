@@ -195,6 +195,15 @@ acp
         const childId = text.match(/id ([0-9a-f-]{36})/)?.[1];
         const r = childId ? await leadCall(s.lead, 'GET', `/threads/${childId}`) : null;
         await write(`Riassunto per l'utente: ${r?.text?.split('\n')[0] ?? 'thread non trovato'}`);
+      } else if (text.startsWith('/limite')) {
+        // Come Claude quando finisce il limite dell'abbonamento: stato del limite, poi turno fallito
+        await say({
+          sessionUpdate: 'usage_update',
+          used: 1000,
+          size: 100000,
+          _meta: { '_claude/rateLimit': { status: 'rejected', rateLimitType: 'seven_day', utilization: 1, resetsAt: Math.floor(Date.now() / 1000) + 3 * 3600 } },
+        } as acp.SessionUpdate);
+        throw new Error('Claude usage limit reached. Your limit will reset at 4pm.');
       } else if (text.startsWith('/piano')) {
         await say({ sessionUpdate: 'plan', entries: [
           { content: 'Leggere il codice', status: 'completed', priority: 'high' },
@@ -206,7 +215,8 @@ acp
         await write(`Hai scritto: **${text}**\n\nModello ${s.model}, modalita' ${s.mode}, turno ${s.turns} di questa sessione.`);
       }
       return { stopReason: 'end_turn' as const };
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('usage limit')) throw err;
       return { stopReason: 'cancelled' as const };
     } finally {
       s.abort = null;

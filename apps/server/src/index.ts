@@ -21,6 +21,7 @@ import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
 import { attachTerminalSockets, clientIp as wsClientIp } from './terminal-socket.js';
 import { LeadManager } from './lead.js';
+import { Limits, registerHandover } from './handover.js';
 import { registerDesign } from './design.js';
 import { catalog as designCatalog, normalizeChoice } from '@agicloud/design';
 import { Plugins } from './plugins.js';
@@ -34,6 +35,8 @@ const push = new Push();
 store.onNotify = (n) => push.send(n).catch((err) => console.error('[push]', err));
 const lead = new LeadManager(store, settings);
 store.lead = lead;
+const limits = new Limits();
+store.limits = limits;
 store.load();
 const terminals = new TerminalStore(() => settings.vaultEnv('terminals'));
 const app = new Hono<{ Bindings: HttpBindings }>();
@@ -150,6 +153,7 @@ registerDesign(app);
 registerPii(app);
 registerBrowserStart(app);
 registerVerdict(app, settings);
+registerHandover(app, store, limits);
 
 // ── API ──────────────────────────────────────────────────────────────────────
 app.get('/api/session', (c) => c.json({ ok: true, authRequired: Boolean(config.authToken) }));

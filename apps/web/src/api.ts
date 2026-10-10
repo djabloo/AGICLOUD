@@ -48,6 +48,9 @@ export interface ThreadSummary {
   design: DesignChoice | null;
   /** Chat del Browser condiviso */
   browser: boolean;
+  /** Passaggio di consegne: da quale conversazione arriva il lavoro / a quale e' passato */
+  handoverFrom: string | null;
+  handedOverTo: string | null;
 }
 
 export interface DesignChoice {
@@ -275,6 +278,16 @@ export interface VerdictResult {
   cost: number;
 }
 
+export interface ClaudeLimit {
+  status: 'allowed' | 'allowed_warning' | 'rejected';
+  type: string | null;
+  utilization: number | null;
+  resetsAt: number | null;
+  warning: boolean;
+  blocked: boolean;
+  message?: string;
+}
+
 export const api = {
   session: () => request<{ ok: boolean }>('GET', '/session'),
   agents: () => request<AgentInfo[]>('GET', '/agents'),
@@ -315,6 +328,8 @@ export const api = {
     request<{ path: string; abs: string; size: number }>('POST', '/pii/save', body),
   verdict: (body: { text: string; question: string; type: VerdictType; options?: string[]; mode: 'fast' | 'double'; explain: boolean }) =>
     request<VerdictResult>('POST', '/verdict/decide', body),
+  limits: () => request<{ claude: ClaudeLimit | null }>('GET', '/limits'),
+  handover: (threadId: string, agentId: string) => request<ThreadSummary>('POST', `/threads/${threadId}/handover`, { agentId }),
   plugins: () => request<PluginInfo[]>('GET', '/plugins'),
   installPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/install`),
   uninstallPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/uninstall`),

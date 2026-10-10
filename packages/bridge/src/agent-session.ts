@@ -328,6 +328,12 @@ function isAuthError(err: unknown): boolean {
 }
 
 function errorMessage(err: unknown, stderrTail: string): string {
-  const base = err instanceof Error ? err.message : JSON.stringify(err);
+  let base = err instanceof Error ? err.message : JSON.stringify(err);
+  // Errori ACP: i dettagli (es. il tipo "rate_limit" di Claude) stanno in data
+  const data = (err as { data?: unknown })?.data;
+  if (data !== undefined && data !== null) {
+    const extra = typeof data === 'string' ? data : JSON.stringify(data);
+    if (extra && extra !== '{}' && !base.includes(extra)) base = `${base}: ${extra.slice(0, 500)}`;
+  }
   return stderrTail && !base.includes(stderrTail) ? `${base}\n--- stderr ---\n${stderrTail.slice(-1000)}` : base;
 }

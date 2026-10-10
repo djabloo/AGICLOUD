@@ -47,7 +47,7 @@ export type Item =
       note?: string;
     }
   /** Thread affidato: modifiche unite nel progetto o scartate */
-  | { kind: 'notice'; id: string; text: string; childId?: string };
+  | { kind: 'notice'; id: string; text: string; childId?: string; linkLabel?: string };
 
 export interface ConfigOption {
   id: string;
@@ -212,6 +212,30 @@ function reduceCustom(state: Transcript, name: string, v: any): Transcript {
       return {
         ...state,
         items: update(items, v.id, (it) => (it.kind === 'delegation' ? { ...it, state: v.state, childId: v.childId ?? it.childId, note: v.note ?? it.note } : it)),
+      };
+
+    case 'agicloud.handover':
+      return {
+        ...state,
+        items: [
+          ...items,
+          {
+            kind: 'notice',
+            id: `handover-${items.length}`,
+            text: v.back ? 'Lavoro ripassato a Claude.' : 'Lavoro passato a un altro agente.',
+            childId: v.to,
+            linkLabel: 'Apri la conversazione',
+          },
+        ],
+      };
+
+    case 'agicloud.limit_reached':
+      return {
+        ...state,
+        items: [
+          ...items,
+          { kind: 'error', id: `limit-${items.length}`, message: `Limite dell'abbonamento raggiunto. ${v.message ?? ''} Puoi passare il lavoro a un altro agente dal riquadro in alto.` },
+        ],
       };
 
     case 'agicloud.child_merged':
