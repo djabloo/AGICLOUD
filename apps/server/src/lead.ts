@@ -274,7 +274,8 @@ export class LeadManager {
     return d.state === 'expired';
   }
 
-  private async instructions(lead: Thread): Promise<string> {
+  /** Regole del capo, agenti disponibili e progetto (anche nel primo messaggio dei capi non Claude) */
+  async instructions(lead: Thread): Promise<string> {
     const agents = (await this.settings.agents()).filter((a) => a.chat && a.installed && chatAgents().includes(a.id));
     const git = await repoRoot(lead.meta.cwd);
     return [

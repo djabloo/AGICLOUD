@@ -97,6 +97,13 @@ Ogni terminale ha un **custode** (`apps/server/src/term-host.ts`): un processo s
 - Login di Claude: le shell partono con `apps/server/terminal.bashrc` (carica `.profile`/`.bashrc` e poi toglie `CLAUDE_CODE_OAUTH_TOKEN`), così `claude` nel terminale usa il login dell'account (claude.ai, Pro) come la chat. Il token resta in `~/.bashrc` perché serve al webhook-server (N8N-BUILDER).
 - All'avvio il server toglie dal proprio ambiente (ereditato da custodi e shell) le variabili di una sessione Claude Code "madre" (`CLAUDECODE`, `CLAUDE_CODE_*`…), ereditate se lo si avvia da dentro Claude Code.
 
+### Capo con altri agenti
+
+Capo possibile con Claude Code, Cursor, OpenCode e agy (provato il 2026-10-10: OpenCode e agy propongono la delega, OpenCode porta a termine il giro con riassunto).
+- Cursor e OpenCode ricevono il server MCP `agicloud` dal protocollo (`session/new mcpServers`). Cursor chiede il permesso per gli strumenti, OpenCode no.
+- agy ha una configurazione MCP globale: l'adattatore registra una volta `agy mcp add agicloud -- node … lead-mcp.ts` (e `agicloud-verdict`) senza segreti e passa le variabili (il token del capo) solo al processo agy di quella sessione, che le eredita nei server MCP. Senza token `lead-mcp`/`verdict-mcp` non offrono strumenti, quindi le sessioni agy normali non vedono niente. agy headless non puo' chiedere permessi: da capo lavora con "Consenti tutto" (impostato in automatico, scritto nel dialogo); le deleghe restano approvate da l'utente nella scheda.
+- Per i capi non Claude le istruzioni del capo vanno anche nel primo messaggio (nascoste), perche' non tutti leggono le `instructions` del server MCP.
+
 ## Capo di riserva (limiti di Claude e passaggio di consegne)
 
 `apps/server/src/handover.ts`, `apps/web/src/HandoverBar.tsx`.

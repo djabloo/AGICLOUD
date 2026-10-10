@@ -47,7 +47,7 @@ async function handle(method: string, params: Record<string, any>): Promise<unkn
     case 'ping':
       return {};
     case 'tools/list':
-      return { tools: [TOOL] };
+      return { tools: TOKEN ? [TOOL] : [] };
     case 'tools/call': {
       const a = (params.arguments ?? {}) as Record<string, any>;
       try {

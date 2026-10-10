@@ -283,6 +283,10 @@ export class Thread {
       if (this.meta.browser && !opts.auto && !this.events.some((e) => e.type === EventType.RUN_STARTED)) {
         agentPrompt = `${BROWSER_PROMPT}\n\n${prompt}`;
       }
+      // Capo non Claude: le istruzioni del server MCP potrebbero non essere lette, vanno nel primo messaggio
+      if (this.meta.lead && this.meta.agentId !== 'claude' && this.store.lead && !this.events.some((e) => e.type === EventType.RUN_STARTED)) {
+        agentPrompt = `[Istruzioni di AgiCloud per il capo]\n${await this.store.lead.instructions(this)}\n\nGli strumenti del capo sono nel server MCP "agicloud" (delega, stato_thread, leggi_thread, scrivi_thread).\n\n---\n\n${agentPrompt}`;
+      }
       content = buildPrompt(agentPrompt, files, this.session.acceptsImages);
     } catch (err) {
       this.busy = false;

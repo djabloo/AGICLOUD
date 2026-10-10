@@ -139,7 +139,10 @@ acp
     s.turns++;
     s.abort = new AbortController();
     const signal = s.abort.signal;
-    const text = ctx.params.prompt.map((b) => (b.type === 'text' ? b.text : '')).join(' ');
+    const full = ctx.params.prompt.map((b) => (b.type === 'text' ? b.text : '')).join(' ');
+    // Le istruzioni nascoste di AgiCloud (capo, browser) stanno prima di "---": i comandi del demo
+    // si cercano solo nella parte scritta da te
+    const text = full.split('\n\n---\n\n').pop()!;
     const say = (update: acp.SessionUpdate) => ctx.client.notify(acp.methods.client.session.update, { sessionId, update });
     const write = async (t: string) => {
       for (const chunk of t.match(/.{1,12}/gs) ?? []) {
@@ -173,7 +176,7 @@ acp
             : [{ type: 'content', content: { type: 'text', text: 'rifiutato' } }],
         });
         await write(allowed ? 'Fatto.' : 'Ok, non lo creo.');
-      } else if (s.lead && /^delega/i.test(text)) {
+      } else if (s.lead && /^delega/i.test(text.trim())) {
         const { id, error } = await leadCall(s.lead, 'POST', '/delegate', {
           agente: 'demo',
           titolo: 'Crea demo.txt',

@@ -71,8 +71,8 @@ export function NewThreadDialog({ open, agents, error, busy, preset, designEnabl
   }, [agents, agentId]);
 
   const selected = agents.find((a) => a.id === agentId);
-  /** Per ora il capo e' solo Claude Code: gli strumenti MCP e i permessi preautorizzati sono suoi */
-  const canLead = agentId === 'claude';
+  /** Capo: agenti che ricevono gli strumenti MCP di AgiCloud */
+  const canLead = ['claude', 'cursor', 'opencode', 'agy'].includes(agentId);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!agentId || !cwd.trim()) return;
@@ -115,6 +115,8 @@ export function NewThreadDialog({ open, agents, error, busy, preset, designEnabl
               <span>Conversazione capo</span>
               <span className="hint" id={`${id}-lead-hint`}>
                 Puo' proporti di affidare compiti ad altri agenti, ognuno in una copia separata del progetto. Approvi tu ogni delega.
+                {agentId === 'agy' && ' agy non puo\' chiedere permessi: da capo lavora con "Consenti tutto".'}
+                {agentId === 'cursor' && ' Cursor ti chiedera\' il permesso per usare gli strumenti del capo.'}
               </span>
             </span>
           </label>

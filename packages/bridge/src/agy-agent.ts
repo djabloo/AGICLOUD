@@ -5,6 +5,11 @@
 // agy in modalita' headless non puo' chiedere permessi: i comandi vengono negati, a meno
 // della scelta "Consenti tutto" (--dangerously-skip-permissions). Le azioni negate vengono
 // segnalate in chat.
+//
+// Server MCP (es. gli strumenti del capo di AgiCloud): agy li configura in modo globale
+// (`agy mcp add`), non per sessione. Si registrano una volta, senza segreti, e le variabili
+// d'ambiente di ciascun server (es. il token del capo) si passano solo al processo agy di quella
+// sessione: agy le eredita nei server che avvia. Senza token i server di AgiCloud non offrono strumenti.
 
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -33,6 +38,30 @@ interface AgyResult {
 }
 
 const sessions = new Map<string, AgySession>(Object.entries(loadState()));
+/** Variabili d'ambiente dei server MCP della sessione (solo in memoria: contengono token) */
+const mcpEnv = new Map<string, Record<string, string>>();
+/** Server gia' registrati in agy in questo processo */
+const registered = new Set<string>();
+/** Solo i server di AgiCloud che senza il loro token non fanno nulla (il Browser no: agy ha il suo) */
+const MCP_FOR_AGY = new Set(['agicloud', 'verdict']);
+
+/** Registra i server MCP in agy (configurazione globale, senza env) e ricorda l'env per la sessione */
+async function useMcp(sessionId: string, servers: acp.McpServer[] | undefined): Promise<void> {
+  const env: Record<string, string> = {};
+  for (const srv of servers ?? []) {
+    if (!('command' in srv) || !MCP_FOR_AGY.has(srv.name)) continue;
+    for (const e of srv.env ?? []) env[e.name] = e.value;
+    const key = `${srv.name} ${srv.command} ${srv.args.join(' ')}`;
+    if (registered.has(key)) continue;
+    await new Promise<void>((resolve) => {
+      // Nome in agy: "agicloud" per il capo, "agicloud-<nome>" per gli altri (es. agicloud-verdict)
+      const name = srv.name === 'agicloud' ? 'agicloud' : `agicloud-${srv.name}`;
+      execFile(AGY, ['mcp', 'add', name, '--', srv.command, ...srv.args], { timeout: 20_000, cwd: homedir() }, () => resolve());
+    });
+    registered.add(key);
+  }
+  mcpEnv.set(sessionId, env);
+}
 const running = new Map<string, ChildProcess>();
 let models: { value: string; name: string }[] = [];
 
@@ -135,17 +164,19 @@ acp
       agentCapabilities: { loadSession: false, sessionCapabilities: { resume: {} } },
     };
   })
-  .onRequest(acp.methods.agent.session.new, (ctx) => {
+  .onRequest(acp.methods.agent.session.new, async (ctx) => {
     const sessionId = randomUUID();
     const s: AgySession = { cwd: ctx.params.cwd, conversationId: null, model: 'default', mode: 'default', permissions: 'standard' };
     sessions.set(sessionId, s);
     saveState();
+    await useMcp(sessionId, ctx.params.mcpServers);
     return { sessionId, configOptions: configOptions(s) };
   })
-  .onRequest(acp.methods.agent.session.resume, (ctx) => {
+  .onRequest(acp.methods.agent.session.resume, async (ctx) => {
     const s = sessions.get(ctx.params.sessionId);
     if (!s) throw acp.RequestError.resourceNotFound(ctx.params.sessionId);
     s.cwd = ctx.params.cwd;
+    await useMcp(ctx.params.sessionId, ctx.params.mcpServers);
     return { configOptions: configOptions(s) };
   })
   .onRequest(acp.methods.agent.session.setConfigOption, (ctx) => {
@@ -176,7 +207,7 @@ acp
     if (s.permissions === 'all') args.push('--dangerously-skip-permissions');
     args.push('-p=');
 
-    const child = spawn(AGY, args, { cwd: s.cwd, stdio: ['pipe', 'pipe', 'pipe'], env: process.env });
+    const child = spawn(AGY, args, { cwd: s.cwd, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ...mcpEnv.get(sessionId) } });
     running.set(sessionId, child);
     child.stdin.end(JSON.stringify({ event: 'user', message: { role: 'user', content: text } }) + '\n');
 

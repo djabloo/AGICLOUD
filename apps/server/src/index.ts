@@ -187,6 +187,8 @@ app.post('/api/threads', async (c) => {
     throw new HttpError(400, err instanceof Error ? err.message : String(err));
   }
   const thread = store.create(String(body.agentId ?? ''), String(body.cwd ?? ''), { lead: body.lead === true, design, browser: body.browser === true || undefined });
+  // agy senza finestra non puo' chiedere permessi: da capo lavora con "Consenti tutto" (le deleghe le approva l'utente)
+  if (body.lead === true && thread.meta.agentId === 'agy') await thread.setConfig('permissions', 'all').catch(() => {});
   return c.json(thread.summary(), 201);
 });
 

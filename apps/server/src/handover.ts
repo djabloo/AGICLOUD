@@ -191,6 +191,7 @@ export async function handover(store: ThreadStore, from: Thread, agentId: string
     title: `${from.meta.lead ? 'Capo' : 'Continua'} · ${project} (${getAgent(agentId).label})`,
     handoverFrom: from.id,
   });
+  if (from.meta.lead && agentId === 'agy') await to.setConfig('permissions', 'all').catch(() => {});
   // Prima di spostare qualcosa, il nuovo agente deve partire davvero
   try {
     await to.ready();

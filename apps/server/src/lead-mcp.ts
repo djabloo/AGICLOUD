@@ -83,7 +83,8 @@ async function handle(method: string, params: Record<string, any>): Promise<unkn
     case 'ping':
       return {};
     case 'tools/list':
-      return { tools: TOOLS };
+      // Senza token (es. una sessione agy normale, che vede la configurazione globale) niente strumenti
+      return { tools: TOKEN ? TOOLS : [] };
     case 'tools/call': {
       const args = (params.arguments ?? {}) as Record<string, unknown>;
       try {
