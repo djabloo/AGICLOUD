@@ -1,5 +1,5 @@
 import { useEffect, useId, useReducer, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { api, followEvents, type ThreadSummary } from './api';
+import { api, followEvents, type FileEntry, type ThreadSummary } from './api';
 import { emptyTranscript, reduce, type ConfigOption, type Item, type SlashCommand } from './transcript';
 import { Markdown } from './markdown';
 import { Icon } from './icons';
@@ -192,6 +192,7 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
 
       <Composer
         threadId={thread.id}
+        cwd={thread.cwd}
         commands={state.commands}
         disabled={!canSend}
         running={state.running}
@@ -446,6 +447,7 @@ interface PendingFile {
 
 function Composer({
   threadId,
+  cwd,
   commands,
   disabled,
   running,
@@ -455,6 +457,8 @@ function Composer({
   onStop,
 }: {
   threadId: string;
+  /** Cartella del progetto: da li' si allegano i documenti di pii-clean/ */
+  cwd: string;
   commands: SlashCommand[];
   disabled: boolean;
   running: boolean;
@@ -495,6 +499,29 @@ function Composer({
       setFileMsg(`Caricamento non riuscito: ${msg}`);
     }
   };
+
+  // Documenti anonimizzati gia' nel progetto (pii-clean/): si allegano senza ricaricarli
+  const addPiiFiles = (picked: FileEntry[]) => {
+    const fresh = picked.filter((f) => !files.some((p) => p.path === `pii-clean/${f.name}`));
+    setFiles((cur) => [
+      ...cur,
+      ...fresh.map((f) => ({ key: `pii-${f.name}`, name: f.name, size: f.size, status: 'ready' as const, path: `pii-clean/${f.name}` })),
+    ]);
+    if (fresh.length) setFileMsg(`${fresh.length} ${fresh.length === 1 ? 'documento anonimizzato pronto' : 'documenti anonimizzati pronti'} da inviare`);
+    area.current?.focus();
+  };
+  const [attachMenu, setAttachMenu] = useState(false);
+  const [piiOpen, setPiiOpen] = useState(false);
+  const attachBtn = useRef<HTMLButtonElement>(null);
+  // Menu degli allegati: un clic fuori lo chiude
+  useEffect(() => {
+    if (!attachMenu) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.attach-wrap')) setAttachMenu(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [attachMenu]);
 
   const removeFile = (key: string) => {
     setFiles((cur) => {
@@ -577,6 +604,7 @@ function Composer({
 
   const listId = `${id}-cmds`;
   return (
+    <>
     <form
       className="composer"
       onSubmit={submit}
@@ -613,10 +641,53 @@ function Composer({
           e.target.value = '';
         }}
       />
-      <button type="button" className="btn icon-btn attach-btn" onClick={() => fileInput.current?.click()}>
-        <Icon name="clip" />
-        <span className="visually-hidden">Allega file</span>
-      </button>
+      <div className="attach-wrap">
+        <button
+          ref={attachBtn}
+          type="button"
+          className="btn icon-btn attach-btn"
+          aria-expanded={attachMenu}
+          aria-controls={`${id}-attach-menu`}
+          onClick={() => setAttachMenu((v) => !v)}
+        >
+          <Icon name="clip" />
+          <span className="visually-hidden">Allega file</span>
+        </button>
+        {attachMenu && (
+          <div
+            id={`${id}-attach-menu`}
+            className="thread-menu attach-menu"
+            role="group"
+            aria-label="Allega"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setAttachMenu(false);
+                attachBtn.current?.focus();
+              }
+            }}
+          >
+            <button
+              type="button"
+              autoFocus
+              onClick={() => {
+                setAttachMenu(false);
+                fileInput.current?.click();
+              }}
+            >
+              Dal dispositivo…
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAttachMenu(false);
+                setPiiOpen(true);
+              }}
+            >
+              Documenti anonimizzati (PII)
+            </button>
+          </div>
+        )}
+      </div>
       {open && (
         <ul id={listId} className="suggestions" role="listbox" aria-label="Comandi">
           {suggestions.map((c, i) => (
@@ -694,6 +765,16 @@ function Composer({
         </p>
       )}
     </form>
+      <PiiPicker
+        open={piiOpen}
+        cwd={cwd}
+        onClose={() => {
+          setPiiOpen(false);
+          attachBtn.current?.focus();
+        }}
+        onPick={addPiiFiles}
+      />
+    </>
   );
 }
 
@@ -705,4 +786,78 @@ function formatSize(bytes: number): string {
 
 function planStatus(s: string): string {
   return s === 'completed' ? 'fatto' : s === 'in_progress' ? 'in corso' : 'da fare';
+}
+
+/** Scelta dei documenti anonimizzati del progetto (pii-clean/) da allegare al messaggio */
+function PiiPicker({ open, cwd, onClose, onPick }: { open: boolean; cwd: string; onClose: () => void; onPick: (files: FileEntry[]) => void }) {
+  const id = useId();
+  const ref = useRef<HTMLDialogElement>(null);
+  const [list, setList] = useState<FileEntry[] | null>(null);
+  const [chosen, setChosen] = useState<string[]>([]);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) {
+      d.showModal();
+      setChosen([]);
+      setList(null);
+      api
+        .listFiles(`${cwd}/pii-clean`)
+        .then((r) => setList(r.entries.filter((e) => e.type === 'file').sort((a, b) => b.mtime - a.mtime)))
+        .catch(() => setList([]));
+    }
+    if (!open && d.open) d.close();
+  }, [open, cwd]);
+
+  return (
+    <dialog ref={ref} className="dialog" aria-labelledby={`${id}-t`} onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onPick((list ?? []).filter((f) => chosen.includes(f.name)));
+          onClose();
+        }}
+      >
+        <h2 id={`${id}-t`}>Documenti anonimizzati</h2>
+        <p className="hint">
+          Da <code>pii-clean/</code> di questo progetto. L'agente legge solo la versione anonimizzata.
+        </p>
+        {list === null ? (
+          <p className="hint">Caricamento…</p>
+        ) : list.length === 0 ? (
+          <p>
+            Nessun documento qui. Anonimizzali nella sezione <a href="#/pii">PII</a> e salvali in questo progetto (<code>{cwd}</code>).
+          </p>
+        ) : (
+          <fieldset className="pii-pick">
+            <legend className="visually-hidden">Scegli i documenti</legend>
+            {list.map((f) => (
+              <label key={f.name} className="choice">
+                <input
+                  type="checkbox"
+                  checked={chosen.includes(f.name)}
+                  onChange={(e) => setChosen((c) => (e.target.checked ? [...c, f.name] : c.filter((x) => x !== f.name)))}
+                />
+                <span className="choice-text">
+                  <span>{f.name}</span>
+                  <span className="hint">
+                    {formatSize(f.size)} · {new Date(f.mtime).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+        <div className="dialog-actions">
+          <button type="button" className="btn" onClick={onClose}>
+            Annulla
+          </button>
+          <button type="submit" className="btn primary" disabled={!chosen.length}>
+            Allega {chosen.length ? `(${chosen.length})` : ''}
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
 }

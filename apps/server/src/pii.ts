@@ -10,6 +10,7 @@ import { basename, join } from 'node:path';
 import type { Hono } from 'hono';
 import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
+import { excludeFromGit } from './uploads.js';
 import type { PluginSpec } from './plugins.js';
 
 const ENGINE = process.env.RIZZO_PII_URL || 'http://127.0.0.1:5005';
@@ -114,6 +115,8 @@ export function registerPii(app: Hono<any>): void {
     }
     const dir = join(project, 'pii-clean');
     mkdirSync(dir, { recursive: true });
+    // I documenti (anche anonimizzati) non devono finire nei commit del progetto
+    excludeFromGit(project, 'pii-clean/', 'documenti anonimizzati del plugin PII');
     writeFileSync(join(dir, name), data, { mode: 0o640 });
     return c.json({ path: `pii-clean/${name}`, abs: join(dir, name), size: data.length });
   });

@@ -230,6 +230,29 @@ export default async function ({ page }) {
   await page.evaluate(() => [...document.querySelectorAll('.pii .btn.primary')].find((b) => b.textContent.includes('pii-clean')).click());
   await page.waitForFunction(() => document.querySelector('.pii-msg')?.textContent.includes('Salvato in pii-clean/'), { timeout: 30000 });
   out.piiSaved = await page.$eval('.pii-msg', (e) => e.textContent);
+  // In chat: graffetta → Documenti anonimizzati (PII) → allega il file appena salvato
+  const demoThread = await page.evaluate(async () => {
+    const r = await fetch('/api/threads', { headers: { authorization: 'Bearer ' + localStorage.getItem('agicloud_token') } });
+    return (await r.json()).find((t) => t.cwd === '/tmp/proj/demo' && !t.design && !t.browser && !t.lead)?.id;
+  });
+  await page.goto(BASE + '#/t/' + demoThread, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.composer .attach-btn');
+  await page.waitForFunction(() => !document.querySelector('.composer textarea')?.disabled, { timeout: 20000 });
+  await page.click('.composer .attach-btn');
+  await page.waitForSelector('.attach-menu button');
+  await shot('attach-menu');
+  await runAxe('attach-menu');
+  await page.evaluate(() => [...document.querySelectorAll('.attach-menu button')][1].click());
+  await page.waitForSelector('dialog[open] .pii-pick input', { timeout: 10000 });
+  await page.click('dialog[open] .pii-pick input');
+  await shot('pii-picker');
+  await runAxe('pii-picker');
+  await page.click('dialog[open] .btn.primary');
+  await page.waitForFunction(() => [...document.querySelectorAll('.attach-list.pending .attach-name')].some((e) => e.textContent.includes('anonimizzato')), { timeout: 5000 });
+  await page.type('.composer textarea', 'Leggi il documento');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => [...document.querySelectorAll('.from-assistant')].pop()?.textContent.includes('pii-clean/'), { timeout: 15000 });
+  out.piiInChat = 'ok';
   await page.goto(BASE + '#/settings', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.agent-card');
   out.steps.push('impostazioni ok');

@@ -37,16 +37,25 @@ export async function saveUploads(cwd: string, files: File[]): Promise<Attachmen
   return out;
 }
 
-/** Controlla che un allegato indicato dal browser stia davvero nella cartella degli upload */
+/** Cartelle da cui si puo' allegare: i file caricati e i documenti anonimizzati del plugin PII */
+const ATTACH_DIRS = [UPLOAD_DIR, 'pii-clean'];
+
+/** Controlla che un allegato indicato dal browser stia davvero in una delle cartelle consentite */
 export function resolveAttachment(cwd: string, path: string): { abs: string; size: number } {
-  const base = join(cwd, UPLOAD_DIR);
   let abs: string;
   try {
     abs = realpathSync(join(cwd, path));
   } catch {
     throw new HttpError(400, `Allegato non trovato: ${path}`);
   }
-  if (!abs.startsWith(realpathSync(base) + sep)) throw new HttpError(400, `Allegato non valido: ${path}`);
+  const inside = ATTACH_DIRS.some((d) => {
+    try {
+      return abs.startsWith(realpathSync(join(cwd, d)) + sep);
+    } catch {
+      return false;
+    }
+  });
+  if (!inside || !statSync(abs).isFile()) throw new HttpError(400, `Allegato non valido: ${path}`);
   return { abs, size: statSync(abs).size };
 }
 
@@ -65,7 +74,7 @@ function safeName(name: string): string {
 }
 
 /** Repo git (anche in una cartella superiore): .agicloud/ (allegati, copie dei thread) nell'esclusione locale del repo */
-export function excludeFromGit(cwd: string): void {
+export function excludeFromGit(cwd: string, entry = '.agicloud/', comment = 'allegati di AgiCloud'): void {
   let dir = cwd;
   for (;;) {
     const git = join(dir, '.git');
@@ -74,8 +83,8 @@ export function excludeFromGit(cwd: string): void {
       try {
         mkdirSync(dirname(exclude), { recursive: true });
         const current = existsSync(exclude) ? readFileSync(exclude, 'utf8') : '';
-        if (!current.split('\n').some((l) => l.trim() === '.agicloud/')) {
-          appendFileSync(exclude, `${current.endsWith('\n') || !current ? '' : '\n'}# allegati di AgiCloud\n.agicloud/\n`);
+        if (!current.split('\n').some((l) => l.trim() === entry)) {
+          appendFileSync(exclude, `${current.endsWith('\n') || !current ? '' : '\n'}# ${comment}\n${entry}\n`);
         }
       } catch {
         /* repo non scrivibile: pazienza, gli allegati restano comunque fuori dal codice */
