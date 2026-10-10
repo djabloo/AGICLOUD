@@ -10,6 +10,9 @@
 import { EventType, type BaseEvent } from '@ag-ui/core';
 import { getAgent } from '@agicloud/bridge';
 import type { Hono } from 'hono';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { config } from './config.js';
 import { HttpError } from './errors.js';
 import type { Thread, ThreadStore } from './threads.js';
 import { worktreeChanges } from './worktrees.js';
@@ -32,8 +35,25 @@ const LIMIT_TEXT = /usage limit|rate.?limit|limit reached|hit your limit|limite 
 /** Da qui in su si avvisa prima che finisca */
 const WARN_AT = 0.9;
 
+const LIMITS_FILE = join(config.threadsDir, '..', 'limits.json');
+
 export class Limits {
-  private claude: LimitState | null = null;
+  /** Salvato su disco: dopo un riavvio di AgiCloud l'avviso resta */
+  private claude: LimitState | null = (() => {
+    try {
+      return existsSync(LIMITS_FILE) ? (JSON.parse(readFileSync(LIMITS_FILE, 'utf8')).claude as LimitState) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  private save(): void {
+    try {
+      writeFileSync(LIMITS_FILE, JSON.stringify({ claude: this.claude }));
+    } catch {
+      /* solo una comodita' */
+    }
+  }
 
   /** Stato dal _meta di usage_update di Claude */
   fromMeta(info: any): LimitState | null {
@@ -46,6 +66,7 @@ export class Limits {
       resetsAt: typeof info.resetsAt === 'number' ? info.resetsAt * 1000 : null,
       at: Date.now(),
     };
+    this.save();
     return prev?.status !== this.claude.status ? this.claude : null;
   }
 
@@ -53,6 +74,7 @@ export class Limits {
   fromError(message: string): boolean {
     if (!LIMIT_TEXT.test(message)) return false;
     this.claude = { status: 'rejected', type: this.claude?.type ?? null, utilization: 1, resetsAt: guessReset(message) ?? this.claude?.resetsAt ?? null, at: Date.now(), message: message.slice(0, 300) };
+    this.save();
     return true;
   }
 
