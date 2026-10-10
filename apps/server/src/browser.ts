@@ -33,6 +33,9 @@ const PLAYWRIGHT_MCP = '@playwright/mcp@0.0.83';
 /** Senza "HeadlessChrome" nell'user agent: molti siti trattano diversamente i browser senza finestra */
 const USER_AGENT =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36';
+/** Con la vista dal telefono il browser si presenta come Chrome per Android: i siti mandano la versione mobile */
+const MOBILE_USER_AGENT =
+  'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36';
 
 interface Target {
   id: string;
@@ -260,6 +263,7 @@ class Viewer {
     const t = (await pages()).find((p) => p.id === targetId);
     if (!t?.webSocketDebuggerUrl || this.closed) return;
     this.link?.close();
+    this.mobileUa = false;
     this.targetId = targetId;
     lastViewed = targetId;
     const link = new PageLink(t.webSocketDebuggerUrl, (method, params) => {
@@ -274,7 +278,7 @@ class Viewer {
     await link.ready();
     await link.send('Page.enable');
     await link.send('Page.bringToFront');
-    await link.send('Page.startScreencast', { format: 'jpeg', quality: 70, maxWidth: WIDTH, maxHeight: HEIGHT, everyNthFrame: 1 });
+    await this.applyViewport();
     await this.refreshTabs();
   }
 
@@ -295,7 +299,54 @@ class Viewer {
     this.send({ type: 'tabs', active: this.targetId, tabs: tabs.map((t) => ({ id: t.id, title: t.title, url: t.url })) });
   }
 
+  /** Misura della vista di l'utente (pixel CSS) e densita' dello schermo: la pagina prende quella misura */
+  private viewport: { width: number; height: number; dpr: number; mobile: boolean } | null = null;
+  /** User agent da telefono gia' impostato su questa scheda */
+  private mobileUa = false;
+
+  /**
+   * La pagina si impagina alla misura della vista (sul telefono diventa una pagina da telefono)
+   * e i fotogrammi arrivano a quella risoluzione: niente rimpicciolimento. Vale finche' la vista e'
+   * collegata; chiusa la vista il browser torna alla sua misura normale.
+   */
+  private async applyViewport(): Promise<void> {
+    const link = this.link;
+    if (!link) return;
+    const v = this.viewport;
+    if (v) {
+      await link.send('Emulation.setDeviceMetricsOverride', { width: v.width, height: v.height, deviceScaleFactor: v.dpr, mobile: v.mobile });
+    } else {
+      await link.send('Emulation.clearDeviceMetricsOverride');
+    }
+    const mobile = v?.mobile === true;
+    if (mobile !== this.mobileUa) {
+      this.mobileUa = mobile;
+      await link.send('Emulation.setUserAgentOverride', { userAgent: mobile ? MOBILE_USER_AGENT : USER_AGENT, acceptLanguage: 'it-IT,it' });
+      await link.send('Emulation.setTouchEmulationEnabled', { enabled: mobile, maxTouchPoints: mobile ? 5 : 0 });
+      // La versione giusta del sito arriva ricaricando (solo se e' gia' aperta una pagina vera)
+      const nav = await link.send('Page.getNavigationHistory');
+      const cur = nav?.entries?.[nav.currentIndex]?.url ?? '';
+      if (/^https?:/.test(cur) && !cur.includes('/browser-start')) await link.send('Page.reload');
+    }
+    await link.send('Page.stopScreencast');
+    await link.send('Page.startScreencast', {
+      format: 'jpeg',
+      quality: 70,
+      maxWidth: Math.round((v?.width ?? WIDTH) * (v?.dpr ?? 1)),
+      maxHeight: Math.round((v?.height ?? HEIGHT) * (v?.dpr ?? 1)),
+      everyNthFrame: 1,
+    });
+  }
+
   async handle(m: ClientMsg): Promise<void> {
+    if (m.type === 'viewport') {
+      const width = Math.round(Number(m.width));
+      const height = Math.round(Number(m.height));
+      if (!(width >= 200 && width <= 4000 && height >= 200 && height <= 4000)) return;
+      this.viewport = { width, height, dpr: Math.min(2, Math.max(1, Number(m.dpr) || 1)), mobile: m.mobile === true };
+      await this.applyViewport();
+      return;
+    }
     const link = this.link;
     if (!link) return;
     const mods = Number(m.modifiers) || 0;

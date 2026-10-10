@@ -20,6 +20,10 @@ function modifiers(e: { altKey: boolean; ctrlKey: boolean; metaKey: boolean; shi
   return (e.altKey ? 1 : 0) | (e.ctrlKey ? 2 : 0) | (e.metaKey ? 4 : 0) | (e.shiftKey ? 8 : 0);
 }
 
+const ZOOM_KEY = 'agicloud_browser_zoom';
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2.5;
+
 const SPECIAL = new Set(['Enter', 'Backspace', 'Tab', 'Escape', 'Delete', 'ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown']);
 
 export function BrowserView({ popup = false }: { popup?: boolean }) {
@@ -35,6 +39,17 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
   const [url, setUrl] = useState('');
   const [editingUrl, setEditingUrl] = useState(false);
   const [hasFrame, setHasFrame] = useState(false);
+  const screen = useRef<HTMLDivElement>(null);
+  // Zoom: la pagina si impagina su una misura piu' piccola (zoom > 1) o piu' grande della vista
+  const [zoom, setZoom] = useState(() => Number(localStorage.getItem(ZOOM_KEY)) || 1);
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const lastViewport = useRef<Record<string, unknown> | null>(null);
+  const changeZoom = (z: number) => {
+    const next = Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z)) * 10) / 10;
+    setZoom(next);
+    localStorage.setItem(ZOOM_KEY, String(next));
+  };
 
   useEffect(() => {
     let stopped = false;
@@ -44,7 +59,10 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
       const sock = new WebSocket(`${proto}://${location.host}/api/browser/ws`);
       ws.current = sock;
       setConn('connecting');
-      sock.onopen = () => sock.send(JSON.stringify({ type: 'auth', token: currentToken() }));
+      sock.onopen = () => {
+        sock.send(JSON.stringify({ type: 'auth', token: currentToken() }));
+        if (lastViewport.current) sock.send(JSON.stringify(lastViewport.current));
+      };
       sock.onmessage = (ev) => {
         const m = JSON.parse(ev.data);
         if (m.type === 'frame') {
@@ -74,6 +92,52 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
     };
   }, []);
 
+  // La pagina prende la misura della vista (divisa per lo zoom): riempie lo spazio, e sul telefono
+  // i siti si impaginano da telefono. Si rimanda quando cambia la finestra o lo zoom.
+  useEffect(() => {
+    const el = screen.current;
+    if (!el) return;
+    let timer: number | undefined;
+    const measure = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const w = el.clientWidth - 16;
+        const h = el.clientHeight - 16;
+        if (w < 100 || h < 100) return;
+        const z = zoomRef.current;
+        const msg = {
+          type: 'viewport',
+          width: Math.floor(w / z),
+          height: Math.floor(h / z),
+          dpr: Math.min(2, (window.devicePixelRatio || 1) * z),
+          mobile: w < 700,
+        };
+        lastViewport.current = msg;
+        if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify(msg));
+      }, 150);
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => {
+      ro.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [zoom]);
+
+  // Ctrl + rotella = zoom (ascoltatore non passivo: deve impedire lo zoom di tutta la pagina)
+  useEffect(() => {
+    const el = screen.current;
+    if (!el) return;
+    const onWheelZoom = (e: globalThis.WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      changeZoom(zoomRef.current + (e.deltaY < 0 ? 0.1 : -0.1));
+    };
+    el.addEventListener('wheel', onWheelZoom, { passive: false });
+    return () => el.removeEventListener('wheel', onWheelZoom);
+  }, []);
+
   // L'indirizzo segue la scheda attiva, tranne mentre lo stai scrivendo
   const editingUrlRef = useRef(false);
   editingUrlRef.current = editingUrl;
@@ -95,12 +159,42 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
     };
   };
 
-  // Dito: trascinare scorre la pagina, un tocco senza movimento e' un clic
+  // Dito: trascinare scorre la pagina, un tocco senza movimento e' un clic, due dita = zoom
   const touch = useRef<{ x: number; y: number; lastY: number; moved: boolean } | null>(null);
+  const fingers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ dist: number; zoom: number; scale: number } | null>(null);
+  const distance = () => {
+    const [a, b] = [...fingers.current.values()];
+    return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+  };
 
   const onPointer = (kind: 'mousePressed' | 'mouseReleased' | 'mouseMoved') => (e: PointerEvent<HTMLImageElement>) => {
     if (kind === 'mousePressed') (e.currentTarget.parentElement as HTMLElement).focus({ preventScroll: true });
     if (e.pointerType === 'touch') {
+      if (kind === 'mousePressed') fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      else if (kind === 'mouseMoved' && fingers.current.has(e.pointerId)) fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (fingers.current.size >= 2) {
+        // Pizzico: anteprima immediata con la scala dell'immagine, la pagina si reimpagina al rilascio
+        touch.current = null;
+        if (!pinch.current) pinch.current = { dist: distance(), zoom: zoomRef.current, scale: 1 };
+        else if (kind === 'mouseMoved' && pinch.current.dist > 0) {
+          pinch.current.scale = distance() / pinch.current.dist;
+          if (img.current) img.current.style.transform = `scale(${pinch.current.scale})`;
+        }
+        if (kind === 'mouseReleased') {
+          fingers.current.delete(e.pointerId);
+          const p = pinch.current;
+          pinch.current = null;
+          if (img.current) img.current.style.transform = '';
+          if (p) changeZoom(p.zoom * p.scale);
+        }
+        return;
+      }
+      if (kind === 'mouseReleased') fingers.current.delete(e.pointerId);
+      if (pinch.current) {
+        if (kind === 'mouseReleased') pinch.current = null;
+        return;
+      }
       if (kind === 'mousePressed') touch.current = { x: e.clientX, y: e.clientY, lastY: e.clientY, moved: false };
       else if (kind === 'mouseMoved' && touch.current) {
         const t = touch.current;
@@ -173,6 +267,19 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
             <span className="visually-hidden">Ricarica</span>
           </button>
         </div>
+        <div className="browser-zoom" role="group" aria-label="Zoom della pagina">
+          <button type="button" className="btn icon-btn" onClick={() => changeZoom(zoom - 0.1)} disabled={zoom <= ZOOM_MIN}>
+            <span aria-hidden="true">−</span>
+            <span className="visually-hidden">Rimpicciolisci</span>
+          </button>
+          <button type="button" className="btn small-btn browser-zoom-pct" onClick={() => changeZoom(1)} title="Torna al 100%">
+            {Math.round(zoom * 100)}%<span className="visually-hidden"> (torna al 100%)</span>
+          </button>
+          <button type="button" className="btn icon-btn" onClick={() => changeZoom(zoom + 0.1)} disabled={zoom >= ZOOM_MAX}>
+            <span aria-hidden="true">+</span>
+            <span className="visually-hidden">Ingrandisci</span>
+          </button>
+        </div>
         <form className="browser-url" onSubmit={submitUrl}>
           <label htmlFor={`${id}-url`} className="visually-hidden">
             Indirizzo o ricerca
@@ -196,7 +303,7 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
           {conn === 'live' ? 'In diretta' : conn === 'closed' ? 'Riconnessione…' : 'Collegamento…'}
         </p>
         {!popup && (
-          <button type="button" className="btn small-btn" onClick={openPopup}>
+          <button type="button" className="btn small-btn browser-popup-btn" onClick={openPopup}>
             Apri in una finestra
           </button>
         )}
@@ -232,6 +339,7 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
 
       <div
         id={`${id}-screen`}
+        ref={screen}
         className="browser-screen"
         tabIndex={0}
         role="application"
