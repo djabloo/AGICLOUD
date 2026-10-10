@@ -13,6 +13,7 @@ import type { IncomingMessage } from 'node:http';
 import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
 import type * as acp from '@agentclientprotocol/sdk';
+import type { Hono } from 'hono';
 import { WebSocket, WebSocketServer } from 'ws';
 import { config } from './config.js';
 import type { PluginSpec } from './plugins.js';
@@ -23,6 +24,8 @@ const PROFILE = join(config.threadsDir, '..', 'browser-profile');
 /** File di Playwright (istantanee delle pagine, screenshot): fuori dai progetti */
 const OUTPUT = join(config.threadsDir, '..', 'browser-output');
 const CHROME = process.env.BROWSER_BIN || '/usr/local/bin/chromium';
+/** Pagina iniziale delle schede nuove (servita da AgiCloud, senza dati: si apre anche senza token) */
+const START_URL = `http://127.0.0.1:${config.port}/browser-start`;
 const WIDTH = 1280;
 const HEIGHT = 800;
 /** Versione fissata del server MCP di Playwright usato dagli agenti */
@@ -77,7 +80,7 @@ export function ensureBrowser(): Promise<void> {
         '--no-default-browser-check',
         '--disable-gpu',
         '--lang=it-IT',
-        'about:blank',
+        START_URL,
       ],
       { stdio: 'ignore' },
     );
@@ -129,7 +132,7 @@ export const browserPlugin: PluginSpec = {
   section: { id: 'browser', label: 'Browser' },
   credits: { text: 'Agenti collegati con Playwright MCP (Apache 2.0)', url: 'https://github.com/microsoft/playwright-mcp' },
   requires: 'Chromium sul server (gia\' presente) e circa 300 MB di memoria quando e\' acceso',
-  routes: ['/api/browser'],
+  routes: ['/api/browser', '/browser-start'],
   source: 'builtin',
   health: async () =>
     (await running())
@@ -225,7 +228,7 @@ class Viewer {
     await ensureBrowser();
     const tabs = await pages();
     this.knownTabs = new Set(tabs.map((t) => t.id));
-    await this.attach(tabs[0]?.id ?? (await cdpJson<Target>('/json/new?about:blank', 'PUT')).id);
+    await this.attach(tabs[0]?.id ?? (await cdpJson<Target>(`/json/new?${START_URL}`, 'PUT')).id);
     this.poll = setInterval(() => void this.refreshTabs(), 1500);
   }
 
@@ -326,7 +329,7 @@ class Viewer {
         if (typeof m.id === 'string') await this.attach(m.id);
         break;
       case 'newtab': {
-        const t = await cdpJson<Target>('/json/new?about:blank', 'PUT');
+        const t = await cdpJson<Target>(`/json/new?${START_URL}`, 'PUT');
         this.knownTabs.add(t.id);
         await this.attach(t.id);
         break;
@@ -334,7 +337,7 @@ class Viewer {
       case 'closetab':
         if (typeof m.id === 'string') {
           await cdpJson(`/json/close/${m.id}`).catch(() => {});
-          if ((await pages()).length === 0) await cdpJson('/json/new?about:blank', 'PUT');
+          if ((await pages()).length === 0) await cdpJson(`/json/new?${START_URL}`, 'PUT');
           await this.refreshTabs();
         }
         break;
@@ -401,4 +404,54 @@ export function browserUpgrade(
     });
     return true;
   };
+}
+
+const QUICK_LINKS: [string, string][] = [
+  ['Google', 'https://www.google.com'],
+  ['DuckDuckGo', 'https://duckduckgo.com'],
+  ['GitHub', 'https://github.com'],
+  ['YouTube', 'https://www.youtube.com'],
+  ['Wikipedia', 'https://it.wikipedia.org'],
+  ['ProSEO', 'https://proseo.it'],
+  ['AgiCloud', 'https://agicloud.dev'],
+  ['n8n', 'https://n8n.proseo.it'],
+];
+
+const START_PAGE = `<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nuova scheda</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f7f8fb; --card:#fff; --text:#121620; --muted:#4a5263; --accent:#0b6bcb; --border:#d5dae3; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0b0f17; --card:#121826; --text:#e8ecf3; --muted:#a3adbf; --accent:#5cb1ff; --border:#2b3548; } }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--bg); color:var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { width:min(640px, 92vw); text-align:center; }
+  h1 { margin:0 0 4px; font-size:2rem; letter-spacing:-.02em; }
+  p { margin:0 0 24px; color:var(--muted); }
+  form { display:flex; gap:8px; margin-bottom:28px; }
+  input { flex:1; min-height:48px; padding:0 16px; border:1px solid var(--border); border-radius:999px; background:var(--card); color:var(--text); font:inherit; }
+  input:focus { outline:3px solid var(--accent); outline-offset:1px; }
+  button { min-height:48px; padding:0 20px; border:0; border-radius:999px; background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer; }
+  ul { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:10px; }
+  a { display:block; padding:14px 10px; border:1px solid var(--border); border-radius:12px; background:var(--card); color:var(--text); text-decoration:none; font-weight:600; }
+  a:hover, a:focus { border-color:var(--accent); }
+</style></head>
+<body><main>
+  <h1>Browser condiviso</h1>
+  <p>Lo vedi tu e lo usa l'agente: cerca qualcosa o apri un sito.</p>
+  <form action="https://duckduckgo.com/" method="get" role="search">
+    <label for="q" style="position:absolute;left:-9999px">Cerca sul web</label>
+    <input id="q" name="q" placeholder="Cerca sul web" autofocus autocomplete="off">
+    <button type="submit">Cerca</button>
+  </form>
+  <ul>${QUICK_LINKS.map(([n, u]) => `<li><a href="${u}">${n}</a></li>`).join('')}</ul>
+</main></body></html>`;
+
+/** Pagina iniziale delle schede nuove */
+export function registerBrowserStart(app: Hono<any>): void {
+  app.get('/browser-start', (c) => {
+    c.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action https:; base-uri 'none'");
+    return c.html(START_PAGE);
+  });
 }

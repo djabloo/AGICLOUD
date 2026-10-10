@@ -25,7 +25,7 @@ import { registerDesign } from './design.js';
 import { catalog as designCatalog, normalizeChoice } from '@agicloud/design';
 import { Plugins } from './plugins.js';
 import { piiPlugin, registerPii } from './pii.js';
-import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser } from './browser.js';
+import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser, registerBrowserStart } from './browser.js';
 
 const settings = new Settings();
 const store = new ThreadStore(settings);
@@ -140,6 +140,7 @@ store.extraMcpServers = async () => {
 // Plugin Design: catalogo (/api/design, col token) e anteprime (/preview, col token dell'anteprima)
 registerDesign(app);
 registerPii(app);
+registerBrowserStart(app);
 
 // ── API ──────────────────────────────────────────────────────────────────────
 app.get('/api/session', (c) => c.json({ ok: true, authRequired: Boolean(config.authToken) }));
@@ -168,10 +169,11 @@ app.post('/api/threads', async (c) => {
   try {
     design = normalizeChoice(body.design) ?? undefined;
     if (design) plugins.require('design');
+    if (body.browser === true) plugins.require('browser');
   } catch (err) {
     throw new HttpError(400, err instanceof Error ? err.message : String(err));
   }
-  const thread = store.create(String(body.agentId ?? ''), String(body.cwd ?? ''), { lead: body.lead === true, design });
+  const thread = store.create(String(body.agentId ?? ''), String(body.cwd ?? ''), { lead: body.lead === true, design, browser: body.browser === true || undefined });
   return c.json(thread.summary(), 201);
 });
 

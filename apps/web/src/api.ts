@@ -46,6 +46,8 @@ export interface ThreadSummary {
   worktree: { branch: string; state: 'open' | 'merged' | 'discarded' } | null;
   /** Plugin Design: skill e design system scelti alla creazione */
   design: DesignChoice | null;
+  /** Chat del Browser condiviso */
+  browser: boolean;
 }
 
 export interface DesignChoice {
@@ -266,8 +268,8 @@ export const api = {
   updateThread: (id: string, patch: { title?: string; pinned?: boolean; archived?: boolean }) =>
     request<ThreadSummary>('PATCH', `/threads/${id}`, patch),
   searchThreads: (q: string) => request<SearchHit[]>('GET', `/threads/search?q=${encodeURIComponent(q)}`),
-  createThread: (agentId: string, cwd: string, lead = false, design: DesignChoice | null = null) =>
-    request<ThreadSummary>('POST', '/threads', { agentId, cwd, lead, design }),
+  createThread: (agentId: string, cwd: string, lead = false, design: DesignChoice | null = null, browser = false) =>
+    request<ThreadSummary>('POST', '/threads', { agentId, cwd, lead, design, browser }),
   piiTags: async () => ((await (await apiFetch('/pii/engine/settings')).json()) as { tags: PiiTag[] }).tags,
   piiAnalyze: async (input: { text: string } | { file: File }, exclude: string[], mapping: boolean): Promise<PiiResult> => {
     if ('text' in input) {

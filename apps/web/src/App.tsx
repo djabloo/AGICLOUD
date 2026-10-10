@@ -10,7 +10,7 @@ import { ThreadList } from './ThreadList';
 import { FilesView } from './FilesView';
 import { DesignView } from './DesignView';
 import { PiiView } from './PiiView';
-import { BrowserView } from './BrowserView';
+import { BrowserSection } from './BrowserSection';
 import { Icon, type IconName } from './icons';
 
 type Auth = 'checking' | 'ok' | 'needed';
@@ -124,6 +124,10 @@ export function App() {
     if (t?.design) {
       history.replaceState(null, '', hashFor({ section: 'design', id: t.id }));
       setRoute({ section: 'design', id: t.id });
+    } else if (t?.browser) {
+      localStorage.setItem('agicloud_browser_thread', t.id);
+      history.replaceState(null, '', hashFor({ section: 'browser', id: null }));
+      setRoute({ section: 'browser', id: null });
     }
   }, [route, threads]);
 
@@ -237,7 +241,21 @@ export function App() {
     route.section === 'chat' || route.section === 'design' ? (threads.find((t) => t.id === route.id) ?? null) : null;
   // Le sessioni di design stanno nella sezione Design, le altre in Chat
   const designThreads = threads.filter((t) => t.design);
-  const chatThreads = threads.filter((t) => !t.design);
+  const chatThreads = threads.filter((t) => !t.design && !t.browser);
+  const browserSection = (popup: boolean) => (
+    <BrowserSection
+      popup={popup}
+      threads={threads}
+      agents={agents}
+      agentLabel={agentLabel}
+      onCreated={(t) => setThreads((ts) => [t, ...ts])}
+      onDelete={(tid) => void removeThread(tid)}
+      onOpenTerminal={(cwd) => {
+        setTerminalCwd(cwd);
+        setDialog('terminal');
+      }}
+    />
+  );
   const activeTerminal = inTerminals ? (terminals.find((t) => t.id === route.id) ?? null) : null;
   const agentLabel = (id: string) => agents.find((a) => a.id === id)?.label ?? id;
   const newLabel = inTerminals ? 'Nuovo terminale' : 'Nuova conversazione';
@@ -246,7 +264,7 @@ export function App() {
   if (inBrowser && route.id === 'popup') {
     return (
       <main id="main" className="popup-main">
-        {pluginOn('browser') ? <BrowserView popup /> : <p className="boot">Il plugin Browser non e' attivo.</p>}
+        {pluginOn('browser') ? browserSection(true) : <p className="boot">Il plugin Browser non e' attivo.</p>}
       </main>
     );
   }
@@ -388,7 +406,7 @@ export function App() {
           <FilesView path={route.id} onNavigate={(p) => go({ section: 'files', id: p })} />
         ) : inBrowser ? (
           pluginOn('browser') ? (
-            <BrowserView />
+            browserSection(false)
           ) : (
             <section className="welcome" aria-labelledby="welcome-title">
               <h1 id="welcome-title">Browser non attivo</h1>

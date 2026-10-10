@@ -2879,3 +2879,76 @@ legend {
     display: none;
   }
 }
+
+/* Browser + chat dell'agente: affiancati su schermo largo, alternati su telefono */
+.browser-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  grid-template-rows: minmax(0, 1fr);
+}
+.browser-switch {
+  display: none;
+}
+.browser-pane,
+.browser-chat {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.browser-chat {
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+}
+.browser-chat .chat {
+  flex: 1;
+  min-height: 0;
+}
+.browser-chat-pick {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.browser-chat-pick select {
+  width: 100%;
+  min-height: 40px;
+}
+.browser-chat-start {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 20px 16px;
+}
+.browser-chat-start h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.browser-chat-start select {
+  min-height: 44px;
+}
+@media (max-width: 899px) {
+  .browser-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .browser-switch {
+    display: flex;
+    gap: 6px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .browser-switch [aria-pressed='true'] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+  .show-browser .browser-chat,
+  .show-chat .browser-pane {
+    display: none;
+  }
+  .browser-chat {
+    border-left: 0;
+  }
+}

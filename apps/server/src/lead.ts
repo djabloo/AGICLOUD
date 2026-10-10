@@ -69,9 +69,8 @@ export class LeadManager {
    * Gli strumenti del capo non devono chiedere anche il permesso dell'agente: la delega
    * la approva gia' l'utente nella scheda di AgiCloud, il resto sono letture e messaggi ai thread.
    */
-  sessionMeta(agentId: string): Record<string, unknown> | undefined {
-    if (agentId !== 'claude') return undefined;
-    return { claudeCode: { options: { allowedTools: LEAD_TOOLS.map((t) => `mcp__agicloud__${t}`) } } };
+  allowedTools(): string[] {
+    return LEAD_TOOLS.map((t) => `mcp__agicloud__${t}`);
   }
 
   /** Fine di un turno di un thread affidato: il capo viene avvisato e riassume */

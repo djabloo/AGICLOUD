@@ -34,7 +34,6 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
   const [active, setActive] = useState<string | null>(null);
   const [url, setUrl] = useState('');
   const [editingUrl, setEditingUrl] = useState(false);
-  const [typeText, setTypeText] = useState('');
   const [hasFrame, setHasFrame] = useState(false);
 
   useEffect(() => {
@@ -58,7 +57,7 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
           setActive(m.active);
           setConn('live');
         } else if (m.type === 'nav') {
-          setUrl((u) => (editingUrlRef.current ? u : m.url));
+          setUrl((u) => (editingUrlRef.current ? u : m.url.endsWith('/browser-start') ? '' : m.url));
         } else if (m.type === 'error') setError(m.message);
       };
       sock.onclose = () => {
@@ -80,7 +79,7 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
   editingUrlRef.current = editingUrl;
   const activeTab = tabs.find((t) => t.id === active);
   useEffect(() => {
-    if (!editingUrl && activeTab) setUrl(activeTab.url === 'about:blank' ? '' : activeTab.url);
+    if (!editingUrl && activeTab) setUrl(activeTab.url === 'about:blank' || activeTab.url.endsWith('/browser-start') ? '' : activeTab.url);
   }, [activeTab?.url, editingUrl]);
 
   const send = (m: unknown) => {
@@ -148,13 +147,6 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
     send({ type: 'navigate', url });
     setEditingUrl(false);
     (document.getElementById(`${id}-screen`) as HTMLElement | null)?.focus({ preventScroll: true });
-  };
-
-  const sendText = (e: FormEvent) => {
-    e.preventDefault();
-    if (!typeText) return;
-    send({ type: 'text', text: typeText });
-    setTypeText('');
   };
 
   const openPopup = () => {
@@ -267,18 +259,6 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
         {!hasFrame && <p className="browser-wait">{conn === 'closed' ? 'Browser non raggiungibile, riprovo…' : 'Avvio del browser…'}</p>}
       </div>
 
-      <form className="browser-type" onSubmit={sendText}>
-        <label htmlFor={`${id}-type`} className="visually-hidden">
-          Scrivi nella pagina
-        </label>
-        <input id={`${id}-type`} value={typeText} placeholder="Scrivi nel campo selezionato della pagina" onChange={(e) => setTypeText(e.target.value)} autoComplete="off" />
-        <button type="submit" className="btn small-btn">
-          Scrivi
-        </button>
-        <button type="button" className="btn small-btn" onClick={() => send({ type: 'key', key: 'Enter', code: 'Enter', modifiers: 0 })}>
-          Invio
-        </button>
-      </form>
     </section>
   );
 }

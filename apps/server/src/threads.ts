@@ -65,6 +65,8 @@ interface ThreadMeta {
   lastOutcome?: 'done' | 'error' | 'cancelled';
   /** Plugin Design: skill e design system scelti; il kit va nel progetto alla prima richiesta */
   design?: DesignChoice;
+  /** Plugin Browser: conversazione accanto al browser condiviso (l'agente lo usa con Playwright) */
+  browser?: boolean;
 }
 
 export type RunOutcome = { stop?: string; error?: string };
@@ -128,6 +130,7 @@ export class Thread {
       pendingPermission: this.meta.parentId ? this.pendingPermission() : null,
       worktree: this.meta.worktree ? { branch: this.meta.worktree.branch, state: this.meta.worktree.state } : null,
       design: this.meta.design ?? null,
+      browser: this.meta.browser === true,
     };
   }
 
@@ -262,6 +265,9 @@ export class Thread {
         excludeFromGit(this.meta.cwd);
         agentPrompt = `${kitPrompt(this.meta.design)}\n\n${prompt}`;
       }
+      if (this.meta.browser && !opts.auto && !this.events.some((e) => e.type === EventType.RUN_STARTED)) {
+        agentPrompt = `${BROWSER_PROMPT}\n\n${prompt}`;
+      }
       content = buildPrompt(agentPrompt, files, this.session.acceptsImages);
     } catch (err) {
       this.busy = false;
@@ -333,6 +339,17 @@ export class Thread {
       }
     })();
     return runId;
+  }
+
+  /**
+   * Strumenti che Claude usa senza chiedere: quelli del capo (la delega la approvi gia' tu nella scheda)
+   * e, nelle chat del Browser, quelli del browser condiviso (lo stai guardando; per invii e acquisti
+   * le istruzioni gli chiedono di domandare prima).
+   */
+  private claudeAllowedTools(): Record<string, unknown> | undefined {
+    if (this.meta.agentId !== 'claude') return undefined;
+    const allowed = [...(this.meta.lead && this.store.lead ? this.store.lead.allowedTools() : []), ...(this.meta.browser ? ['mcp__browser'] : [])];
+    return allowed.length ? { claudeCode: { options: { allowedTools: allowed } } } : undefined;
   }
 
   private enqueueNext(): void {
@@ -432,7 +449,7 @@ export class Thread {
         ...(this.meta.lead && this.store.lead ? [this.store.lead.mcpServerFor(this)] : []),
         ...((await this.store.extraMcpServers?.()) ?? []),
       ],
-      sessionMeta: this.meta.lead && this.store.lead ? this.store.lead.sessionMeta(this.meta.agentId) : undefined,
+      sessionMeta: this.claudeAllowedTools(),
       onConfigOptions: (options) => {
         this.store.settings.rememberOptions(this.meta.agentId, options);
         this.meta.configOptions = options;
@@ -626,7 +643,7 @@ export class ThreadStore {
   create(
     agentId: string,
     cwd: string,
-    extra: Pick<ThreadMeta, 'lead' | 'parentId' | 'task' | 'worktree' | 'design'> & { title?: string } = {},
+    extra: Pick<ThreadMeta, 'lead' | 'parentId' | 'task' | 'worktree' | 'design' | 'browser'> & { title?: string } = {},
   ): Thread {
     try {
       getAgent(agentId);
@@ -647,6 +664,7 @@ export class ThreadStore {
         task: extra.task,
         worktree: extra.worktree,
         design: extra.design,
+        browser: extra.browser || undefined,
         createdAt: now,
         updatedAt: now,
         // Modalita'/modello predefiniti dalle Impostazioni: applicati all'avvio dell'agente
@@ -695,6 +713,14 @@ function compact(events: BaseEvent[]): BaseEvent[] {
   }
   return out;
 }
+
+/** Istruzioni per l'agente di una chat del Browser (aggiunte al primo messaggio, non mostrate in chat) */
+const BROWSER_PROMPT =
+  '[Browser · AgiCloud] Questa chat sta accanto al browser condiviso: l'utente vede in diretta lo stesso Chromium che tu usi con gli ' +
+  'strumenti browser_* (Playwright: browser_navigate, browser_snapshot, browser_click, browser_type, browser_tabs...). ' +
+  'Lavorate insieme sulle stesse schede: prima di agire guarda la scheda attiva (browser_snapshot), non chiudere le schede di l'utente ' +
+  'senza chiedere, e per moduli, acquisti, invii o account chiedi conferma prima del clic finale. Se gli strumenti browser_* ' +
+  'non ci sono, dillo: il plugin Browser va attivato e la conversazione riaperta.';
 
 const IMAGE_TYPES: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' };
 /** Oltre questa dimensione l'immagine non va inline: l'agente la legge dal percorso */
