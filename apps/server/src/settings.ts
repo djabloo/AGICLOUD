@@ -114,6 +114,11 @@ export class Settings {
     return env;
   }
 
+  /** Valore di una chiave per un plugin del server (es. Verdict); mai al browser */
+  vaultValue(name: string): string | undefined {
+    return this.vault[name]?.value;
+  }
+
   /** Elenco per la UI: mai il valore, solo le ultime 4 cifre per riconoscerla */
   vaultList() {
     return Object.entries(this.vault)

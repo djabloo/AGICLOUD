@@ -25,6 +25,7 @@ import { registerDesign } from './design.js';
 import { catalog as designCatalog, normalizeChoice } from '@agicloud/design';
 import { Plugins } from './plugins.js';
 import { piiPlugin, registerPii } from './pii.js';
+import { registerVerdict, verdictMcpServer, verdictPlugin } from './verdict.js';
 import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser, registerBrowserStart } from './browser.js';
 
 const settings = new Settings();
@@ -124,6 +125,7 @@ const plugins = new Plugins(
     },
     piiPlugin,
     browserPlugin,
+    verdictPlugin(settings),
   ],
   // Design era gia' in uso prima del sistema dei plugin: resta installato e attivo
   { design: { installed: true, enabled: true } },
@@ -132,15 +134,22 @@ plugins.register(app);
 
 // Browser condiviso: a plugin attivo ogni agente riceve gli strumenti Playwright sullo stesso Chromium
 store.extraMcpServers = async () => {
-  if (!plugins.isEnabled('browser')) return [];
-  await ensureBrowser().catch(() => {});
-  return [browserMcpServer()];
+  const servers = [];
+  if (plugins.isEnabled('browser')) {
+    await ensureBrowser().catch(() => {});
+    servers.push(browserMcpServer());
+  }
+  if (plugins.isEnabled('verdict')) servers.push(verdictMcpServer());
+  return servers;
 };
+// Strumenti dei plugin che Claude usa senza chiedere (Verdict: solo una lettura che costa frazioni di centesimo)
+store.extraAllowedTools = () => (plugins.isEnabled('verdict') ? ['mcp__verdict'] : []);
 
 // Plugin Design: catalogo (/api/design, col token) e anteprime (/preview, col token dell'anteprima)
 registerDesign(app);
 registerPii(app);
 registerBrowserStart(app);
+registerVerdict(app, settings);
 
 // ── API ──────────────────────────────────────────────────────────────────────
 app.get('/api/session', (c) => c.json({ ok: true, authRequired: Boolean(config.authToken) }));

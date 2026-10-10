@@ -259,6 +259,22 @@ export interface PiiPdf {
   filename?: string;
 }
 
+export type VerdictType = 'yesno' | 'choice' | 'score';
+
+export interface VerdictResult {
+  answer: string;
+  confidence: number;
+  probabilities: { option: string; p: number }[];
+  uncertain: boolean;
+  note: string | null;
+  method: 'logprobs' | 'campioni';
+  models: string[];
+  expected?: number;
+  explanation?: string;
+  ms: number;
+  cost: number;
+}
+
 export const api = {
   session: () => request<{ ok: boolean }>('GET', '/session'),
   agents: () => request<AgentInfo[]>('GET', '/agents'),
@@ -297,6 +313,8 @@ export const api = {
   piiDocFile: async (docId: string) => (await apiFetch(`/pii/engine/doc/${docId}/file.pdf`)).blob(),
   piiSave: (body: { project: string; name: string; exclude_tags: string[]; text?: string; doc_id?: string }) =>
     request<{ path: string; abs: string; size: number }>('POST', '/pii/save', body),
+  verdict: (body: { text: string; question: string; type: VerdictType; options?: string[]; mode: 'fast' | 'double'; explain: boolean }) =>
+    request<VerdictResult>('POST', '/verdict/decide', body),
   plugins: () => request<PluginInfo[]>('GET', '/plugins'),
   installPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/install`),
   uninstallPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/uninstall`),

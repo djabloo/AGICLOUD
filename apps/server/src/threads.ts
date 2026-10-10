@@ -348,7 +348,11 @@ export class Thread {
    */
   private claudeAllowedTools(): Record<string, unknown> | undefined {
     if (this.meta.agentId !== 'claude') return undefined;
-    const allowed = [...(this.meta.lead && this.store.lead ? this.store.lead.allowedTools() : []), ...(this.meta.browser ? ['mcp__browser'] : [])];
+    const allowed = [
+      ...(this.meta.lead && this.store.lead ? this.store.lead.allowedTools() : []),
+      ...(this.meta.browser ? ['mcp__browser'] : []),
+      ...(this.store.extraAllowedTools?.() ?? []),
+    ];
     return allowed.length ? { claudeCode: { options: { allowedTools: allowed } } } : undefined;
   }
 
@@ -578,6 +582,8 @@ export class ThreadStore {
   lead?: LeadManager;
   /** Server MCP in piu' per tutti gli agenti (es. il Browser condiviso): impostato dal server */
   extraMcpServers?: () => Promise<acp.McpServer[]>;
+  /** Strumenti dei plugin preautorizzati per Claude: impostato dal server */
+  extraAllowedTools?: () => string[];
 
   constructor(readonly settings: Settings) {}
 

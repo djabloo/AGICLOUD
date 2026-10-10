@@ -11,10 +11,11 @@ import { FilesView } from './FilesView';
 import { DesignView } from './DesignView';
 import { PiiView } from './PiiView';
 import { BrowserSection } from './BrowserSection';
+import { VerdictView } from './VerdictView';
 import { Icon, type IconName } from './icons';
 
 type Auth = 'checking' | 'ok' | 'needed';
-type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'settings';
+type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'verdict' | 'settings';
 
 interface Route {
   section: Section;
@@ -29,6 +30,7 @@ const SECTIONS: { id: Section; label: string; icon: IconName; ready: boolean; pl
   { id: 'design', label: 'Design', icon: 'design', ready: true, plugin: 'design' },
   { id: 'pii', label: 'PII', icon: 'shield', ready: true, plugin: 'pii' },
   { id: 'browser', label: 'Browser', icon: 'globe', ready: true, plugin: 'browser' },
+  { id: 'verdict', label: 'Verdict', icon: 'scale', ready: true, plugin: 'verdict' },
   { id: 'settings', label: 'Impostazioni', icon: 'settings', ready: true },
 ];
 
@@ -43,6 +45,7 @@ function routeFromHash(): Route {
   const files = location.hash.match(/^#\/files(?:\/(.+))?$/);
   if (files) return { section: 'files', id: files[1] ? decodeURIComponent(files[1]) : null };
   if (/^#\/pii\/?$/.test(location.hash)) return { section: 'pii', id: null };
+  if (/^#\/verdict\/?$/.test(location.hash)) return { section: 'verdict', id: null };
   // #/browser/popup = solo il browser, nella finestra a parte
   const browser = location.hash.match(/^#\/browser(\/popup)?\/?$/);
   if (browser) return { section: 'browser', id: browser[1] ? 'popup' : null };
@@ -57,6 +60,7 @@ function hashFor(r: Route): string {
   if (r.section === 'settings') return r.id ? `#/settings/${r.id}` : '#/settings';
   if (r.section === 'files') return r.id ? `#/files/${encodeURIComponent(r.id)}` : '#/files';
   if (r.section === 'pii') return '#/pii';
+  if (r.section === 'verdict') return '#/verdict';
   if (r.section === 'browser') return r.id === 'popup' ? '#/browser/popup' : '#/browser';
   if (r.section === 'design') return r.id ? `#/design/t/${r.id}` : '#/design';
   return r.id ? `#/t/${r.id}` : '';
@@ -237,6 +241,7 @@ export function App() {
   const inDesign = route.section === 'design';
   const inPii = route.section === 'pii';
   const inBrowser = route.section === 'browser';
+  const inVerdict = route.section === 'verdict';
   const activeThread =
     route.section === 'chat' || route.section === 'design' ? (threads.find((t) => t.id === route.id) ?? null) : null;
   // Le sessioni di design stanno nella sezione Design, le altre in Chat
@@ -350,14 +355,14 @@ export function App() {
           </>
         )}
 
-        {!inSettings && !inFiles && !inDesign && !inPii && !inBrowser && (
+        {!inSettings && !inFiles && !inDesign && !inPii && !inBrowser && !inVerdict && (
           <button type="button" className="btn primary new-btn" onClick={openNew}>
             <Icon name="plus" />
             <span>{newLabel}</span>
           </button>
         )}
 
-        {inSettings || inFiles || inDesign || inPii || inBrowser ? null : inTerminals ? (
+        {inSettings || inFiles || inDesign || inPii || inBrowser || inVerdict ? null : inTerminals ? (
           <>
             <h2 className="sidebar-title" id="list-title">
               Terminali
@@ -404,6 +409,17 @@ export function App() {
       <main id="main" className="main" tabIndex={-1} inert={drawerOpen || undefined}>
         {inFiles ? (
           <FilesView path={route.id} onNavigate={(p) => go({ section: 'files', id: p })} />
+        ) : inVerdict ? (
+          pluginOn('verdict') ? (
+            <VerdictView />
+          ) : (
+            <section className="welcome" aria-labelledby="welcome-title">
+              <h1 id="welcome-title">Verdict non attivo</h1>
+              <p>
+                Il plugin Verdict e' spento o non installato. Puoi attivarlo in <a href="#/settings/plugin">Impostazioni → Plugin</a>.
+              </p>
+            </section>
+          )
         ) : inBrowser ? (
           pluginOn('browser') ? (
             browserSection(false)

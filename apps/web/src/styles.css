@@ -2952,3 +2952,127 @@ legend {
     border-left: 0;
   }
 }
+
+/* ── Plugin Verdict ──────────────────────────────────────────────────────── */
+.verdict {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.verdict-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.verdict-step {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.85em;
+  font-weight: 700;
+}
+.btn.primary .verdict-step {
+  background: rgb(255 255 255 / 0.25);
+  color: inherit;
+}
+.verdict-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.verdict-options li {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.verdict-options button {
+  width: 36px;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.verdict-result {
+  border-width: 2px;
+  border-color: var(--ok);
+}
+.verdict-result.is-uncertain {
+  border-color: var(--warn);
+}
+.verdict-answer {
+  margin: 0;
+  font-size: 1.6rem !important;
+}
+.verdict-conf {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.verdict-warn {
+  margin: 0;
+  font-weight: 600;
+  color: var(--warn);
+}
+.verdict-bars {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.verdict-bars li {
+  display: grid;
+  grid-template-columns: minmax(80px, 30%) 1fr 3.5em;
+  align-items: center;
+  gap: 8px;
+}
+.verdict-bar-label {
+  overflow-wrap: anywhere;
+}
+.verdict-bar {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.verdict-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.verdict-bar-pct {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.verdict-why {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.verdict-n8n-summary {
+  cursor: pointer;
+  padding: 4px 0;
+  font-weight: 600;
+}
+.verdict-why-btn {
+  justify-self: start;
+}
