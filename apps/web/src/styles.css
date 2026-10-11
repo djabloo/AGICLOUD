@@ -3286,3 +3286,9 @@ legend {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Scelta della lingua */
+.lang-picker { display: flex; align-items: center; gap: 0.6rem; margin-top: 1rem; }
+.lang-picker.compact { margin-top: 1.25rem; justify-content: flex-start; font-size: 0.95rem; }
+.lang-picker label { color: var(--muted, inherit); }
+.lang-picker select { font: inherit; padding: 0.3rem 0.5rem; }

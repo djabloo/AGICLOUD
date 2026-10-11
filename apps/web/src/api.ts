@@ -1,3 +1,4 @@
+import { getLang } from './i18n';
 // Client HTTP del server AgiCloud: REST per i comandi, SSE (via fetch) per gli eventi AG-UI.
 
 import type { BaseEvent } from '@ag-ui/core';
@@ -217,6 +218,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     method,
     headers: {
       ...(memoryToken ? { authorization: `Bearer ${memoryToken}` } : {}),
+      'accept-language': getLang(),
       ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -232,7 +234,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const res = await fetch(`/api${path}`, {
     ...init,
-    headers: { ...(memoryToken ? { authorization: `Bearer ${memoryToken}` } : {}), ...(init.headers as Record<string, string> | undefined) },
+    headers: { ...(memoryToken ? { authorization: `Bearer ${memoryToken}` } : {}), 'accept-language': getLang(), ...(init.headers as Record<string, string> | undefined) },
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));

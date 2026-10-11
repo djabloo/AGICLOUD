@@ -6,6 +6,7 @@ import { VaultSection } from './VaultSection';
 import { NotificationsSection } from './NotificationsSection';
 import { AgentLogin } from './AgentLogin';
 import { SearchSelect } from './SearchSelect';
+import { LanguagePicker } from './i18n/LanguagePicker';
 import { PluginsSection } from './PluginsSection';
 import { getTheme, setTheme, type ThemeChoice } from './theme';
 
@@ -211,6 +212,7 @@ function AppearanceSection() {
         ))}
       </fieldset>
       <p className="hint">Vale per questo dispositivo. Il terminale resta scuro.</p>
+      <LanguagePicker />
     </section>
   );
 }
