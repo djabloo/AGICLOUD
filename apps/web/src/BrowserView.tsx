@@ -3,6 +3,7 @@
 // Si puo' aprire anche in una finestra a parte (#/browser/popup).
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent, type WheelEvent } from 'react';
 import { currentToken } from './api';
+import { useT } from './i18n';
 
 interface Tab {
   id: string;
@@ -27,6 +28,7 @@ const ZOOM_MAX = 2.5;
 const SPECIAL = new Set(['Enter', 'Backspace', 'Tab', 'Escape', 'Delete', 'ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown']);
 
 export function BrowserView({ popup = false }: { popup?: boolean }) {
+  const t = useT();
   const id = useId();
   const ws = useRef<WebSocket | null>(null);
   const img = useRef<HTMLImageElement>(null);
@@ -251,44 +253,44 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
     <section className={`browser${popup ? ' is-popup' : ''}`} aria-labelledby={`${id}-title`}>
       <header className="browser-bar">
         <h1 id={`${id}-title`} className="visually-hidden">
-          Browser condiviso
+          {t('browser.titolo')}
         </h1>
-        <div className="browser-nav" role="group" aria-label="Navigazione">
+        <div className="browser-nav" role="group" aria-label={t('browser.navigazione')}>
           <button type="button" className="btn icon-btn" onClick={() => send({ type: 'back' })}>
             <span aria-hidden="true">←</span>
-            <span className="visually-hidden">Indietro</span>
+            <span className="visually-hidden">{t('browser.indietro')}</span>
           </button>
           <button type="button" className="btn icon-btn" onClick={() => send({ type: 'forward' })}>
             <span aria-hidden="true">→</span>
-            <span className="visually-hidden">Avanti</span>
+            <span className="visually-hidden">{t('browser.avanti')}</span>
           </button>
           <button type="button" className="btn icon-btn" onClick={() => send({ type: 'reload' })}>
             <span aria-hidden="true">↻</span>
-            <span className="visually-hidden">Ricarica</span>
+            <span className="visually-hidden">{t('browser.ricarica')}</span>
           </button>
         </div>
-        <div className="browser-zoom" role="group" aria-label="Zoom della pagina">
+        <div className="browser-zoom" role="group" aria-label={t('browser.zoom')}>
           <button type="button" className="btn icon-btn" onClick={() => changeZoom(zoom - 0.1)} disabled={zoom <= ZOOM_MIN}>
             <span aria-hidden="true">−</span>
-            <span className="visually-hidden">Rimpicciolisci</span>
+            <span className="visually-hidden">{t('browser.rimpicciolisci')}</span>
           </button>
-          <button type="button" className="btn small-btn browser-zoom-pct" onClick={() => changeZoom(1)} title="Torna al 100%">
-            {Math.round(zoom * 100)}%<span className="visually-hidden"> (torna al 100%)</span>
+          <button type="button" className="btn small-btn browser-zoom-pct" onClick={() => changeZoom(1)} title={t('browser.torna100')}>
+            {Math.round(zoom * 100)}%<span className="visually-hidden">{t('browser.torna100Hint')}</span>
           </button>
           <button type="button" className="btn icon-btn" onClick={() => changeZoom(zoom + 0.1)} disabled={zoom >= ZOOM_MAX}>
             <span aria-hidden="true">+</span>
-            <span className="visually-hidden">Ingrandisci</span>
+            <span className="visually-hidden">{t('browser.ingrandisci')}</span>
           </button>
         </div>
         <form className="browser-url" onSubmit={submitUrl}>
           <label htmlFor={`${id}-url`} className="visually-hidden">
-            Indirizzo o ricerca
+            {t('browser.indirizzo')}
           </label>
           <input
             id={`${id}-url`}
             className="mono-input"
             value={url}
-            placeholder="Indirizzo o ricerca"
+            placeholder={t('browser.indirizzo')}
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
@@ -300,32 +302,32 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
         </form>
         <p className={`status status-${conn === 'live' ? 'ready' : conn === 'closed' ? 'error' : 'starting'}`}>
           <span className="status-dot" aria-hidden="true" />
-          {conn === 'live' ? 'In diretta' : conn === 'closed' ? 'Riconnessione…' : 'Collegamento…'}
+          {conn === 'live' ? t('browser.inDiretta') : conn === 'closed' ? t('browser.riconnessione') : t('browser.collegamento')}
         </p>
         {!popup && (
           <button type="button" className="btn small-btn browser-popup-btn" onClick={openPopup}>
-            Apri in una finestra
+            {t('browser.apriFinestra')}
           </button>
         )}
       </header>
 
-      <nav className="browser-tabs" aria-label="Schede">
+      <nav className="browser-tabs" aria-label={t('browser.schede')}>
         <ul>
-          {tabs.map((t) => (
-            <li key={t.id} className={t.id === active ? 'is-active' : undefined}>
-              <button type="button" className="browser-tab" aria-current={t.id === active ? 'page' : undefined} onClick={() => send({ type: 'tab', id: t.id })} title={t.url}>
-                {t.title || t.url || 'Nuova scheda'}
+          {tabs.map((tab) => (
+            <li key={tab.id} className={tab.id === active ? 'is-active' : undefined}>
+              <button type="button" className="browser-tab" aria-current={tab.id === active ? 'page' : undefined} onClick={() => send({ type: 'tab', id: tab.id })} title={tab.url}>
+                {tab.title || tab.url || t('browser.nuovaScheda')}
               </button>
-              <button type="button" className="browser-tab-close" onClick={() => send({ type: 'closetab', id: t.id })}>
+              <button type="button" className="browser-tab-close" onClick={() => send({ type: 'closetab', id: tab.id })}>
                 <span aria-hidden="true">×</span>
-                <span className="visually-hidden">Chiudi la scheda {t.title || t.url}</span>
+                <span className="visually-hidden">{t('browser.chiudiScheda', { nome: tab.title || tab.url })}</span>
               </button>
             </li>
           ))}
           <li>
             <button type="button" className="browser-tab browser-newtab" onClick={() => send({ type: 'newtab' })}>
               <span aria-hidden="true">+</span>
-              <span className="visually-hidden">Nuova scheda</span>
+              <span className="visually-hidden">{t('browser.nuovaScheda')}</span>
             </button>
           </li>
         </ul>
@@ -343,7 +345,7 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
         className="browser-screen"
         tabIndex={0}
         role="application"
-        aria-label="Schermo del browser: clic, rotella e tasti vanno alla pagina. F6 per uscire."
+        aria-label={t('browser.schermo')}
         onKeyDown={onKey}
         onPaste={(e) => {
           const text = e.clipboardData.getData('text');
@@ -364,7 +366,7 @@ export function BrowserView({ popup = false }: { popup?: boolean }) {
           onWheel={onWheel}
           onContextMenu={(e) => e.preventDefault()}
         />
-        {!hasFrame && <p className="browser-wait">{conn === 'closed' ? 'Browser non raggiungibile, riprovo…' : 'Avvio del browser…'}</p>}
+        {!hasFrame && <p className="browser-wait">{conn === 'closed' ? t('browser.nonRaggiungibile') : t('browser.avvio')}</p>}
       </div>
 
     </section>

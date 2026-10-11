@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useT } from './i18n';
 import { diffLines } from 'diff';
 
 export interface FileDiff {
@@ -56,10 +57,11 @@ export function diffStats(diffs: FileDiff[]): { added: number; removed: number }
 }
 
 export function DiffStat({ added, removed }: { added: number; removed: number }) {
+  const t = useT();
   return (
     <span className="diff-stat">
       <span className="visually-hidden">
-        {added} {added === 1 ? 'riga aggiunta' : 'righe aggiunte'}, {removed} {removed === 1 ? 'riga rimossa' : 'righe rimosse'}
+        {t('diff.aggiunte', { n: added })}, {t('diff.rimosse', { n: removed })}
       </span>
       <span aria-hidden="true">
         <span className="diff-plus">+{added}</span> <span className="diff-minus">−{removed}</span>
@@ -69,6 +71,7 @@ export function DiffStat({ added, removed }: { added: number; removed: number })
 }
 
 export function DiffView({ diff, href }: { diff: FileDiff; href?: string }) {
+  const t = useT();
   const { lines } = useMemo(() => buildLines(diff.oldText ?? '', diff.newText), [diff.oldText, diff.newText]);
   const shown = lines.slice(0, MAX_LINES);
   return (
@@ -81,24 +84,24 @@ export function DiffView({ diff, href }: { diff: FileDiff; href?: string }) {
         ) : (
           <code>{diff.path}</code>
         )}
-        {diff.oldText === null && <span className="diff-new">nuovo file</span>}
+        {diff.oldText === null && <span className="diff-new">{t('diff.nuovoFile')}</span>}
       </figcaption>
-      <div className="diff-body" role="group" aria-label={`Modifiche a ${diff.path}`}>
+      <div className="diff-body" role="group" aria-label={t('diff.modificheA', { percorso: diff.path })}>
         {shown.map((l, i) =>
           l.kind === 'gap' ? (
             <div key={i} className="dl dl-gap">
-              … {l.count} {l.count === 1 ? 'riga uguale' : 'righe uguali'}
+              {t('diff.righeUguali', { n: l.count })}
             </div>
           ) : l.kind === 'add' ? (
             <ins key={i} className="dl dl-add">
               <span className="dl-sign" aria-hidden="true">+</span>
-              <span className="visually-hidden">aggiunta: </span>
+              <span className="visually-hidden">{t('diff.aggiunta')}</span>
               {l.text || ' '}
             </ins>
           ) : l.kind === 'del' ? (
             <del key={i} className="dl dl-del">
               <span className="dl-sign" aria-hidden="true">−</span>
-              <span className="visually-hidden">rimossa: </span>
+              <span className="visually-hidden">{t('diff.rimossa')}</span>
               {l.text || ' '}
             </del>
           ) : (
@@ -108,7 +111,7 @@ export function DiffView({ diff, href }: { diff: FileDiff; href?: string }) {
             </div>
           ),
         )}
-        {lines.length > MAX_LINES && <div className="dl dl-gap">… diff troncato ({lines.length - MAX_LINES} righe non mostrate)</div>}
+        {lines.length > MAX_LINES && <div className="dl dl-gap">{t('diff.troncato', { count: lines.length - MAX_LINES })}</div>}
       </div>
     </figure>
   );
@@ -116,7 +119,8 @@ export function DiffView({ diff, href }: { diff: FileDiff; href?: string }) {
 
 /** Diff in formato git (unified), es. le modifiche di un thread nella sua copia: un riquadro per file */
 export function PatchView({ patch, hrefFor }: { patch: string; hrefFor?: (path: string) => string }) {
-  const files = useMemo(() => splitPatch(patch), [patch]);
+  const t = useT();
+  const files = useMemo(() => splitPatch(patch, t('diff.binario')), [patch, t]);
   return (
     <>
       {files.map((f) => (
@@ -129,9 +133,9 @@ export function PatchView({ patch, hrefFor }: { patch: string; hrefFor?: (path: 
             ) : (
               <code>{f.path}</code>
             )}
-            {f.isNew && <span className="diff-new">nuovo file</span>}
+            {f.isNew && <span className="diff-new">{t('diff.nuovoFile')}</span>}
           </figcaption>
-          <div className="diff-body" role="group" aria-label={`Modifiche a ${f.path}`}>
+          <div className="diff-body" role="group" aria-label={t('diff.modificheA', { percorso: f.path })}>
             {f.lines.slice(0, MAX_LINES).map((l, i) =>
               l.startsWith('@@') ? (
                 <div key={i} className="dl dl-gap">
@@ -140,13 +144,13 @@ export function PatchView({ patch, hrefFor }: { patch: string; hrefFor?: (path: 
               ) : l.startsWith('+') ? (
                 <ins key={i} className="dl dl-add">
                   <span className="dl-sign" aria-hidden="true">+</span>
-                  <span className="visually-hidden">aggiunta: </span>
+                  <span className="visually-hidden">{t('diff.aggiunta')}</span>
                   {l.slice(1) || ' '}
                 </ins>
               ) : l.startsWith('-') ? (
                 <del key={i} className="dl dl-del">
                   <span className="dl-sign" aria-hidden="true">−</span>
-                  <span className="visually-hidden">rimossa: </span>
+                  <span className="visually-hidden">{t('diff.rimossa')}</span>
                   {l.slice(1) || ' '}
                 </del>
               ) : (
@@ -156,7 +160,7 @@ export function PatchView({ patch, hrefFor }: { patch: string; hrefFor?: (path: 
                 </div>
               ),
             )}
-            {f.lines.length > MAX_LINES && <div className="dl dl-gap">… diff troncato ({f.lines.length - MAX_LINES} righe non mostrate)</div>}
+            {f.lines.length > MAX_LINES && <div className="dl dl-gap">{t('diff.troncato', { count: f.lines.length - MAX_LINES })}</div>}
           </div>
         </figure>
       ))}
@@ -164,7 +168,7 @@ export function PatchView({ patch, hrefFor }: { patch: string; hrefFor?: (path: 
   );
 }
 
-function splitPatch(patch: string): { path: string; isNew: boolean; lines: string[] }[] {
+function splitPatch(patch: string, binaryLabel: string): { path: string; isNew: boolean; lines: string[] }[] {
   const out: { path: string; isNew: boolean; lines: string[] }[] = [];
   let cur: { path: string; isNew: boolean; lines: string[] } | null = null;
   let inHunk = false;
@@ -180,7 +184,7 @@ function splitPatch(patch: string): { path: string; isNew: boolean; lines: strin
       else if (line.startsWith('@@')) {
         inHunk = true;
         cur.lines.push(line);
-      } else if (line.startsWith('Binary files')) cur.lines.push('@@ file binario');
+      } else if (line.startsWith('Binary files')) cur.lines.push(binaryLabel);
     } else if (line.startsWith('\\')) continue; // "\ No newline at end of file"
     else if (line) cur.lines.push(line);
   }

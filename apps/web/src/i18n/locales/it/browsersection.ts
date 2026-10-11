@@ -1,0 +1,16 @@
+export default {
+  chattaTitolo: "Chatta con un agente sul browser",
+  chattaHint: "L'agente vede e usa lo stesso browser: chiedigli di cercare, leggere, confrontare o compilare, e segui tutto in diretta.",
+  agente: 'Agente',
+  avvio: 'Avvio…',
+  inizia: 'Inizia la chat',
+  nessunaCartella: 'Nessuna cartella di progetto disponibile',
+  mostra: 'Mostra',
+  pannelloBrowser: 'Browser',
+  pannelloChat: 'Chat',
+  pannelloChatLavoro: 'Chat · al lavoro',
+  chatLabel: "Chat con l'agente sul browser",
+  chatDelBrowser: 'Chat del browser',
+  chatOpzione: '{title} · {agent}',
+  nuovaChat: '+ Nuova chat del browser',
+} satisfies Record<string, string>;

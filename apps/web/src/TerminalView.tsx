@@ -6,6 +6,7 @@ import { copyText, findUrls, terminalLines } from './termText';
 import '@xterm/xterm/css/xterm.css';
 import { currentToken, type TerminalSummary } from './api';
 import { Icon } from './icons';
+import { t as translate, useT } from './i18n';
 
 const SR_KEY = 'agicloud_term_sr';
 
@@ -18,28 +19,31 @@ function readSrMode(): boolean {
 }
 
 /** Tasti che sulla tastiera del telefono mancano o sono scomodi */
-const KEYS: { label: string; name: string; seq: string }[] = [
-  { label: 'Invio', name: 'Invio', seq: '\r' },
-  { label: 'Esc', name: 'Esc', seq: '\x1b' },
-  { label: 'Tab', name: 'Tab', seq: '\t' },
-  { label: 'Spazio', name: 'Spazio', seq: ' ' },
-  { label: '⌫', name: 'Cancella indietro', seq: '\x7f' },
-  { label: '↑', name: 'Freccia su', seq: '\x1b[A' },
-  { label: '↓', name: 'Freccia giu\'', seq: '\x1b[B' },
-  { label: '←', name: 'Freccia sinistra', seq: '\x1b[D' },
-  { label: '→', name: 'Freccia destra', seq: '\x1b[C' },
-  { label: 'PgSu', name: 'Pagina su', seq: '\x1b[5~' },
-  { label: 'PgGiù', name: 'Pagina giu\'', seq: '\x1b[6~' },
-  { label: '^C', name: 'Control C', seq: '\x03' },
-  { label: '^D', name: 'Control D', seq: '\x04' },
-  { label: '|', name: 'Barra verticale', seq: '|' },
-  { label: '~', name: 'Tilde', seq: '~' },
-  { label: '/', name: 'Barra', seq: '/' },
-];
+function getKeys(t: typeof translate): { label: string; name: string; seq: string }[] {
+  return [
+    { label: t('terminale.tastoInvio'), name: t('terminale.tastoInvio'), seq: '\r' },
+    { label: t('terminale.tastoEsc'), name: t('terminale.tastoEsc'), seq: '\x1b' },
+    { label: t('terminale.tastoTab'), name: t('terminale.tastoTab'), seq: '\t' },
+    { label: t('terminale.tastoSpazio'), name: t('terminale.tastoSpazio'), seq: ' ' },
+    { label: '⌫', name: t('terminale.tastoCanc'), seq: '\x7f' },
+    { label: '↑', name: t('terminale.tastoSu'), seq: '\x1b[A' },
+    { label: '↓', name: t('terminale.tastoGiu'), seq: '\x1b[B' },
+    { label: '←', name: t('terminale.tastoSinistra'), seq: '\x1b[D' },
+    { label: '→', name: t('terminale.tastoDestra'), seq: '\x1b[C' },
+    { label: t('terminale.tastoPagSuEtichetta'), name: t('terminale.tastoPagSu'), seq: '\x1b[5~' },
+    { label: t('terminale.tastoPagGiuEtichetta'), name: t('terminale.tastoPagGiu'), seq: '\x1b[6~' },
+    { label: '^C', name: t('terminale.tastoCtrlC'), seq: '\x03' },
+    { label: '^D', name: t('terminale.tastoCtrlD'), seq: '\x04' },
+    { label: '|', name: t('terminale.tastoBarraVerticale'), seq: '|' },
+    { label: '~', name: t('terminale.tastoTilde'), seq: '~' },
+    { label: '/', name: t('terminale.tastoBarra'), seq: '/' },
+  ];
+}
 
 type Conn = 'connecting' | 'open' | 'closed' | 'exited';
 
 export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary; onClose: () => void }) {
+  const t = useT();
   const host = useRef<HTMLDivElement>(null);
   const toolbar = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -66,7 +70,7 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
     } catch {
       /* solo una comodita' */
     }
-    setAnnounce(urls.length === 1 ? 'Link tolto dalla barra' : 'Link tolti dalla barra');
+    setAnnounce(t('terminale.linkTolto', { n: urls.length }));
     host.current?.querySelector<HTMLElement>('textarea')?.focus();
   };
   const shownLinks = links.filter((u) => !dismissed.includes(u));
@@ -107,7 +111,7 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
       }
       if (e.ctrlKey && e.shiftKey && e.code === 'KeyC') {
         const sel = term.getSelection();
-        if (sel) void copyText(sel).then((ok) => setAnnounce(ok ? 'Selezione copiata' : 'Copia non riuscita'));
+        if (sel) void copyText(sel).then((ok) => setAnnounce(ok ? t('terminale.selezioneCopiata') : t('terminale.copiaNonRiuscita')));
         return false;
       }
       if (e.ctrlKey && e.shiftKey && e.code === 'KeyV') {
@@ -156,7 +160,7 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
         } else if (msg.type === 'data') {
           term.write(msg.data);
         } else if (msg.type === 'exit') {
-          term.write(`\r\n\x1b[2m[processo terminato, codice ${msg.code}]\x1b[0m\r\n`);
+          term.write(`\r\n\x1b[2m${t('terminale.processoTerminatoCodice', { code: msg.code })}\x1b[0m\r\n`);
           setConn('exited');
         }
       };
@@ -225,7 +229,13 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
   };
 
   const statusText =
-    conn === 'open' ? 'Collegato' : conn === 'connecting' ? 'Connessione…' : conn === 'exited' ? 'Processo terminato' : 'Disconnesso, riprovo…';
+    conn === 'open'
+      ? t('terminale.collegato')
+      : conn === 'connecting'
+        ? t('terminale.connessione')
+        : conn === 'exited'
+          ? t('terminale.processoTerminato')
+          : t('terminale.disconnesso');
 
   return (
     <section className="term" aria-labelledby="term-title">
@@ -234,7 +244,7 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
           <h1 id="term-title">{terminal.title}</h1>
           <p className="chat-meta">
             <span title={terminal.cwd}>
-              <span className="visually-hidden">Cartella </span>
+              <span className="visually-hidden">{t('terminale.cartella')}</span>
               {terminal.cwd}
             </span>
           </p>
@@ -245,50 +255,52 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
         </p>
         <div className="term-tools" ref={toolbar}>
           <button type="button" className="btn small-btn" onClick={() => setTextOpen(true)}>
-            Testo
+            {t('terminale.testo')}
           </button>
           <button type="button" className="btn small-btn" aria-pressed={srMode} onClick={toggleSr}>
-            Lettore di schermo
+            {t('terminale.lettoreSchermo')}
           </button>
           <button
             type="button"
             className="btn icon-btn"
             onClick={() => {
-              if (confirm('Chiudere il terminale? I processi in esecuzione verranno terminati.')) onClose();
+              if (confirm(t('terminale.confermaChiusura'))) onClose();
             }}
           >
             <Icon name="trash" />
-            <span className="visually-hidden">Chiudi terminale</span>
+            <span className="visually-hidden">{t('terminale.chiudiTerminale')}</span>
           </button>
         </div>
       </header>
 
       {shownLinks.length > 0 && (
-        <div className="term-links" role="region" aria-label="Link nel terminale">
+        <div className="term-links" role="region" aria-label={t('terminale.linkNelTerminale')}>
           {shownLinks.map((url) => (
             <div key={url} className="term-link">
               <span className="term-link-url" title={url}>
                 {url}
               </span>
               <a className="btn small-btn" href={url} target="_blank" rel="noopener noreferrer">
-                Apri<span className="visually-hidden"> il link</span>
+                {t('terminale.apri')}
+                <span className="visually-hidden">{t('terminale.ilLink')}</span>
               </a>
               <button
                 type="button"
                 className="btn small-btn"
-                onClick={() => void copyText(url).then((ok) => setAnnounce(ok ? 'Link copiato' : 'Copia non riuscita'))}
+                onClick={() => void copyText(url).then((ok) => setAnnounce(ok ? t('terminale.linkCopiato') : t('terminale.copiaNonRiuscita')))}
               >
-                Copia<span className="visually-hidden"> il link</span>
+                {t('terminale.copia')}
+                <span className="visually-hidden">{t('terminale.ilLink')}</span>
               </button>
               <button type="button" className="btn small-btn icon-btn" onClick={() => dismiss([url])}>
                 <Icon name="trash" />
-                <span className="visually-hidden">Togli il link {url} dalla barra</span>
+                <span className="visually-hidden">{t('terminale.togliLink', { url })}</span>
               </button>
             </div>
           ))}
           {shownLinks.length > 1 && (
             <button type="button" className="term-links-clear" onClick={() => dismiss(shownLinks)}>
-              Togli tutti i link
+              {t('terminale.togliTuttiLink')}
             </button>
           )}
         </div>
@@ -296,17 +308,17 @@ export function TerminalView({ terminal, onClose }: { terminal: TerminalSummary;
 
       <div className="term-host" ref={host} />
 
-      <div className="keybar" role="toolbar" aria-label="Tasti speciali">
+      <div className="keybar" role="toolbar" aria-label={t('terminale.tastiSpeciali')}>
         <button type="button" className="key" aria-pressed={ctrl} onClick={toggleCtrl}>
           Ctrl
         </button>
-        {KEYS.map((k) => (
+        {getKeys(t).map((k) => (
           <button key={k.name} type="button" className="key" aria-label={k.name} onClick={() => pressKey(k.seq)}>
             {k.label}
           </button>
         ))}
       </div>
-      <p className="term-hint">F6 per uscire dal terminale con la tastiera · Ctrl+Maiusc+C copia, Ctrl+Maiusc+V incolla.</p>
+      <p className="term-hint">{t('terminale.suggerimento')}</p>
       <TextDialog
         open={textOpen}
         getText={() => (termRef.current ? terminalLines(termRef.current, 500).join('\n') : '')}
@@ -336,6 +348,7 @@ function TextDialog({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const t = useT();
   const area = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState('');
   const [input, setInput] = useState('');
@@ -360,18 +373,18 @@ function TextDialog({
   return (
     <dialog ref={ref} className="dialog term-text-dialog" aria-labelledby="term-text-title" onClose={onClose}>
       <div className="term-text-body">
-        <h2 id="term-text-title">Testo del terminale</h2>
+        <h2 id="term-text-title">{t('terminale.testoTerminale')}</h2>
         <label htmlFor="term-text-area" className="hint">
-          Seleziona e copia quello che ti serve (link, codici, errori).
+          {t('terminale.selezionaCopia')}
         </label>
         <textarea id="term-text-area" ref={area} className="mono-input term-text-area" readOnly value={text} rows={14} />
         <div className="dialog-actions start">
           <button
             type="button"
             className="btn"
-            onClick={() => void copyText(text).then((ok) => setMsg(ok ? 'Testo copiato' : 'Copia non riuscita'))}
+            onClick={() => void copyText(text).then((ok) => setMsg(ok ? t('terminale.testoCopiato') : t('terminale.copiaNonRiuscita')))}
           >
-            Copia tutto
+            {t('terminale.copiaTutto')}
           </button>
         </div>
 
@@ -382,27 +395,27 @@ function TextDialog({
             if (!input) return;
             onSend(enter ? `${input}\r` : input);
             setInput('');
-            setMsg('Inviato al terminale');
+            setMsg(t('terminale.inviato'));
           }}
         >
-          <label htmlFor="term-send-input">Invia al terminale</label>
+          <label htmlFor="term-send-input">{t('terminale.inviaAlTerminale')}</label>
           <div className="secret-row">
             <input
               id="term-send-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Incolla qui un codice o un comando"
+              placeholder={t('terminale.segnapostoInvio')}
               autoComplete="off"
               autoCapitalize="off"
               spellCheck={false}
             />
             <button type="submit" className="btn primary" disabled={!input}>
-              Invia
+              {t('terminale.invia')}
             </button>
           </div>
           <label className="check-row">
             <input type="checkbox" checked={enter} onChange={(e) => setEnter(e.target.checked)} />
-            <span>Premi Invio dopo il testo</span>
+            <span>{t('terminale.premiInvio')}</span>
           </label>
         </form>
 
@@ -411,7 +424,7 @@ function TextDialog({
         </p>
         <div className="dialog-actions">
           <button type="button" className="btn" onClick={onClose}>
-            Chiudi
+            {t('terminale.chiudi')}
           </button>
         </div>
       </div>

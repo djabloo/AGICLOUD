@@ -3,6 +3,7 @@ import { api, ApiError, type FileContent, type FileEntry } from './api';
 import { CodeEditor } from './CodeEditor';
 import { Markdown } from './markdown';
 import { Icon } from './icons';
+import { useT } from './i18n';
 
 interface Props {
   /** Cartella o file da aprire (dall'indirizzo #/files/...) */
@@ -38,6 +39,7 @@ async function download(path: string) {
 }
 
 export function FilesView({ path, onNavigate }: Props) {
+  const t = useT();
   const [listing, setListing] = useState<Listing | null>(null);
   const [roots, setRoots] = useState<{ roots: string[]; recent: string[] } | null>(null);
   const [file, setFile] = useState<FileContent | null>(null);
@@ -105,12 +107,12 @@ export function FilesView({ path, onNavigate }: Props) {
 
   const create = async (type: 'file' | 'dir') => {
     if (!listing) return;
-    const name = prompt(type === 'dir' ? 'Nome della nuova cartella' : 'Nome del nuovo file');
+    const name = prompt(type === 'dir' ? t('files.promptNuovaCartella') : t('files.promptNuovoFile'));
     if (!name) return;
     try {
       const e = await api.createFile(`${listing.path}/${name}`, type);
       await refresh();
-      setAnnounce(`${name} creato`);
+      setAnnounce(t('files.creato', { nome: name }));
       if (type === 'file') onNavigate(e.path);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -122,19 +124,19 @@ export function FilesView({ path, onNavigate }: Props) {
     try {
       await api.uploadFiles(listing.path, [...files]);
       await refresh();
-      setAnnounce(`${files.length} file caricati`);
+      setAnnounce(t('files.caricati', { n: files.length }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
   };
 
   const rename = async (entry: FileEntry) => {
-    const name = prompt('Nuovo nome', entry.name);
+    const name = prompt(t('files.promptNuovoNome'), entry.name);
     if (!name || name === entry.name) return;
     try {
       const { path: p } = await api.renameFile(entry.path, name);
       await refresh();
-      setAnnounce(`Rinominato in ${name}`);
+      setAnnounce(t('files.rinominatoIn', { nome: name }));
       if (file?.path === entry.path) onNavigate(p);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -142,11 +144,11 @@ export function FilesView({ path, onNavigate }: Props) {
   };
 
   const remove = async (entry: FileEntry) => {
-    if (!confirm(`Eliminare ${entry.name}? Non si puo' annullare.`)) return;
+    if (!confirm(t('files.confermaElimina', { nome: entry.name }))) return;
     try {
       await api.deleteFile(entry.path);
       await refresh();
-      setAnnounce(`${entry.name} eliminato`);
+      setAnnounce(t('files.eliminato', { nome: entry.name }));
       if (file?.path === entry.path) onNavigate(listing?.path ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -159,8 +161,8 @@ export function FilesView({ path, onNavigate }: Props) {
       <section className="files" aria-labelledby="files-title">
         <header className="chat-header">
           <div className="chat-heading">
-            <h1 id="files-title">File</h1>
-            <p className="chat-meta">Scegli da dove partire</p>
+            <h1 id="files-title">{t('files.titolo')}</h1>
+            <p className="chat-meta">{t('files.scegliPartenza')}</p>
           </div>
         </header>
         <div className="settings-body">
@@ -168,7 +170,7 @@ export function FilesView({ path, onNavigate }: Props) {
             <div className="settings-group">
               {roots.recent.length > 0 && (
                 <>
-                  <h2 className="mini-title">Progetti recenti</h2>
+                  <h2 className="mini-title">{t('files.progettiRecenti')}</h2>
                   <ul className="file-list">
                     {roots.recent.map((r) => (
                       <li key={r}>
@@ -181,7 +183,7 @@ export function FilesView({ path, onNavigate }: Props) {
                   </ul>
                 </>
               )}
-              <h2 className="mini-title">Cartelle consentite</h2>
+              <h2 className="mini-title">{t('files.cartelleConsentite')}</h2>
               <ul className="file-list">
                 {roots.roots.map((r) => (
                   <li key={r}>
@@ -210,14 +212,14 @@ export function FilesView({ path, onNavigate }: Props) {
   return (
     <section className={`files${file ? ' has-file' : ''}`} aria-labelledby="files-title">
       <h1 id="files-title" className="visually-hidden">
-        File
+        {t('files.titolo')}
       </h1>
       <div className="files-pane files-browser">
-        <nav className="crumbs" aria-label="Percorso">
+        <nav className="crumbs" aria-label={t('files.percorso')}>
           <ol>
             <li>
               <button type="button" className="crumb" onClick={() => onNavigate(null)}>
-                Radici
+                {t('files.radici')}
               </button>
             </li>
             {crumbs.map((c, i) => {
@@ -233,15 +235,15 @@ export function FilesView({ path, onNavigate }: Props) {
             })}
           </ol>
         </nav>
-        <div className="files-toolbar" role="toolbar" aria-label="Azioni sulla cartella">
+        <div className="files-toolbar" role="toolbar" aria-label={t('files.azioniCartella')}>
           <button type="button" className="btn small-btn" onClick={() => void create('file')}>
-            + File
+            {t('files.nuovoFile')}
           </button>
           <button type="button" className="btn small-btn" onClick={() => void create('dir')}>
-            + Cartella
+            {t('files.nuovaCartellaBtn')}
           </button>
           <button type="button" className="btn small-btn" onClick={() => uploadInput.current?.click()}>
-            Carica
+            {t('files.carica')}
           </button>
           <input
             ref={uploadInput}
@@ -255,22 +257,22 @@ export function FilesView({ path, onNavigate }: Props) {
           />
           <label className="check-row small">
             <input type="checkbox" checked={showHidden} onChange={toggleHidden} />
-            <span>Nascosti</span>
+            <span>{t('files.nascosti')}</span>
           </label>
         </div>
         {listing?.parent && (
           <button type="button" className="file-row up" onClick={() => onNavigate(listing.parent)}>
             <span aria-hidden="true">↑</span>
-            <span className="file-name">Cartella superiore</span>
+            <span className="file-name">{t('files.cartellaSuperiore')}</span>
           </button>
         )}
-        <ul className="file-list" aria-label={`Contenuto di ${listing?.path ?? ''}`}>
+        <ul className="file-list" aria-label={t('files.contenutoDi', { percorso: listing?.path ?? '' })}>
           {entries.map((e) => (
             <FileRow key={e.path} entry={e} active={file?.path === e.path} onOpen={() => onNavigate(e.path)} onRename={() => void rename(e)} onDelete={() => void remove(e)} />
           ))}
-          {listing && entries.length === 0 && <li className="hint pad">Cartella vuota</li>}
+          {listing && entries.length === 0 && <li className="hint pad">{t('files.cartellaVuota')}</li>}
         </ul>
-        {listing?.truncated && <p className="hint pad">Mostrati solo i primi 3000 elementi.</p>}
+        {listing?.truncated && <p className="hint pad">{t('files.soloPrimi')}</p>}
       </div>
 
       <div className="files-pane files-viewer">
@@ -286,7 +288,7 @@ export function FilesView({ path, onNavigate }: Props) {
             onReload={() => void load(file.path)}
           />
         ) : (
-          <p className="empty pad">Scegli un file per aprirlo.</p>
+          <p className="empty pad">{t('files.scegliFile')}</p>
         )}
       </div>
 
@@ -303,6 +305,7 @@ export function FilesView({ path, onNavigate }: Props) {
 }
 
 function FileRow({ entry, active, onOpen, onRename, onDelete }: { entry: FileEntry; active: boolean; onOpen: () => void; onRename: () => void; onDelete: () => void }) {
+  const t = useT();
   const [menu, setMenu] = useState(false);
   const id = useId();
   return (
@@ -314,20 +317,20 @@ function FileRow({ entry, active, onOpen, onRename, onDelete }: { entry: FileEnt
       </button>
       <button type="button" className="file-more" aria-expanded={menu} aria-controls={`${id}-m`} onClick={() => setMenu((m) => !m)}>
         <span aria-hidden="true">⋯</span>
-        <span className="visually-hidden">Azioni su {entry.name}</span>
+        <span className="visually-hidden">{t('files.azioniSu', { nome: entry.name })}</span>
       </button>
       {menu && (
         <div id={`${id}-m`} className="file-menu">
           <button type="button" className="btn small-btn" onClick={() => (setMenu(false), onRename())}>
-            Rinomina
+            {t('files.rinomina')}
           </button>
           {entry.type === 'file' && (
             <button type="button" className="btn small-btn" onClick={() => (setMenu(false), void download(entry.path))}>
-              Scarica
+              {t('files.scarica')}
             </button>
           )}
           <button type="button" className="btn small-btn danger-text" onClick={() => (setMenu(false), onDelete())}>
-            Elimina
+            {t('files.elimina')}
           </button>
         </div>
       )}
@@ -346,6 +349,7 @@ function FileViewer({
   onSaved: (mtime: number, content: string) => void;
   onReload: () => void;
 }) {
+  const t = useT();
   const name = file.path.split('/').pop() ?? file.path;
   const text = file.content;
   const isMd = /\.(md|markdown)$/i.test(name);
@@ -366,7 +370,7 @@ function FileViewer({
     api
       .fileBlob(file.path)
       .then((b) => setBlobUrl((url = URL.createObjectURL(b))))
-      .catch(() => setStatus('Anteprima non disponibile'));
+      .catch(() => setStatus(t('files.anteprimaNonDisponibile')));
     return () => {
       if (url) URL.revokeObjectURL(url);
     };
@@ -382,24 +386,24 @@ function FileViewer({
 
   const save = async (force = false) => {
     if (text === null) return;
-    setStatus('Salvataggio…');
+    setStatus(t('files.salvataggio'));
     try {
       const saved = draft;
       const { mtime } = await api.writeFile(file.path, saved, force ? undefined : mtimeRef.current);
       mtimeRef.current = mtime;
       setConflict(false);
-      setStatus('Salvato');
+      setStatus(t('files.salvato'));
       onSaved(mtime, saved);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setConflict(true);
         setStatus('');
-      } else setStatus(`Non salvato: ${err instanceof Error ? err.message : String(err)}`);
+      } else setStatus(t('files.nonSalvato', { errore: err instanceof Error ? err.message : String(err) }));
     }
   };
 
   const close = () => {
-    if (dirty && !confirm('Ci sono modifiche non salvate. Chiudere comunque?')) return;
+    if (dirty && !confirm(t('files.confermaChiudi'))) return;
     onClose();
   };
 
@@ -411,47 +415,47 @@ function FileViewer({
       <header className="viewer-head">
         <button type="button" className="btn icon-btn viewer-back" onClick={close}>
           <Icon name="close" />
-          <span className="visually-hidden">Chiudi il file</span>
+          <span className="visually-hidden">{t('files.chiudiFile')}</span>
         </button>
         <div className="viewer-title">
           <h2>
             {name}
-            {dirty && <span className="dirty" aria-label="modificato, non salvato"> ●</span>}
+            {dirty && <span className="dirty" aria-label={t('files.modificatoNonSalvato')}> ●</span>}
           </h2>
           <p className="chat-meta" title={file.path}>
             {file.path}
           </p>
         </div>
         {preview && canEdit && (
-          <div className="seg" role="group" aria-label="Vista">
+          <div className="seg" role="group" aria-label={t('files.vista')}>
             <button type="button" className="seg-btn" aria-pressed={mode === 'edit'} onClick={() => setMode('edit')}>
-              Modifica
+              {t('files.modifica')}
             </button>
             <button type="button" className="seg-btn" aria-pressed={mode === 'preview'} onClick={() => setMode('preview')}>
-              Anteprima
+              {t('files.anteprima')}
             </button>
           </div>
         )}
         {canEdit && (
           <button type="button" className="btn small-btn primary" disabled={!dirty} onClick={() => void save()}>
-            Salva
+            {t('files.salva')}
           </button>
         )}
         <button type="button" className="btn icon-btn" onClick={() => void download(file.path)}>
           <Icon name="download" />
-          <span className="visually-hidden">Scarica {name}</span>
+          <span className="visually-hidden">{t('files.scaricaNome', { nome: name })}</span>
         </button>
       </header>
 
       {conflict && (
         <div className="notice notice-error conflict" role="alert">
-          <p>Il file e' cambiato dopo che l'hai aperto (forse lo ha modificato un agente).</p>
+          <p>{t('files.conflitto')}</p>
           <div className="agent-actions">
             <button type="button" className="btn small-btn" onClick={onReload}>
-              Ricarica (perdi le tue modifiche)
+              {t('files.ricarica')}
             </button>
             <button type="button" className="btn small-btn" onClick={() => void save(true)}>
-              Sovrascrivi con la tua versione
+              {t('files.sovrascrivi')}
             </button>
           </div>
         </div>
@@ -459,7 +463,7 @@ function FileViewer({
 
       <div className="viewer-body">
         {canEdit && mode === 'edit' && (
-          <CodeEditor docKey={file.path} filename={name} initial={text!} label={`Contenuto di ${name}`} onChange={setDraft} onSave={() => void save()} />
+          <CodeEditor docKey={file.path} filename={name} initial={text!} label={t('files.contenutoDiNome', { nome: name })} onChange={setDraft} onSave={() => void save()} />
         )}
         {canEdit && mode === 'preview' && isMd && (
           <div className="md-preview">
@@ -468,15 +472,15 @@ function FileViewer({
         )}
         {canEdit && mode === 'preview' && isHtml && (
           // sandbox senza permessi: niente script, niente moduli, niente navigazione
-          <iframe className="html-preview" title={`Anteprima di ${name}`} sandbox="" srcDoc={draft} />
+          <iframe className="html-preview" title={t('files.anteprimaDi', { nome: name })} sandbox="" srcDoc={draft} />
         )}
         {!canEdit && blobUrl && file.mime.startsWith('image/') && <img className="media-preview" src={blobUrl} alt={name} />}
         {!canEdit && blobUrl && file.mime.startsWith('video/') && <video className="media-preview" src={blobUrl} controls />}
         {!canEdit && blobUrl && file.mime.startsWith('audio/') && <audio src={blobUrl} controls />}
-        {!canEdit && blobUrl && file.mime === 'application/pdf' && <iframe className="pdf-preview" title={`PDF ${name}`} src={blobUrl} />}
+        {!canEdit && blobUrl && file.mime === 'application/pdf' && <iframe className="pdf-preview" title={t('files.pdfNome', { nome: name })} src={blobUrl} />}
         {!canEdit && !PREVIEW_MIME.test(file.mime) && (
           <p className="empty pad">
-            {file.tooLarge ? 'File troppo grande per l\'editor' : 'File binario'} ({formatSize(file.size)}). Puoi scaricarlo.
+            {file.tooLarge ? t('files.troppoGrande') : t('files.binario')} ({formatSize(file.size)}). Puoi scaricarlo.
           </p>
         )}
       </div>
