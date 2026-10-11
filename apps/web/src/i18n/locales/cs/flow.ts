@@ -8,7 +8,7 @@ export default {
   motoreTitolo: "Engine Flow není nainstalován",
   motoreTesto: "Flow používá kontejner Dockeru na serveru. Jednou ho vytvoř tímto příkazem ve složce projektu a pak se vrať sem.",
   accediTitolo: "Přihlášení přes Google",
-  accediTesto: "Otevře se okno s virtuální obrazovkou serveru: přihlas se svým účtem Google, i s dvoufázovým ověřením. Po dokončení zůstane propojení uloženo a nemusíš to opakovat.",
+  accediTesto: "Otevře se okno s virtuální obrazovkou serveru: přihlas se svým účtem Google, i s dvoufázovým ověřením. Po přihlášení stiskni „Start Creating“ a počkej, až se otevře editor Flow s polem pro zadání: teprve potom je propojení dokončeno. Pak zůstane uloženo a nemusíš to opakovat.",
   accedi: "Přihlásit se přes Google",
   accessoInCorso: "Čekám na tvé přihlášení ke Googlu…",
   riapri: "Znovu otevřít přihlašovací okno",

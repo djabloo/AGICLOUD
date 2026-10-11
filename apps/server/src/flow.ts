@@ -24,7 +24,8 @@ const run = promisify(execFile);
 const IMAGE = process.env.GFLOW_IMAGE || 'agicloud-gflow:latest';
 const DATA = join(config.threadsDir, '..', 'gflow');
 const OUTPUT = join(config.threadsDir, '..', 'flow-output');
-const LOGIN_CONTAINER = 'agicloud-gflow-login';
+// Il nome include la porta: una seconda istanza di AgiCloud (prove) non tocca i container dell'istanza vera
+const LOGIN_CONTAINER = `agicloud-gflow-login-${config.port}`;
 const LOGIN_MS = 15 * 60_000;
 // Un solo container Flow alla volta: tutti usano lo stesso profilo di Chromium, che non si apre due volte insieme
 const MAX_RUNNING = 1;
@@ -261,7 +262,7 @@ function startJob(kind: FlowKind, model: string, aspect: string, prompt: string)
   saveJob(j);
   running.add(job);
   let tail = '';
-  const child = spawn('docker', [...dockerBase(['--name', `agicloud-gflow-${job}`, IMAGE, ...gflowArgs(kind, model, aspect, prompt)])], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn('docker', [...dockerBase(['--name', `agicloud-gflow-${config.port}-${job}`, IMAGE, ...gflowArgs(kind, model, aspect, prompt)])], { stdio: ['ignore', 'pipe', 'pipe'] });
   const collect = (d: Buffer) => (tail = (tail + d.toString()).slice(-6000));
   child.stdout.on('data', collect);
   child.stderr.on('data', collect);

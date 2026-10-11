@@ -8,7 +8,7 @@ export default {
   motoreTitolo: "Flow engine not installed",
   motoreTesto: "Flow uses a Docker container on the server. Build it once with this command from the project folder, then come back here.",
   accediTitolo: "Sign in with Google",
-  accediTesto: "A window opens with the server's virtual screen: sign in with your Google account, including two-step verification. When you are done the connection stays saved and you do not need to do it again.",
+  accediTesto: "A window opens with the server's virtual screen: sign in with your Google account, including two-step verification. After signing in, press \"Start Creating\" and wait for the Flow editor with the prompt box to open: only then is the connection complete. After that it stays saved and you do not need to do it again.",
   accedi: "Sign in with Google",
   accessoInCorso: "Waiting for you to sign in to Google…",
   riapri: "Reopen the sign-in window",

@@ -8,7 +8,7 @@ export default {
   motoreTitolo: 'Motore Flow non installato',
   motoreTesto: 'Flow usa un container Docker sul server. Costruiscilo una volta con questo comando dalla cartella del progetto, poi torna qui.',
   accediTitolo: 'Accedi con Google',
-  accediTesto: "Si apre una finestra con lo schermo virtuale del server: accedi con il tuo account Google, anche con la verifica in due passaggi. Quando hai finito il collegamento resta salvato e non serve rifarlo.",
+  accediTesto: "Si apre una finestra con lo schermo virtuale del server: accedi con il tuo account Google, anche con la verifica in due passaggi. Dopo l'accesso premi \"Start Creating\" e aspetta che si apra l'editor di Flow con la casella del prompt: solo allora il collegamento e' completo. Poi resta salvato e non serve rifarlo.",
   accedi: 'Accedi con Google',
   accessoInCorso: 'In attesa del tuo accesso a Google…',
   riapri: 'Riapri la finestra di accesso',
