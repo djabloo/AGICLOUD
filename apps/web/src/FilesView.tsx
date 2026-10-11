@@ -26,6 +26,12 @@ function dirOf(path: string): string {
   return path.replace(/\/[^/]+$/, '') || '/';
 }
 
+function basename(path: string): string {
+  const clean = path.replace(/[/\\]+$/, '');
+  const parts = clean.split(/[/\\]/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1]! : path;
+}
+
 async function download(path: string) {
   const blob = await api.fileBlob(path);
   const url = URL.createObjectURL(blob);
@@ -158,7 +164,7 @@ export function FilesView({ path, onNavigate }: Props) {
   // ── Scelta della cartella di partenza ──
   if (!path) {
     return (
-      <section className="files" aria-labelledby="files-title">
+      <section className="files files-picker" aria-labelledby="files-title">
         <header className="chat-header">
           <div className="chat-heading">
             <h1 id="files-title">{t('files.titolo')}</h1>
@@ -176,7 +182,10 @@ export function FilesView({ path, onNavigate }: Props) {
                       <li key={r}>
                         <button type="button" className="file-row" onClick={() => onNavigate(r)}>
                           <Icon name="files" />
-                          <span className="file-name">{r}</span>
+                          <span className="file-name">
+                            <strong>{basename(r)}</strong>
+                            <span className="picker-path" title={r}>{r}</span>
+                          </span>
                         </button>
                       </li>
                     ))}
@@ -189,7 +198,10 @@ export function FilesView({ path, onNavigate }: Props) {
                   <li key={r}>
                     <button type="button" className="file-row" onClick={() => onNavigate(r)}>
                       <Icon name="files" />
-                      <span className="file-name">{r}</span>
+                      <span className="file-name">
+                        <strong>{basename(r)}</strong>
+                        <span className="picker-path" title={r}>{r}</span>
+                      </span>
                     </button>
                   </li>
                 ))}

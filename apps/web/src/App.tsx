@@ -110,6 +110,8 @@ export function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [dialog, setDialog] = useState<'thread' | 'terminal' | null>(null);
   const [terminalCwd, setTerminalCwd] = useState<string>();
+  /** Comando rapido scelto dalla dashboard: preimposta il dialogo del terminale */
+  const [terminalPreset, setTerminalPreset] = useState(false);
   const [dialogError, setDialogError] = useState<string>();
   /** Skill/design system scelti dalla galleria Design per la nuova conversazione */
   const [designPreset, setDesignPreset] = useState<DesignChoice | null>(null);
@@ -226,16 +228,25 @@ export function App() {
   const closeDialog = () => {
     setDialog(null);
     setDialogError(undefined);
+    setTerminalPreset(false);
   };
 
   const openNew = () => {
     if (route.section === 'terminal') {
       setTerminalCwd(undefined);
+      setTerminalPreset(false);
       setDialog('terminal');
     } else {
       setDesignPreset(null);
       setDialog('thread');
     }
+  };
+
+  /** Comando rapido dalla dashboard: apre il dialogo con "claude" preimpostato se serve */
+  const openTerminalPreset = (claude: boolean) => {
+    setTerminalCwd(undefined);
+    setTerminalPreset(claude);
+    setDialog('terminal');
   };
 
   const createThread = async (agentId: string, cwd: string, lead = false, design: DesignChoice | null = null) => {
@@ -326,6 +337,22 @@ export function App() {
   const agentLabel = (id: string) => agents.find((a) => a.id === id)?.label ?? id;
   const newLabel = inTerminals ? t('app.nuovoTerminale') : t('app.nuovaConversazione');
   const SECTIONS = sectionDefs(t);
+  /** Prompt pronti della dashboard chat: click = dialogo di nuova conversazione */
+  const chatStarters = [
+    { title: t('app.starterFunzionalita'), badge: t('app.badgeSviluppo'), desc: t('app.descFunzionalita') },
+    { title: t('app.starterAnalisi'), badge: t('app.badgeComprensione'), desc: t('app.descAnalisi') },
+    { title: t('app.starterRefactoring'), badge: t('app.badgeQualita'), desc: t('app.descRefactoring') },
+    { title: t('app.starterTest'), badge: t('app.badgeTest'), desc: t('app.descTest') },
+  ];
+  /** Comandi pronti della dashboard terminale: click = dialogo con preset */
+  const terminalStarters: { title: string; badge: string; desc: string; cmd: string; claude: boolean }[] = [
+    { title: 'Claude Code', badge: t('app.badgeAgente'), desc: t('app.descClaude'), cmd: 'claude', claude: true },
+    { title: 'agy / Antigravity', badge: t('app.badgeAgente'), desc: t('app.descAgy'), cmd: 'agy', claude: false },
+    { title: 'OpenCode', badge: t('app.badgeAgente'), desc: t('app.descOpencode'), cmd: 'opencode', claude: false },
+    { title: t('app.cmdShell'), badge: t('app.badgeShell'), desc: t('app.descShell'), cmd: '', claude: false },
+    { title: 'Git status', badge: t('app.badgeGit'), desc: t('app.descGit'), cmd: 'git status', claude: false },
+    { title: t('app.cmdLogs'), badge: t('app.badgeServer'), desc: t('app.descLogs'), cmd: 'pm2 logs --lines 50', claude: false },
+  ];
 
   // Finestra a parte del Browser: solo lo schermo, senza menu
   if (inBrowser && route.id === 'popup') {
@@ -577,32 +604,98 @@ export function App() {
         ) : activeTerminal ? (
           <TerminalView key={activeTerminal.id} terminal={activeTerminal} onClose={() => removeTerminal(activeTerminal.id)} />
         ) : inTerminals ? (
-          <section className="welcome" aria-labelledby="welcome-title">
-            <h1 id="welcome-title">{t('app.terminaliTitolo')}</h1>
-            <p>
-              {t('app.terminaliTesto')}
-            </p>
-            <button type="button" className="btn primary" onClick={openNew}>
-              <Icon name="plus" />
-              <span>{t('app.nuovoTerminale')}</span>
-            </button>
+          <section className="dash" aria-labelledby="dash-term-title">
+            <div className="dash-inner">
+              <div className="dash-head">
+                <h1 id="dash-term-title">{t('app.terminaliTitolo')}</h1>
+                <p>{t('app.terminaliTesto')}</p>
+              </div>
+              <div className="dash-actions">
+                <button type="button" className="btn primary" onClick={openNew}>
+                  <Icon name="plus" />
+                  <span>{t('app.nuovoTerminale')}</span>
+                </button>
+              </div>
+              <div className="dash-section">
+                <h2 className="mini-title">{t('app.dashboardComandi')}</h2>
+                <ul className="starter-grid">
+                  {terminalStarters.map((s) => (
+                    <li key={s.title}>
+                      <button type="button" className="starter-card" onClick={() => openTerminalPreset(s.claude)}>
+                        <h3>{s.title}</h3>
+                        <p className="starter-badge">{s.badge}</p>
+                        <p className="starter-desc">{s.desc}</p>
+                        {s.cmd && <span className="starter-cmd">{s.cmd}</span>}
+                        <span className="starter-go">{t('app.dashboardAvvia')} →</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {terminals.length > 0 && (
+                <div className="dash-section">
+                  <h2 className="mini-title" id="dash-term-open">{t('app.dashboardTerminaliAperti')}</h2>
+                  <ul className="dash-list" aria-labelledby="dash-term-open">
+                    {terminals.map((term) => (
+                      <li key={term.id}>
+                        <button type="button" className="thread-btn" onClick={() => go({ section: 'terminal', id: term.id })}>
+                          <span className="thread-title">{term.title}</span>
+                          <span className="thread-meta">
+                            {term.cwd}
+                            {term.exited && <span>{t('app.terminato')}</span>}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </section>
         ) : (
-          <section className="welcome" aria-labelledby="welcome-title">
-            <h1 id="welcome-title">{t('app.benvenutoTitolo')}</h1>
-            <p>{t('app.benvenutoTesto')}</p>
-            <ul className="agent-list">
-              {agents.map((a) => (
-                <li key={a.id}>
-                  <strong>{a.label}</strong>
-                  {a.note && <span className="hint"> — {a.note}</span>}
-                </li>
-              ))}
-            </ul>
-            <button type="button" className="btn primary" onClick={openNew}>
-              <Icon name="plus" />
-              <span>{t('app.nuovaConversazione')}</span>
-            </button>
+          <section className="dash" aria-labelledby="dash-chat-title">
+            <div className="dash-inner">
+              <div className="dash-head">
+                <h1 id="dash-chat-title">{t('app.benvenutoTitolo')}</h1>
+                <p>{t('app.benvenutoTesto')}</p>
+              </div>
+              <div className="dash-actions">
+                <button type="button" className="btn primary" onClick={openNew}>
+                  <Icon name="plus" />
+                  <span>{t('app.nuovaConversazione')}</span>
+                </button>
+              </div>
+              {chatThreads.length > 0 && (
+                <div className="dash-section">
+                  <h2 className="mini-title" id="dash-chat-recent">{t('app.dashboardRecenti')}</h2>
+                  <ul className="dash-list" aria-labelledby="dash-chat-recent">
+                    {chatThreads.slice(0, 5).map((th) => (
+                      <li key={th.id}>
+                        <button type="button" className="thread-btn" onClick={() => go({ section: 'chat', id: th.id })}>
+                          <span className="thread-title">{th.title}</span>
+                          <span className="thread-meta">{agentLabel(th.agentId)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="dash-section">
+                <h2 className="mini-title">{t('app.dashboardPrompt')}</h2>
+                <ul className="starter-grid">
+                  {chatStarters.map((s) => (
+                    <li key={s.title}>
+                      <button type="button" className="starter-card" onClick={openNew}>
+                        <h3>{s.title}</h3>
+                        <p className="starter-badge">{s.badge}</p>
+                        <p className="starter-desc">{s.desc}</p>
+                        <span className="starter-go">{t('app.dashboardAvvia')} →</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </section>
         )}
       </main>
@@ -620,6 +713,7 @@ export function App() {
       <NewTerminalDialog
         open={dialog === 'terminal'}
         initialCwd={terminalCwd}
+        initialClaude={terminalPreset}
         error={dialogError}
         busy={creating}
         onClose={closeDialog}

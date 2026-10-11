@@ -6,13 +6,15 @@ interface Props {
   open: boolean;
   /** Cartella proposta (es. quella della conversazione aperta) */
   initialCwd?: string;
+  /** Comando rapido scelto dalla dashboard: preimposta "avvia con Claude" */
+  initialClaude?: boolean;
   error?: string;
   busy: boolean;
   onClose: () => void;
   onCreate: (cwd: string, command?: 'claude') => void;
 }
 
-export function NewTerminalDialog({ open, initialCwd, error, busy, onClose, onCreate }: Props) {
+export function NewTerminalDialog({ open, initialCwd, initialClaude, error, busy, onClose, onCreate }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const t = useT();
   const id = useId();
@@ -24,6 +26,7 @@ export function NewTerminalDialog({ open, initialCwd, error, busy, onClose, onCr
     if (!d) return;
     if (open && !d.open) {
       if (initialCwd) setCwd(initialCwd);
+      setClaude(Boolean(initialClaude));
       d.showModal();
     }
     if (!open && d.open) d.close();
