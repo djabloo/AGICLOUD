@@ -10,13 +10,13 @@ const TOOLS = [
   {
     name: 'gflow_video_t2v',
     description:
-      'Genera un video con Google Veo (via Google Flow): dal testo al video. Restituisce il nome del lavoro; il file mp4 finisce nella galleria Flow.',
+      'Genera un video con Google Veo (via Google Flow): dal testo al video. Parte in background (qualche minuto): restituisce il nome del lavoro e il file mp4 compare nella galleria Flow.',
     inputSchema: {
       type: 'object',
       properties: {
         prompt: { type: 'string', description: 'Cosa si vede nel video (in inglese rende meglio)' },
-        model: { type: 'string', description: 'omni_flash, veo_3_1_fast o veo_3_1_quality (default: veo_3_1_fast)' },
-        aspect: { type: 'string', description: 'Rapporto: 16:9, 9:16 o 1:1 (default: 16:9)' },
+        model: { type: 'string', description: 'omni-flash, veo-fast, veo-quality o veo-lite (default: omni-flash)' },
+        aspect: { type: 'string', description: 'Rapporto: 16:9 o 9:16 (default: 16:9)' },
       },
       required: ['prompt'],
     },
@@ -24,13 +24,13 @@ const TOOLS = [
   {
     name: 'gflow_image_t2i',
     description:
-      'Genera un immagine con Imagen/Nano (via Google Flow): dal testo all\'immagine. Restituisce il nome del lavoro; il file png finisce nella galleria Flow.',
+      'Genera un immagine con Imagen/Nano (via Google Flow): dal testo all\'immagine. Parte in background: restituisce il nome del lavoro e il file png compare nella galleria Flow.',
     inputSchema: {
       type: 'object',
       properties: {
         prompt: { type: 'string', description: 'Cosa si vede nell\'immagine (in inglese rende meglio)' },
-        model: { type: 'string', description: 'nano2 o imagen4 (default: imagen4)' },
-        aspect: { type: 'string', description: 'Rapporto: 16:9, 9:16 o 1:1 (default: 16:9)' },
+        model: { type: 'string', description: 'nano2, nano-pro, imagen4 o nano2-lite (default: nano2)' },
+        aspect: { type: 'string', description: 'Rapporto: 16:9, 9:16, 1:1, 4:3 o 3:4 (default: 16:9)' },
       },
       required: ['prompt'],
     },

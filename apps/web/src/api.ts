@@ -289,10 +289,26 @@ export interface VerdictResult {
 }
 
 export interface FlowStatus {
+  /** Docker e immagine del motore presenti sul server */
+  docker: boolean;
   linked: boolean;
   account: string | null;
   credits: number | null;
-  gflow: boolean;
+  /** Sessione di accesso con Google aperta (indirizzo della sessione grafica) */
+  login: { url: string } | null;
+  running: number;
+}
+
+export interface FlowJob {
+  job: string;
+  kind: 'video' | 'image';
+  model: string;
+  aspect: string;
+  prompt: string;
+  status: 'running' | 'done' | 'error';
+  startedAt: number;
+  endedAt?: number;
+  error?: string;
 }
 
 export interface FlowModel {
@@ -412,11 +428,13 @@ export const api = {
   verdict: (body: { text: string; question: string; type: VerdictType; options?: string[]; mode: 'fast' | 'double'; explain: boolean }) =>
     request<VerdictResult>('POST', '/verdict/decide', body),
   flowStatus: () => request<FlowStatus>('GET', '/flow/status'),
-  flowLogin: (email?: string) => request<{ linked: boolean; account?: string; url?: string; hint?: string }>('POST', '/flow/login', { email }),
-  flowModels: () => request<{ models: FlowModel[] }>('GET', '/flow/models'),
-  flowGallery: () => request<{ files: FlowFile[] }>('GET', '/flow/gallery'),
+  flowLogin: () => request<{ url: string }>('POST', '/flow/login'),
+  flowLoginCancel: () => request<{ ok: boolean }>('DELETE', '/flow/login'),
+  flowCredits: () => request<{ credits: number | null }>('POST', '/flow/credits'),
+  flowModels: () => request<{ models: FlowModel[]; aspects: Record<'video' | 'image', string[]> }>('GET', '/flow/models'),
+  flowGallery: () => request<{ files: FlowFile[]; jobs: FlowJob[] }>('GET', '/flow/gallery'),
   flowGenerate: (body: { prompt: string; kind: 'video' | 'image'; model: string; aspect: string }) =>
-    request<{ job: string; started: boolean; model: string; aspect: string }>('POST', '/flow/generate', body),
+    request<{ job: string; model: string; aspect: string }>('POST', '/flow/generate', body),
   limits: () => request<{ claude: ClaudeLimit | null }>('GET', '/limits'),
   handover: (threadId: string, agentId: string) => request<ThreadSummary>('POST', `/threads/${threadId}/handover`, { agentId }),
   setup: (setup: string) => request<{ token: string }>('POST', '/setup', { setup }),

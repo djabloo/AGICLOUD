@@ -28,7 +28,7 @@ import { registerDesign } from './design.js';
 import { catalog as designCatalog, normalizeChoice } from '@agicloud/design';
 import { Plugins } from './plugins.js';
 import { piiPlugin, registerPii } from './pii.js';
-import { flowMcpServer, flowPlugin, registerFlow } from './flow.js';
+import { flowMcpServer, flowPlugin, flowUpgrade, registerFlow } from './flow.js';
 import { registerVerdict, verdictMcpServer, verdictPlugin } from './verdict.js';
 import { cloudPlugin, registerCloud } from './cloud.js';
 import { NodeImageBuilder, registerNodeImageBuild } from './node-image.js';
@@ -516,6 +516,7 @@ const server = serve({ fetch: app.fetch, hostname: config.host, port: config.por
 
 attachTerminalSockets(server as Server, terminals, checkAccess, [
   browserUpgrade(checkAccess, wsClientIp, () => plugins.isEnabled('browser')),
+  flowUpgrade(() => plugins.isEnabled('flow')),
 ],
 // I terminali fuori dal piano non si aprono nemmeno via WebSocket
 () => isAllowed(config.features, 'terminal'));

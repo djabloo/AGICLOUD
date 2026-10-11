@@ -16,6 +16,7 @@ const SECTION_PREFIXES: [string, string][] = [
   ['/verdict-api', 'verdict'],
   ['/api/flow', 'flow'],
   ['/flow-api', 'flow'],
+  ['/flow-novnc', 'flow'],
   ['/api/cloud', 'cloud'],
 ];
 
