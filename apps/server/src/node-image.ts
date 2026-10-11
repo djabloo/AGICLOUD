@@ -20,7 +20,8 @@ const KEY_NAME = 'HETZNER_API_TOKEN';
 const BUILD_TYPE = process.env.CLOUD_BUILD_TYPE || 'cax11'; // ARM, economica: ~0,01€ per la mezz'ora di build
 const BUILD_LOCATION = process.env.CLOUD_BUILD_LOCATION || 'nbg1';
 const REPO_ROOT = new URL('../../..', import.meta.url).pathname;
-const SSH_TIMEOUT_MS = 15 * 60_000;
+// Docker e il motore PII (~2,5 GB) rendono l'installazione piu' lunga
+const SSH_TIMEOUT_MS = 30 * 60_000;
 // known_hosts dedicato alla singola build: Hetzner riassegna gli IP delle VPS eliminate, quindi
 // il known_hosts normale (condiviso) puo' gia' avere l'impronta di un'altra macchina su quell'IP
 // e "accept-new" rifiuta comunque quando l'impronta e' cambiata, non solo quando manca.
@@ -148,7 +149,7 @@ export class NodeImageBuilder {
       await this.scp(dir, tarball, `root@${ip}:/root/agicloud.tar.gz`);
       await this.scp(dir, join(REPO_ROOT, 'node/install.sh'), `root@${ip}:/root/install.sh`);
 
-      say('Installo AgiCloud e gli agenti (qualche minuto)…');
+      say('Installo AgiCloud, gli agenti e il motore PII (diversi minuti)…');
       await this.ssh(dir, ip, 'bash /root/install.sh', say);
 
       say('Spengo la VPS per uno snapshot pulito…');

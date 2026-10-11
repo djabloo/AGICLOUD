@@ -25,6 +25,7 @@ printf 'DOMAIN=%s\n' "$DOMAIN" > /etc/agicloud/node.env
 usermod -d /var/lib/caddy caddy 2>/dev/null || true
 install -d -o caddy -g caddy -m 750 /var/lib/caddy
 chown -R caddy:caddy /var/lib/caddy 2>/dev/null || true
+systemctl start --no-block agicloud-pii.service 2>/dev/null || true   # il motore PII e' gia' nell'immagine
 systemctl restart agicloud.service
 systemctl reload caddy.service || systemctl restart caddy.service
 echo "AgiCloud pronto su https://$DOMAIN"

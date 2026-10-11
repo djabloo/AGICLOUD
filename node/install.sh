@@ -90,6 +90,48 @@ sudo -u agicloud -H bash -lc 'curl -fsS https://cursor.com/install | bash'
 sudo -u agicloud -H bash -lc 'npm cache add @agentclientprotocol/claude-agent-acp@0.86.0 >/dev/null'
 grep -q '.local/bin' /home/agicloud/.profile || echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/agicloud/.profile
 
+log "Docker e motore PII (versione alleggerita, caricata intera)"
+# Ogni VPS nasce col motore di anonimizzazione gia' dentro l'immagine: niente download alla prima installazione del plugin.
+# E' la versione alleggerita di Rizzo-PII (djabloo/agycloud-images: stesso codice e stesso modello, ~2,5 GB invece di ~3,75 GB).
+PII_IMAGE="${PII_IMAGE:-ghcr.io/djabloo/rizzo-pii:v2.0.0}"
+curl -fsSL https://get.docker.com | sh
+systemctl enable --now docker
+n=1
+until docker pull "$PII_IMAGE"; do
+  [ "$n" -ge 5 ] && { echo "pull di $PII_IMAGE fallito"; exit 1; }
+  echo "    pull non riuscito, riprovo tra 15s (tentativo $n)..."; n=$((n + 1)); sleep 15
+done
+# Creato qui (non avviato): all'avvio della VPS lo accende agicloud-pii.service. Solo 127.0.0.1, risorse limitate.
+docker create --name rizzo-pii -p 127.0.0.1:5005:5005 --memory 1536m --memory-swap 1536m --pids-limit 512 \
+  --cap-drop ALL --security-opt no-new-privileges:true "$PII_IMAGE" >/dev/null
+cat > /etc/systemd/system/agicloud-pii.service <<'PIIUNIT'
+[Unit]
+Description=Motore PII di AgiCloud (Rizzo-PII)
+After=docker.service
+Requires=docker.service
+
+[Service]
+ExecStart=/usr/bin/docker start -a rizzo-pii
+ExecStop=/usr/bin/docker stop -t 20 rizzo-pii
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+PIIUNIT
+systemctl daemon-reload
+systemctl enable agicloud-pii.service
+# Prova: il motore deve rispondere (il primo avvio impiega una quarantina di secondi), poi si spegne prima dello snapshot
+systemctl start agicloud-pii.service
+ok=0
+for _ in $(seq 1 60); do
+  if curl -fsS --max-time 3 http://127.0.0.1:5005/health >/dev/null 2>&1; then ok=1; break; fi
+  sleep 3
+done
+[ "$ok" = 1 ] || { echo "Il motore PII non risponde su 127.0.0.1:5005"; docker logs --tail 20 rizzo-pii; exit 1; }
+echo "motore PII ok ($PII_IMAGE)"
+systemctl stop agicloud-pii.service
+
 log "Servizi"
 install -m 755 /opt/agicloud/node/firstboot.sh /usr/local/sbin/agicloud-firstboot
 install -m 644 /opt/agicloud/node/agicloud.service /etc/systemd/system/agicloud.service
@@ -107,7 +149,7 @@ sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd
 systemctl enable unattended-upgrades
 
 log "Versioni"
-node --version; caddy version | head -1; opencode --version 2>/dev/null | head -1 || true
+node --version; caddy version | head -1; docker --version; opencode --version 2>/dev/null | head -1 || true
 sudo -u agicloud -H bash -lc 'claude --version; cursor-agent --version' 2>&1 | head -2 || true
 
 log "Pulizia per lo snapshot"
