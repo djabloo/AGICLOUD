@@ -288,8 +288,27 @@ export interface VerdictResult {
   cost: number;
 }
 
-export interface ClaudeLimit {
-  status: 'allowed' | 'allowed_warning' | 'rejected';
+export interface FlowStatus {
+  linked: boolean;
+  account: string | null;
+  credits: number | null;
+  gflow: boolean;
+}
+
+export interface FlowModel {
+  id: string;
+  kind: 'video' | 'image';
+  label: string;
+}
+
+export interface FlowFile {
+  name: string;
+  kind: 'video' | 'image' | 'text';
+  size: number;
+  mtime: number;
+}
+
+export interface ClaudeLimit {  status: 'allowed' | 'allowed_warning' | 'rejected';
   type: string | null;
   utilization: number | null;
   resetsAt: number | null;
@@ -392,6 +411,12 @@ export const api = {
     request<{ path: string; abs: string; size: number }>('POST', '/pii/save', body),
   verdict: (body: { text: string; question: string; type: VerdictType; options?: string[]; mode: 'fast' | 'double'; explain: boolean }) =>
     request<VerdictResult>('POST', '/verdict/decide', body),
+  flowStatus: () => request<FlowStatus>('GET', '/flow/status'),
+  flowLogin: (email?: string) => request<{ linked: boolean; account?: string; url?: string; hint?: string }>('POST', '/flow/login', { email }),
+  flowModels: () => request<{ models: FlowModel[] }>('GET', '/flow/models'),
+  flowGallery: () => request<{ files: FlowFile[] }>('GET', '/flow/gallery'),
+  flowGenerate: (body: { prompt: string; kind: 'video' | 'image'; model: string; aspect: string }) =>
+    request<{ job: string; started: boolean; model: string; aspect: string }>('POST', '/flow/generate', body),
   limits: () => request<{ claude: ClaudeLimit | null }>('GET', '/limits'),
   handover: (threadId: string, agentId: string) => request<ThreadSummary>('POST', `/threads/${threadId}/handover`, { agentId }),
   setup: (setup: string) => request<{ token: string }>('POST', '/setup', { setup }),
