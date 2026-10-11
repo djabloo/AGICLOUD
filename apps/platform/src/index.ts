@@ -33,6 +33,11 @@ const api = createApp({
   onWorkspaceChange: proxy.forget,
 });
 const app = new Hono();
+// Le API admin rispondono solo sul dominio riservato (es. admin-323cloud.agicloud.dev): altrove sembrano non esistere
+const adminHost = process.env.PLATFORM_ADMIN_HOST?.toLowerCase();
+if (adminHost) {
+  app.use('/api/admin/*', async (c, next) => ((c.req.header('host') ?? '').toLowerCase().replace(/:\d+$/, '') === adminHost ? next() : c.notFound()));
+}
 app.route('/', api);
 mountStatic(app);
 
