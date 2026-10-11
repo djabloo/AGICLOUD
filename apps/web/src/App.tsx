@@ -15,6 +15,7 @@ import { VerdictView } from './VerdictView';
 import { CloudView } from './CloudView';
 import { SetupDone } from './Login';
 import { Icon, type IconName } from './icons';
+import { useT } from './i18n';
 
 type Auth = 'checking' | 'ok' | 'needed';
 type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'verdict' | 'cloud' | 'settings';
@@ -25,17 +26,38 @@ interface Route {
 }
 
 /** plugin: la sezione compare solo se il plugin e' installato e attivo */
-const SECTIONS: { id: Section; label: string; icon: IconName; ready: boolean; plugin?: string }[] = [
-  { id: 'chat', label: 'Chat', icon: 'chat', ready: true },
-  { id: 'terminal', label: 'Terminale', icon: 'terminal', ready: true },
-  { id: 'files', label: 'File', icon: 'files', ready: true },
-  { id: 'design', label: 'Design', icon: 'design', ready: true, plugin: 'design' },
-  { id: 'pii', label: 'PII', icon: 'shield', ready: true, plugin: 'pii' },
-  { id: 'browser', label: 'Browser', icon: 'globe', ready: true, plugin: 'browser' },
-  { id: 'verdict', label: 'Verdict', icon: 'scale', ready: true, plugin: 'verdict' },
-  { id: 'cloud', label: 'Cloud', icon: 'cloud', ready: true, plugin: 'cloud' },
-  { id: 'settings', label: 'Impostazioni', icon: 'settings', ready: true },
+interface SectionDef {
+  id: Section;
+  icon: IconName;
+  ready: boolean;
+  plugin?: string;
+}
+const SECTION_DEFS: SectionDef[] = [
+  { id: 'chat', icon: 'chat', ready: true },
+  { id: 'terminal', icon: 'terminal', ready: true },
+  { id: 'files', icon: 'files', ready: true },
+  { id: 'design', icon: 'design', ready: true, plugin: 'design' },
+  { id: 'pii', icon: 'shield', ready: true, plugin: 'pii' },
+  { id: 'browser', icon: 'globe', ready: true, plugin: 'browser' },
+  { id: 'verdict', icon: 'scale', ready: true, plugin: 'verdict' },
+  { id: 'cloud', icon: 'cloud', ready: true, plugin: 'cloud' },
+  { id: 'settings', icon: 'settings', ready: true },
 ];
+const SECTION_KEYS: Record<Section, string> = {
+  chat: 'app.sezioneChat',
+  terminal: 'app.sezioneTerminale',
+  files: 'app.sezioneFile',
+  design: 'app.sezioneDesign',
+  pii: 'app.sezionePii',
+  browser: 'app.sezioneBrowser',
+  verdict: 'app.sezioneVerdict',
+  cloud: 'app.sezioneCloud',
+  settings: 'app.sezioneImpostazioni',
+};
+type TFn = (key: string, params?: Record<string, string | number>) => string;
+function sectionDefs(t: TFn): { id: Section; label: string; icon: IconName; ready: boolean; plugin?: string }[] {
+  return SECTION_DEFS.map((s) => ({ ...s, label: t(SECTION_KEYS[s.id]) }));
+}
 
 /** #/t/<id> = conversazione, #/term = terminali, #/term/<id> = un terminale */
 function routeFromHash(): Route {
@@ -72,6 +94,7 @@ function hashFor(r: Route): string {
 }
 
 export function App() {
+  const t = useT();
   const [auth, setAuth] = useState<Auth>('checking');
   const [authError, setAuthError] = useState<string>();
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -94,6 +117,10 @@ export function App() {
   const menuButton = useRef<HTMLButtonElement>(null);
   const drawer = useRef<HTMLElement>(null);
 
+  useEffect(() => {
+    document.title = t('app.titolo');
+  });
+
   const refresh = useCallback(async () => {
     try {
       // Terminali e plugin possono rispondere 403 se fuori dal piano: non e' un errore di accesso
@@ -113,13 +140,13 @@ export function App() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setAuth('needed');
-        if (getToken()) setAuthError('Token non valido');
+        if (getToken()) setAuthError(t('app.erroreTokenNonValido'));
       } else if (err instanceof ApiError && err.status === 429) {
         setAuth('needed');
         setAuthError(err.message);
       } else {
         setAuth((s) => (s === 'checking' ? 'needed' : s));
-        setAuthError('Server non raggiungibile');
+        setAuthError(t('app.erroreServer'));
       }
     }
   }, []);
@@ -254,7 +281,7 @@ export function App() {
   };
 
   if (newToken) return <SetupDone token={newToken} onContinue={() => { setNewToken(null); void refresh(); }} />;
-  if (auth === 'checking') return <p className="boot">Caricamento…</p>;
+  if (auth === 'checking') return <p className="boot">{t('app.caricamento')}</p>;
   if (auth === 'needed') {
     return (
       <Login
@@ -297,13 +324,14 @@ export function App() {
   );
   const activeTerminal = inTerminals ? (terminals.find((t) => t.id === route.id) ?? null) : null;
   const agentLabel = (id: string) => agents.find((a) => a.id === id)?.label ?? id;
-  const newLabel = inTerminals ? 'Nuovo terminale' : 'Nuova conversazione';
+  const newLabel = inTerminals ? t('app.nuovoTerminale') : t('app.nuovaConversazione');
+  const SECTIONS = sectionDefs(t);
 
   // Finestra a parte del Browser: solo lo schermo, senza menu
   if (inBrowser && route.id === 'popup') {
     return (
       <main id="main" className="popup-main">
-        {pluginOn('browser') ? browserSection(true) : <p className="boot">Il plugin Browser non e' attivo.</p>}
+        {pluginOn('browser') ? browserSection(true) : <p className="boot">{t('app.pluginBrowserNonAttivo')}</p>}
       </main>
     );
   }
@@ -311,7 +339,7 @@ export function App() {
   return (
     <div className={`app${drawerOpen ? ' drawer-open' : ''}`}>
       <a className="skip-link" href="#main">
-        Vai al contenuto
+        {t('app.vaiAlContenuto')}
       </a>
 
       <header className="topbar">
@@ -324,7 +352,7 @@ export function App() {
           onClick={() => setDrawerOpen((o) => !o)}
         >
           <Icon name={drawerOpen ? 'close' : 'menu'} />
-          <span className="visually-hidden">{drawerOpen ? 'Chiudi menu' : 'Apri menu'}</span>
+          <span className="visually-hidden">{drawerOpen ? t('app.chiudiMenu') : t('app.apriMenu')}</span>
         </button>
         <span className="brand">AgiCloud</span>
         <button type="button" className="btn icon-btn" onClick={openNew}>
@@ -333,16 +361,16 @@ export function App() {
         </button>
       </header>
 
-      <aside id="sidebar" ref={drawer} className="sidebar" aria-label="Navigazione">
+      <aside id="sidebar" ref={drawer} className="sidebar" aria-label={t('app.navPrincipale')}>
         <div className="sidebar-head">
           <span className="sidebar-brand">AgiCloud</span>
           <button type="button" className="btn icon-btn drawer-close" onClick={closeDrawer}>
             <Icon name="close" />
-            <span className="visually-hidden">Chiudi menu</span>
+            <span className="visually-hidden">{t('app.chiudiMenu')}</span>
           </button>
         </div>
 
-        <nav aria-label="Sezioni">
+        <nav aria-label={t('app.navSezioni')}>
           <ul className="sections">
             {SECTIONS.filter((s) => (!s.plugin || pluginOn(s.plugin)) && allowed(s.id)).map((s) => (
               <li key={s.id}>
@@ -355,7 +383,7 @@ export function App() {
                 >
                   <Icon name={s.icon} />
                   <span>{s.label}</span>
-                  {!s.ready && <span className="soon">in arrivo</span>}
+                  {!s.ready && <span className="soon">{t('app.inArrivo')}</span>}
                 </button>
               </li>
             ))}
@@ -371,14 +399,14 @@ export function App() {
               onClick={() => go({ section: 'design', id: null })}
             >
               <Icon name="plus" />
-              <span>Nuova sessione di design</span>
+              <span>{t('app.nuovaSessioneDesign')}</span>
             </button>
             {designThreads.length === 0 ? (
-              <p className="sidebar-empty">Nessuna sessione di design: scegli uno stile nella galleria e premi Prova</p>
+              <p className="sidebar-empty">{t('app.nessunaSessioneDesign')}</p>
             ) : (
               <ThreadList
                 threads={designThreads}
-                title="Sessioni di design"
+                title={t('app.sessioniDesign')}
                 activeId={route.id}
                 agentLabel={agentLabel}
                 onSelect={(tid) => go({ section: 'design', id: tid })}
@@ -399,24 +427,24 @@ export function App() {
         {inSettings || inFiles || inDesign || inPii || inBrowser || inVerdict || inCloud ? null : inTerminals ? (
           <>
             <h2 className="sidebar-title" id="list-title">
-              Terminali
+              {t('app.terminali')}
             </h2>
             {terminals.length === 0 ? (
-              <p className="sidebar-empty">Nessun terminale aperto</p>
+              <p className="sidebar-empty">{t('app.nessunTerminale')}</p>
             ) : (
               <ul className="threads" aria-labelledby="list-title">
-                {terminals.map((t) => (
-                  <li key={t.id}>
+                {terminals.map((term) => (
+                  <li key={term.id}>
                     <button
                       type="button"
                       className="thread-btn"
-                      aria-current={t.id === route.id ? 'page' : undefined}
-                      onClick={() => go({ section: 'terminal', id: t.id })}
+                      aria-current={term.id === route.id ? 'page' : undefined}
+                      onClick={() => go({ section: 'terminal', id: term.id })}
                     >
-                      <span className="thread-title">{t.title}</span>
+                      <span className="thread-title">{term.title}</span>
                       <span className="thread-meta">
-                        {t.cwd}
-                        {t.exited && <span> · terminato</span>}
+                        {term.cwd}
+                        {term.exited && <span>{t('app.terminato')}</span>}
                       </span>
                     </button>
                   </li>
@@ -443,8 +471,12 @@ export function App() {
       <main id="main" className="main" tabIndex={-1} inert={drawerOpen || undefined}>
         {!allowed(route.section) ? (
           <section className="welcome" aria-labelledby="welcome-title">
-            <h1 id="welcome-title">Non incluso nel tuo piano</h1>
-            <p>Questa sezione non fa parte del tuo piano. Torna alla <a href="#">Chat</a> per continuare.</p>
+            <h1 id="welcome-title">{t('app.pianoTitolo')}</h1>
+            <p>
+              {t('app.pianoTesto', { chat: '\u0000' }).split('\u0000')[0]}
+              <a href="#">{t('app.chatLink')}</a>
+              {t('app.pianoTesto', { chat: '\u0000' }).split('\u0000')[1]}
+            </p>
           </section>
         ) : inFiles ? (
           <FilesView path={route.id} onNavigate={(p) => go({ section: 'files', id: p })} />
@@ -453,9 +485,11 @@ export function App() {
             <CloudView />
           ) : (
             <section className="welcome" aria-labelledby="welcome-title">
-              <h1 id="welcome-title">Cloud non attivo</h1>
+              <h1 id="welcome-title">{t('app.cloudNonAttivo')}</h1>
               <p>
-                Il plugin Cloud e' spento o non installato. Puoi attivarlo in <a href="#/settings/plugin">Impostazioni → Plugin</a>.
+                {t('app.pluginCloudTesto', { link: '\u0000' }).split('\u0000')[0]}
+                <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
+                {t('app.pluginCloudTesto', { link: '\u0000' }).split('\u0000')[1]}
               </p>
             </section>
           )
@@ -464,9 +498,11 @@ export function App() {
             <VerdictView />
           ) : (
             <section className="welcome" aria-labelledby="welcome-title">
-              <h1 id="welcome-title">Verdict non attivo</h1>
+              <h1 id="welcome-title">{t('app.verdictNonAttivo')}</h1>
               <p>
-                Il plugin Verdict e' spento o non installato. Puoi attivarlo in <a href="#/settings/plugin">Impostazioni → Plugin</a>.
+                {t('app.pluginVerdictTesto', { link: '\u0000' }).split('\u0000')[0]}
+                <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
+                {t('app.pluginVerdictTesto', { link: '\u0000' }).split('\u0000')[1]}
               </p>
             </section>
           )
@@ -475,9 +511,11 @@ export function App() {
             browserSection(false)
           ) : (
             <section className="welcome" aria-labelledby="welcome-title">
-              <h1 id="welcome-title">Browser non attivo</h1>
+              <h1 id="welcome-title">{t('app.browserNonAttivo')}</h1>
               <p>
-                Il plugin Browser e' spento o non installato. Puoi attivarlo in <a href="#/settings/plugin">Impostazioni → Plugin</a>.
+                {t('app.pluginBrowserTesto', { link: '\u0000' }).split('\u0000')[0]}
+                <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
+                {t('app.pluginBrowserTesto', { link: '\u0000' }).split('\u0000')[1]}
               </p>
             </section>
           )
@@ -486,17 +524,21 @@ export function App() {
             <PiiView />
           ) : (
             <section className="welcome" aria-labelledby="welcome-title">
-              <h1 id="welcome-title">PII non attivo</h1>
+              <h1 id="welcome-title">{t('app.piiNonAttivo')}</h1>
               <p>
-                Il plugin PII e' spento o non installato. Puoi attivarlo in <a href="#/settings/plugin">Impostazioni → Plugin</a>.
+                {t('app.pluginPiiTesto', { link: '\u0000' }).split('\u0000')[0]}
+                <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
+                {t('app.pluginPiiTesto', { link: '\u0000' }).split('\u0000')[1]}
               </p>
             </section>
           )
         ) : inDesign && !pluginOn('design') ? (
           <section className="welcome" aria-labelledby="welcome-title">
-            <h1 id="welcome-title">Design non attivo</h1>
+            <h1 id="welcome-title">{t('app.designNonAttivo')}</h1>
             <p>
-              Il plugin Design e' spento o non installato. Puoi attivarlo in <a href="#/settings/plugin">Impostazioni → Plugin</a>.
+              {t('app.pluginDesignTesto', { link: '\u0000' }).split('\u0000')[0]}
+              <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
+              {t('app.pluginDesignTesto', { link: '\u0000' }).split('\u0000')[1]}
             </p>
           </section>
         ) : inDesign && !activeThread ? (
@@ -536,20 +578,19 @@ export function App() {
           <TerminalView key={activeTerminal.id} terminal={activeTerminal} onClose={() => removeTerminal(activeTerminal.id)} />
         ) : inTerminals ? (
           <section className="welcome" aria-labelledby="welcome-title">
-            <h1 id="welcome-title">Terminali</h1>
+            <h1 id="welcome-title">{t('app.terminaliTitolo')}</h1>
             <p>
-              Shell vere sul server, nella cartella del progetto. Restano aperte anche se chiudi la pagina: ci ritrovi
-              l'output quando torni.
+              {t('app.terminaliTesto')}
             </p>
             <button type="button" className="btn primary" onClick={openNew}>
               <Icon name="plus" />
-              <span>Nuovo terminale</span>
+              <span>{t('app.nuovoTerminale')}</span>
             </button>
           </section>
         ) : (
           <section className="welcome" aria-labelledby="welcome-title">
-            <h1 id="welcome-title">Benvenuto in AgiCloud</h1>
-            <p>Un'unica interfaccia per i tuoi agenti di coding. Scegli un agente e la cartella del progetto per iniziare.</p>
+            <h1 id="welcome-title">{t('app.benvenutoTitolo')}</h1>
+            <p>{t('app.benvenutoTesto')}</p>
             <ul className="agent-list">
               {agents.map((a) => (
                 <li key={a.id}>
@@ -560,7 +601,7 @@ export function App() {
             </ul>
             <button type="button" className="btn primary" onClick={openNew}>
               <Icon name="plus" />
-              <span>Nuova conversazione</span>
+              <span>{t('app.nuovaConversazione')}</span>
             </button>
           </section>
         )}

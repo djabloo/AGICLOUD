@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { api } from './api';
+import { useT } from './i18n';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -33,6 +34,7 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
 }
 
 export function NotificationsSection() {
+  const t = useT();
   const id = useId();
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [devices, setDevices] = useState<{ endpoint: string; device: string }[]>([]);
@@ -57,7 +59,7 @@ export function NotificationsSection() {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        setMsg('Permesso negato: riattivalo dalle impostazioni del browser per questo sito.');
+        setMsg(t('notifiche.permessoNegato'));
         return;
       }
       const { publicKey } = await api.push();
@@ -68,9 +70,9 @@ export function NotificationsSection() {
       const res = await api.pushSubscribe(sub.toJSON(), deviceLabel());
       setDevices(res.devices);
       setSubscribed(true);
-      setMsg('Notifiche attive su questo dispositivo.');
+      setMsg(t('notifiche.attive'));
     } catch (err) {
-      setMsg(`Non riuscito: ${err instanceof Error ? err.message : String(err)}`);
+      setMsg(t('notifiche.nonRiuscito', { errore: err instanceof Error ? err.message : String(err) }));
     } finally {
       setBusy(false);
     }
@@ -87,7 +89,7 @@ export function NotificationsSection() {
         await sub.unsubscribe();
       }
       setSubscribed(false);
-      setMsg('Notifiche disattivate su questo dispositivo.');
+      setMsg(t('notifiche.disattivate'));
     } finally {
       setBusy(false);
     }
@@ -95,7 +97,7 @@ export function NotificationsSection() {
 
   const test = async () => {
     const { sent } = await api.pushTest();
-    setMsg(sent ? `Notifica di prova inviata a ${sent} dispositivo/i.` : 'Nessun dispositivo iscritto.');
+    setMsg(sent ? t('notifiche.provaInviata', { n: sent }) : t('notifiche.nessunDispositivo'));
   };
 
   const install = async () => {
@@ -104,44 +106,43 @@ export function NotificationsSection() {
     const { outcome } = await installEvent.userChoice;
     installEvent = null;
     setCanInstall(false);
-    setMsg(outcome === 'accepted' ? 'App installata.' : '');
+    setMsg(outcome === 'accepted' ? t('notifiche.appInstallata') : '');
   };
 
   return (
     <section aria-labelledby={`${id}-title`} className="settings-group">
       <h2 id={`${id}-title`} tabIndex={-1}>
-        Notifiche e app
+        {t('notifiche.titolo')}
       </h2>
       <p className="hint">
-        Un avviso sul telefono quando un agente ha finito o ti chiede un permesso. Toccandolo si apre la conversazione.
-        Se la stai gia' guardando, l'avviso non arriva.
+        {t('notifiche.introduzione')}
       </p>
 
       {!supported ? (
         <p className="notice notice-error">
           {isIos && !standalone
-            ? "Su iPhone le notifiche funzionano solo dall'app: in Safari tocca Condividi → Aggiungi alla schermata Home, poi apri AgiCloud da li' e torna qui."
-            : 'Questo browser non supporta le notifiche push.'}
+            ? t('notifiche.iosIstruzioni')
+            : t('notifiche.browserNonSupporta')}
         </p>
       ) : (
         <div className="agent-actions">
           {subscribed ? (
             <>
               <button type="button" className="btn small-btn" onClick={() => void test()}>
-                Invia una prova
+                {t('notifiche.inviaProva')}
               </button>
               <button type="button" className="btn small-btn" onClick={() => void disable()} disabled={busy}>
-                Disattiva su questo dispositivo
+                {t('notifiche.disattiva')}
               </button>
             </>
           ) : (
             <button type="button" className="btn primary" onClick={() => void enable()} disabled={busy || subscribed === null}>
-              Attiva le notifiche su questo dispositivo
+              {t('notifiche.attiva')}
             </button>
           )}
           {canInstall && !standalone && (
             <button type="button" className="btn small-btn" onClick={() => void install()}>
-              Installa l'app
+              {t('notifiche.installa')}
             </button>
           )}
         </div>
@@ -154,7 +155,7 @@ export function NotificationsSection() {
       {devices.length > 0 && (
         <>
           <h3 className="mini-title" id={`${id}-dev`}>
-            Dispositivi iscritti
+            {t('notifiche.dispositiviIscritti')}
           </h3>
           <ul className="device-list" aria-labelledby={`${id}-dev`}>
             {devices.map((d) => (
@@ -165,7 +166,7 @@ export function NotificationsSection() {
                   className="btn small-btn"
                   onClick={() => void api.pushUnsubscribe(d.endpoint).then((r) => setDevices(r.devices))}
                 >
-                  Togli<span className="visually-hidden"> {d.device}</span>
+                  {t('notifiche.togli')}<span className="visually-hidden"> {d.device}</span>
                 </button>
               </li>
             ))}

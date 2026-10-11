@@ -1,12 +1,14 @@
 // Impostazioni → Plugin: installa, attiva/disattiva, disinstalla.
 import { useEffect, useId, useState } from 'react';
 import { api, type PluginInfo } from './api';
+import { useT } from './i18n';
 
 export function PluginsSection({ onChanged, features }: { onChanged: (list: PluginInfo[]) => void; features: string[] | null }) {
   const id = useId();
   const [list, setList] = useState<PluginInfo[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const t = useT();
   const [announce, setAnnounce] = useState('');
 
   useEffect(() => {
@@ -14,7 +16,7 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
   }, []);
 
   const act = async (p: PluginInfo, kind: 'install' | 'uninstall' | 'on' | 'off') => {
-    if (kind === 'uninstall' && !confirm(`Disinstallare ${p.name}? La sua sezione sparisce; potrai reinstallarlo quando vuoi.`)) return;
+    if (kind === 'uninstall' && !confirm(t('plugin.confermaDisinstalla', { nome: p.name }))) return;
     setBusy(p.id);
     setError('');
     try {
@@ -27,7 +29,12 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
       setList(next);
       onChanged(next);
       setAnnounce(
-        { install: `${p.name} installato e attivo`, uninstall: `${p.name} disinstallato`, on: `${p.name} attivato`, off: `${p.name} disattivato` }[kind],
+        {
+          install: t('plugin.installatoEAttivo', { nome: p.name }),
+          uninstall: t('plugin.disinstallato', { nome: p.name }),
+          on: t('plugin.attivato', { nome: p.name }),
+          off: t('plugin.disattivato', { nome: p.name }),
+        }[kind],
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -39,11 +46,10 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
   return (
     <section aria-labelledby={`${id}-title`} className="settings-group">
       <h2 id={`${id}-title`} tabIndex={-1}>
-        Plugin
+        {t('plugin.titolo')}
       </h2>
       <p className="hint">
-        Funzioni in piu' da aggiungere quando servono. Un plugin spento sparisce dal menu ma resta installato; disinstallato
-        libera anche quello che aveva preparato sul server.
+        {t('plugin.introduzione')}
       </p>
       {error && (
         <p className="form-error" role="alert">
@@ -51,7 +57,7 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
         </p>
       )}
       {!list ? (
-        <p className="hint">Caricamento…</p>
+        <p className="hint">{t('plugin.caricamento')}</p>
       ) : (
         <ul className="agent-cards">
           {list.map((p) => (
@@ -61,23 +67,23 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
                   <h3 id={`${id}-${p.id}`}>{p.name}</h3>
                   <p className={`badge badge-${p.enabled ? 'ok' : p.installed ? 'missing' : 'unknown'}`}>
                     <span className="status-dot" aria-hidden="true" />
-                    {p.enabled ? 'Attivo' : p.installed ? 'Spento' : 'Non installato'}
+                    {p.enabled ? t('plugin.attivo') : p.installed ? t('plugin.spento') : t('plugin.nonInstallato')}
                   </p>
                 </div>
-                <p className="agent-detail">Versione {p.version}</p>
+                <p className="agent-detail">{t('plugin.versione', { v: p.version })}</p>
                 <p className="plugin-desc">{p.description}</p>
-                {p.requires && <p className="hint">Serve: {p.requires}</p>}
+                {p.requires && <p className="hint">{t('plugin.serve', { req: p.requires })}</p>}
                 {p.health && (
                   <p className={p.health.ok ? 'hint' : 'form-error'}>
-                    {p.health.ok ? 'Servizio pronto' : 'Servizio non disponibile'}: {p.health.detail}
+                    {p.health.ok ? t('plugin.servizioPronto') : t('plugin.servizioNonDisponibile')}: {p.health.detail}
                   </p>
                 )}
                 <div className="agent-actions">
                   {features !== null && !features.includes(p.id) ? (
-                    <p className="hint">Non incluso nel tuo piano</p>
+                    <p className="hint">{t('plugin.nonInclusoNelPiano')}</p>
                   ) : !p.installed ? (
                     <button type="button" className="btn small-btn primary" disabled={busy !== null} onClick={() => void act(p, 'install')}>
-                      {busy === p.id ? 'Installazione…' : 'Installa'}
+                      {busy === p.id ? t('plugin.installazione') : t('plugin.installa')}
                     </button>
                   ) : (
                     <>
@@ -89,10 +95,10 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
                           disabled={busy !== null}
                           onChange={(e) => void act(p, e.target.checked ? 'on' : 'off')}
                         />
-                        <span>{p.enabled ? 'Attivo' : 'Spento'}</span>
+                        <span>{p.enabled ? t('plugin.attivo') : t('plugin.spento')}</span>
                       </label>
                       <button type="button" className="btn small-btn" disabled={busy !== null} onClick={() => void act(p, 'uninstall')}>
-                        Disinstalla
+                        {t('plugin.disinstalla')}
                       </button>
                     </>
                   )}
