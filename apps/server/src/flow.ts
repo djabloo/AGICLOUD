@@ -26,7 +26,8 @@ const DATA = join(config.threadsDir, '..', 'gflow');
 const OUTPUT = join(config.threadsDir, '..', 'flow-output');
 const LOGIN_CONTAINER = 'agicloud-gflow-login';
 const LOGIN_MS = 15 * 60_000;
-const MAX_RUNNING = 2;
+// Un solo container Flow alla volta: tutti usano lo stesso profilo di Chromium, che non si apre due volte insieme
+const MAX_RUNNING = 1;
 
 /** Modelli e formati veri di gflow-cli (gflow models) */
 export const FLOW_MODELS = [
@@ -151,6 +152,7 @@ async function stopLogin(): Promise<void> {
 
 async function startLogin(): Promise<{ url: string }> {
   if (login && (await loginRunning())) return { url: loginUrl(login.key) };
+  if (running.size > 0) throw new HttpError(409, "C'e' una generazione in corso: aspetta che finisca prima di accedere");
   await stopLogin();
   ensureDirs();
   // La porta di noVNC resta su 127.0.0.1: all'utente arriva solo tramite l'indirizzo con la chiave segreta
@@ -250,6 +252,7 @@ export function failureReason(output: string): string {
 }
 
 function startJob(kind: FlowKind, model: string, aspect: string, prompt: string): FlowJob {
+  if (login) throw new HttpError(409, "Accesso in corso: completalo o annullalo prima di generare");
   if (running.size >= MAX_RUNNING) throw new HttpError(409, `Troppe generazioni in corso (max ${MAX_RUNNING}): aspetta che finisca`);
   ensureDirs();
   const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);

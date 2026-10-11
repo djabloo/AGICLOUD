@@ -3,10 +3,11 @@
 # di Google si apre una sessione noVNC che AgiCloud inoltra al browser dell'utente.
 #   docker build -t agicloud-gflow:latest services/gflow
 FROM python:3.12-slim
+# Con GFLOW_LOGIN_WINDOW (accesso) la finestra deve stare nello schermo virtuale: le opzioni in coda vincono su quelle di gflow
 RUN apt-get update && apt-get install -y --no-install-recommends xvfb xauth x11vnc novnc websockify ca-certificates curl procps chromium \
  && rm -rf /var/lib/apt/lists/* \
  && mv /usr/bin/chromium /usr/bin/chromium.real \
- && printf '#!/bin/sh\nexec /usr/bin/chromium.real --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=1280,780 "$@"\n' > /usr/bin/chromium \
+ && printf '#!/bin/sh\nif [ -n "$GFLOW_LOGIN_WINDOW" ]; then exec /usr/bin/chromium.real --no-sandbox --disable-dev-shm-usage --disable-gpu "$@" --window-position=0,0 --window-size=1280,780; fi\nexec /usr/bin/chromium.real --no-sandbox --disable-dev-shm-usage --disable-gpu "$@"\n' > /usr/bin/chromium \
  && chmod +x /usr/bin/chromium
 ARG GFLOW_VERSION=0.83.2
 RUN pip install --no-cache-dir gflow-cli==${GFLOW_VERSION}
