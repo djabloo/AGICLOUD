@@ -5,6 +5,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { api, type DesignCatalog, type DesignChoice } from './api';
 import { loadDesignCatalog } from './DesignPreview';
+import { useT, type t as translate } from './i18n';
 import './design-gallery.css';
 
 type SystemItem = DesignCatalog['systems'][number];
@@ -13,12 +14,15 @@ type TabKey = 'systems' | 'skills';
 type Detail = { kind: TabKey; item: SystemItem | SkillItem };
 
 /** Etichette delle modalita' delle skill (come nel dialogo di nuova conversazione) */
-const MODE_LABEL: Record<string, string> = {
-  prototype: 'Pagine e prototipi',
-  deck: 'Presentazioni',
-  template: 'Modelli pronti',
-  'design-system': 'Brief, revisione e scrittura',
-};
+function getModeLabel(t: typeof translate, mode: string): string {
+  switch (mode) {
+    case 'prototype': return t('design.modePrototype');
+    case 'deck': return t('design.modeDeck');
+    case 'template': return t('design.modeTemplate');
+    case 'design-system': return t('design.modeDesignSystem');
+    default: return mode;
+  }
+}
 
 /** URL di anteprima richiesto una sola volta per elemento, anche cambiando scheda o filtro */
 const previewCache = new Map<string, Promise<string>>();
@@ -36,6 +40,7 @@ function previewBase(key: string, target: { system: string } | { skill: string }
 }
 
 export function DesignView({ onTry }: { onTry: (choice: DesignChoice) => void }) {
+  const t = useT();
   const id = useId();
   const [catalog, setCatalog] = useState<DesignCatalog | null>(null);
   const [error, setError] = useState('');
@@ -65,8 +70,8 @@ export function DesignView({ onTry }: { onTry: (choice: DesignChoice) => void })
     const values = tab === 'systems'
       ? (catalog?.systems ?? []).map((s) => s.category)
       : (catalog?.skills ?? []).map((s) => s.mode);
-    return [...new Set(values)].sort((a, b) => categoryLabel(tab, a).localeCompare(categoryLabel(tab, b)));
-  }, [tab, catalog]);
+    return [...new Set(values)].sort((a, b) => categoryLabel(tab, a, t).localeCompare(categoryLabel(tab, b, t)));
+  }, [tab, catalog, t]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -105,20 +110,20 @@ export function DesignView({ onTry }: { onTry: (choice: DesignChoice) => void })
   return (
     <section className="design-gallery" aria-labelledby="design-title">
       <div className="design-head">
-        <h1 id="design-title">Design</h1>
-        <p>Skill e stili di design: scegline uno e l'agente scrive le pagine nel progetto, con anteprima dal vivo nella chat.</p>
+        <h1 id="design-title">{t('design.title')}</h1>
+        <p>{t('design.subtitle')}</p>
         {error && <p className="form-error" role="alert">{error}</p>}
       </div>
 
       {!catalog && !error && (
         <div className="design-body">
-          <p className="hint">Caricamento del catalogo…</p>
+          <p className="hint">{t('design.catalogLoading')}</p>
         </div>
       )}
 
       {catalog && (
         <div className="design-body">
-          <div className="gal-tabs" role="tablist" aria-label="Tipo di contenuto">
+          <div className="gal-tabs" role="tablist" aria-label={t('design.contentType')}>
             <button
               type="button"
               role="tab"
@@ -133,7 +138,7 @@ export function DesignView({ onTry }: { onTry: (choice: DesignChoice) => void })
               onClick={() => switchTab('systems')}
               onKeyDown={onTabKey}
             >
-              Design system
+              {t('design.systemsTab')}
             </button>
             <button
               type="button"
@@ -149,36 +154,36 @@ export function DesignView({ onTry }: { onTry: (choice: DesignChoice) => void })
               onClick={() => switchTab('skills')}
               onKeyDown={onTabKey}
             >
-              Skill
+              {t('design.skillsTab')}
             </button>
           </div>
 
           <div className="gal-controls">
             <div className="gal-filters">
               <label className="gal-field" htmlFor={`${id}-q`}>
-                <span>Cerca</span>
+                <span>{t('design.search')}</span>
                 <input
                   id={`${id}-q`}
                   type="search"
                   value={query}
-                  placeholder="Nome o descrizione"
+                  placeholder={t('design.searchPlaceholder')}
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </label>
               <label className="gal-field" htmlFor={`${id}-cat`}>
-                <span>Categoria</span>
+                <span>{t('design.category')}</span>
                 <select id={`${id}-cat`} value={category} onChange={(e) => setCategory(e.target.value)}>
-                  <option value="">Tutte</option>
+                  <option value="">{t('design.all')}</option>
                   {categories.map((c) => (
                     <option key={c} value={c}>
-                      {categoryLabel(tab, c)}
+                      {categoryLabel(tab, c, t)}
                     </option>
                   ))}
                 </select>
               </label>
             </div>
             <p className="gal-count hint" role="status">
-              {filtered.length} {filtered.length === 1 ? 'risultato' : 'risultati'}
+              {t('design.count', { n: filtered.length })}
             </p>
           </div>
 
@@ -190,7 +195,7 @@ export function DesignView({ onTry }: { onTry: (choice: DesignChoice) => void })
             className="gal-panel"
           >
             {filtered.length === 0 ? (
-              <p className="gal-empty">Nessun risultato. Prova a cambiare la ricerca o il filtro.</p>
+              <p className="gal-empty">{t('design.empty')}</p>
             ) : tab === 'systems' ? (
               <ul className="gal-grid">
                 {filtered.map((s) => {
@@ -218,11 +223,11 @@ export function DesignView({ onTry }: { onTry: (choice: DesignChoice) => void })
           </div>
 
           <p className="gal-credit hint">
-            Contenuti da{' '}
+            {t('design.creditPre')}{' '}
             <a href={catalog.source.repo} target="_blank" rel="noopener noreferrer">
               Open Design
             </a>{' '}
-            (Apache 2.0)
+            {t('design.creditPost')}
           </p>
         </div>
       )}
@@ -241,8 +246,8 @@ export function DesignView({ onTry }: { onTry: (choice: DesignChoice) => void })
 }
 
 /** Etichetta della categoria: per le skill vale la modalita' tradotta */
-function categoryLabel(tab: TabKey, value: string): string {
-  return tab === 'skills' ? (MODE_LABEL[value] ?? value) : value;
+function categoryLabel(tab: TabKey, value: string, t: typeof translate): string {
+  return tab === 'skills' ? getModeLabel(t, value) : value;
 }
 
 function SystemCard({ item, onTry, onOpen }: {
@@ -250,6 +255,7 @@ function SystemCard({ item, onTry, onOpen }: {
   onTry: (c: DesignChoice) => void;
   onOpen: () => void;
 }) {
+  const t = useT();
   // Miniatura: la prima pagina di anteprima, altrimenti il kit dei componenti
   const thumb = item.previews[0] ? `preview/${item.previews[0]}` : item.kit ? 'system/kit.html' : '';
   return (
@@ -261,10 +267,10 @@ function SystemCard({ item, onTry, onOpen }: {
         <p className="gal-desc">{item.description}</p>
         <div className="gal-actions">
           <button type="button" className="btn primary" onClick={() => onTry({ system: item.id })}>
-            Prova
+            {t('design.try')}
           </button>
           <button type="button" className="btn" onClick={onOpen}>
-            Dettagli
+            {t('design.details')}
           </button>
         </div>
       </div>
@@ -277,6 +283,7 @@ function SkillCard({ item, onTry, onOpen }: {
   onTry: (c: DesignChoice) => void;
   onOpen: () => void;
 }) {
+  const t = useT();
   return (
     <li className="gal-card">
       <div className="gal-body">
@@ -286,14 +293,14 @@ function SkillCard({ item, onTry, onOpen }: {
           </span>
         )}
         <h3 className="gal-name">{item.name}</h3>
-        <p className="gal-cat">{MODE_LABEL[item.mode] ?? item.mode}</p>
+        <p className="gal-cat">{getModeLabel(t, item.mode)}</p>
         <p className="gal-desc">{item.description}</p>
         <div className="gal-actions">
           <button type="button" className="btn primary" onClick={() => onTry({ skill: item.id })}>
-            Prova
+            {t('design.try')}
           </button>
           <button type="button" className="btn" onClick={onOpen}>
-            Dettagli
+            {t('design.details')}
           </button>
         </div>
       </div>
@@ -303,6 +310,7 @@ function SkillCard({ item, onTry, onOpen }: {
 
 /** Miniatura decorativa: caricata solo quando la scheda entra nello schermo */
 function Thumb({ id, page, label }: { id: string; page: string; label: string }) {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [src, setSrc] = useState('');
@@ -348,13 +356,13 @@ function Thumb({ id, page, label }: { id: string; page: string; label: string })
         <iframe
           className="gal-thumb-frame"
           src={src}
-          title={`Miniatura di ${label}`}
+          title={t('design.thumbTitle', { label })}
           loading="lazy"
           sandbox="allow-scripts"
           tabIndex={-1}
         />
       ) : (
-        <span className="hint">{failed ? 'Anteprima non disponibile' : 'Caricamento…'}</span>
+        <span className="hint">{failed ? t('design.thumbUnavailable') : t('design.thumbLoading')}</span>
       )}
     </div>
   );
@@ -368,6 +376,7 @@ function DetailDialog({ kind, item, catalog, onTry, onClose }: {
   onTry: (c: DesignChoice) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   const system = kind === 'systems' ? (item as SystemItem) : null;
@@ -412,15 +421,15 @@ function DetailDialog({ kind, item, catalog, onTry, onClose }: {
       <div className="gal-detail">
         <div className="gal-detail-head">
           <h2 id={`${id}-title`}>{item.name}</h2>
-          <p className="gal-cat">{skill ? (MODE_LABEL[skill.mode] ?? skill.mode) : system!.category}</p>
+          <p className="gal-cat">{skill ? getModeLabel(t, skill.mode) : system!.category}</p>
         </div>
         <p>{item.description}</p>
-        {item.craft.length > 0 && <p className="hint">Ambiti: {item.craft.join(', ')}</p>}
-        {skill?.examplePrompt && <p className="hint">Esempio di prompt: {skill.examplePrompt}</p>}
+        {item.craft.length > 0 && <p className="hint">{t('design.crafts', { crafts: item.craft.join(', ') })}</p>}
+        {skill?.examplePrompt && <p className="hint">{t('design.examplePrompt', { p: skill.examplePrompt })}</p>}
 
         {pages.length > 1 && (
           <label className="gal-field" htmlFor={`${id}-page`}>
-            <span>Pagina</span>
+            <span>{t('design.page')}</span>
             <select id={`${id}-page`} value={page} onChange={(e) => setPage(e.target.value)}>
               {pages.map((p) => (
                 <option key={p} value={p}>
@@ -436,12 +445,12 @@ function DetailDialog({ kind, item, catalog, onTry, onClose }: {
             {previewError}
           </p>
         )}
-        {!previewError && pages.length > 0 && !base && <p className="hint">Caricamento anteprima…</p>}
+        {!previewError && pages.length > 0 && !base && <p className="hint">{t('design.previewLoading')}</p>}
         {base && page && (
           <iframe
             className="gal-frame"
             src={`${base}${page}`}
-            title={`Anteprima di ${item.name}`}
+            title={t('design.previewOf', { nome: item.name })}
             loading="lazy"
             sandbox="allow-scripts"
           />
@@ -450,14 +459,14 @@ function DetailDialog({ kind, item, catalog, onTry, onClose }: {
         {skill?.needsSystem && (
           <>
             <label className="gal-field" htmlFor={`${id}-system`}>
-              <span>Design system da usare</span>
+              <span>{t('design.systemToUse')}</span>
               <select
                 id={`${id}-system`}
                 value={systemChoice}
                 onChange={(e) => setSystemChoice(e.target.value)}
                 aria-describedby={`${id}-system-hint`}
               >
-                <option value="">Nessuno</option>
+                <option value="">{t('design.none')}</option>
                 {catalog.systems.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -466,17 +475,17 @@ function DetailDialog({ kind, item, catalog, onTry, onClose }: {
               </select>
             </label>
             <p className="hint" id={`${id}-system-hint`}>
-              Questa skill rende meglio con uno stile preciso: scegli il design system da applicare.
+              {t('design.systemHint')}
             </p>
           </>
         )}
 
         <div className="dialog-actions">
           <button type="button" className="btn" onClick={() => ref.current?.close()}>
-            Chiudi
+            {t('design.close')}
           </button>
           <button type="button" className="btn primary" onClick={tryIt}>
-            Prova
+            {t('design.try')}
           </button>
         </div>
       </div>

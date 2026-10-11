@@ -2,6 +2,9 @@
 // Tre passi: cosa valutare, la domanda, Decidi. Gli esempi sono solo punti di partenza.
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { api, type VerdictResult, type VerdictType } from './api';
+import { useT } from './i18n';
+
+type TFN = ReturnType<typeof useT>;
 
 interface Preset {
   label: string;
@@ -11,39 +14,54 @@ interface Preset {
   text: string;
 }
 
-const PRESETS: Preset[] = [
-  {
-    label: 'Smistare un ticket',
-    question: 'Di che tipo di richiesta si tratta?',
-    type: 'choice',
-    options: ['Fatturazione e pagamenti', 'Problema tecnico', 'Richiesta commerciale', 'Altro'],
-    text: 'Non riesco a fare il login: dopo la password la pagina si ricarica e basta.',
-  },
-  { label: 'Quanto e\' urgente', question: 'Quanto e\' urgente, da 1 (per niente) a 5 (massimo)?', type: 'score', text: 'Il sito e\' lento da un\'ora per tutti gli utenti, ma funziona.' },
-  {
-    label: 'Revisione del codice',
-    question: 'Questa modifica si puo\' unire?',
-    type: 'choice',
-    options: ['Approva', 'Chiedi modifiche', 'Blocca per sicurezza'],
-    text: 'const token = req.query.token;\ndb.query("SELECT * FROM users WHERE token = \'" + token + "\'");',
-  },
-  {
-    label: 'Moderare un commento',
-    question: 'Il commento e\' da pubblicare?',
-    type: 'choice',
-    options: ['Accettabile', 'Spam o pubblicita\'', 'Offensivo o molesto'],
-    text: 'GUADAGNA 5000€ AL MESE DA CASA!!! Clicca qui',
-  },
-  { label: 'Vero o falso', question: 'L\'affermazione e\' vera?', type: 'yesno', text: 'Parigi e\' la capitale della Germania.' },
-];
+function getPresets(t: TFN): Preset[] {
+  return [
+    {
+      label: t('verdict.preset1Label'),
+      question: t('verdict.preset1Question'),
+      type: 'choice',
+      options: [t('verdict.preset1Opt1'), t('verdict.preset1Opt2'), t('verdict.preset1Opt3'), t('verdict.preset1Opt4')],
+      text: t('verdict.preset1Text'),
+    },
+    {
+      label: t('verdict.preset2Label'),
+      question: t('verdict.preset2Question'),
+      type: 'score',
+      text: t('verdict.preset2Text'),
+    },
+    {
+      label: t('verdict.preset3Label'),
+      question: t('verdict.preset3Question'),
+      type: 'choice',
+      options: [t('verdict.preset3Opt1'), t('verdict.preset3Opt2'), t('verdict.preset3Opt3')],
+      text: t('verdict.preset3Text'),
+    },
+    {
+      label: t('verdict.preset4Label'),
+      question: t('verdict.preset4Question'),
+      type: 'choice',
+      options: [t('verdict.preset4Opt1'), t('verdict.preset4Opt2'), t('verdict.preset4Opt3')],
+      text: t('verdict.preset4Text'),
+    },
+    {
+      label: t('verdict.preset5Label'),
+      question: t('verdict.preset5Question'),
+      type: 'yesno',
+      text: t('verdict.preset5Text'),
+    },
+  ];
+}
 
-const TYPES: { id: VerdictType; label: string }[] = [
-  { id: 'yesno', label: 'Si\' / No' },
-  { id: 'choice', label: 'Una tra…' },
-  { id: 'score', label: 'Voto da 1 a 5' },
-];
+function getTypes(t: TFN): { id: VerdictType; label: string }[] {
+  return [
+    { id: 'yesno', label: t('verdict.typeYesno') },
+    { id: 'choice', label: t('verdict.typeChoice') },
+    { id: 'score', label: t('verdict.typeScore') },
+  ];
+}
 
 export function VerdictView() {
+  const t = useT();
   const id = useId();
   const [text, setText] = useState('');
   const [question, setQuestion] = useState('');
@@ -55,6 +73,9 @@ export function VerdictView() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<VerdictResult | null>(null);
   const [explaining, setExplaining] = useState(false);
+
+  const PRESETS = getPresets(t);
+  const TYPES = getTypes(t);
 
   const usePreset = (p: Preset) => {
     setText(p.text);
@@ -106,13 +127,13 @@ export function VerdictView() {
       <header className="chat-header">
         <div className="chat-heading">
           <h1 id={`${id}-title`}>Verdict</h1>
-          <p className="chat-meta">Una domanda su un testo: la risposta e quanto e' sicura</p>
+          <p className="chat-meta">{t('verdict.subtitle')}</p>
         </div>
       </header>
 
       <div className="pii-body">
-        <div className="verdict-presets" role="group" aria-label="Parti da un esempio">
-          <span className="hint">Parti da un esempio:</span>
+        <div className="verdict-presets" role="group" aria-label={t('verdict.presetsAria')}>
+          <span className="hint">{t('verdict.presetsHint')}</span>
           {PRESETS.map((p) => (
             <button key={p.label} type="button" className="btn small-btn" onClick={() => usePreset(p)}>
               {p.label}
@@ -123,31 +144,31 @@ export function VerdictView() {
         <form className="pii-card" onSubmit={submit}>
           <div className="pii-field">
             <label htmlFor={`${id}-text`}>
-              <span className="verdict-step" aria-hidden="true">1</span> Cosa valutare
+              <span className="verdict-step" aria-hidden="true">1</span> {t('verdict.step1')}
             </label>
-            <textarea id={`${id}-text`} rows={6} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onTextKey} placeholder="Incolla un testo, un messaggio, un pezzo di codice…" />
+            <textarea id={`${id}-text`} rows={6} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onTextKey} placeholder={t('verdict.textPlaceholder')} />
           </div>
 
           <div className="pii-field">
             <label htmlFor={`${id}-q`}>
-              <span className="verdict-step" aria-hidden="true">2</span> La domanda
+              <span className="verdict-step" aria-hidden="true">2</span> {t('verdict.step2')}
             </label>
-            <input id={`${id}-q`} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Es. È una richiesta di rimborso?" />
+            <input id={`${id}-q`} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={t('verdict.questionPlaceholder')} />
           </div>
 
           <fieldset className="pii-mode">
-            <legend>Tipo di risposta</legend>
-            {TYPES.map((t) => (
-              <label key={t.id} className="choice">
-                <input type="radio" name={`${id}-type`} checked={type === t.id} onChange={() => setType(t.id)} />
-                <span>{t.label}</span>
+            <legend>{t('verdict.answerType')}</legend>
+            {TYPES.map((ty) => (
+              <label key={ty.id} className="choice">
+                <input type="radio" name={`${id}-type`} checked={type === ty.id} onChange={() => setType(ty.id)} />
+                <span>{ty.label}</span>
               </label>
             ))}
           </fieldset>
 
           {type === 'choice' && (
             <div className="pii-field">
-              <label htmlFor={`${id}-opt`}>Opzioni (almeno due)</label>
+              <label htmlFor={`${id}-opt`}>{t('verdict.optionsLabel')}</label>
               {options.length > 0 && (
                 <ul className="verdict-options">
                   {options.map((o) => (
@@ -155,7 +176,7 @@ export function VerdictView() {
                       <span>{o}</span>
                       <button type="button" onClick={() => setOptions(options.filter((x) => x !== o))}>
                         <span aria-hidden="true">×</span>
-                        <span className="visually-hidden">Togli l'opzione {o}</span>
+                        <span className="visually-hidden">{t('verdict.removeOption', { o })}</span>
                       </button>
                     </li>
                   ))}
@@ -172,10 +193,10 @@ export function VerdictView() {
                       addOption();
                     }
                   }}
-                  placeholder="Scrivi un'opzione e premi Invio"
+                  placeholder={t('verdict.optionPlaceholder')}
                 />
                 <button type="button" className="btn" onClick={addOption}>
-                  Aggiungi
+                  {t('verdict.add')}
                 </button>
               </div>
             </div>
@@ -184,16 +205,16 @@ export function VerdictView() {
           <label className="choice">
             <input type="checkbox" checked={double} onChange={(e) => setDouble(e.target.checked)} aria-describedby={`${id}-double-hint`} />
             <span className="choice-text">
-              <span>Piu' sicuro: due modelli</span>
+              <span>{t('verdict.safer')}</span>
               <span className="hint" id={`${id}-double-hint`}>
-                Fa la media di due modelli diversi e ti avvisa se non sono d'accordo. Un po' piu' lento.
+                {t('verdict.doubleHint')}
               </span>
             </span>
           </label>
 
           <div className="agent-actions">
             <button type="submit" className="btn primary" disabled={busy || !ready}>
-              <span className="verdict-step" aria-hidden="true">3</span> {busy ? 'Decido…' : 'Decidi'}
+              <span className="verdict-step" aria-hidden="true">3</span> {busy ? t('verdict.deciding') : t('verdict.decide')}
             </button>
           </div>
         </form>
@@ -210,9 +231,9 @@ export function VerdictView() {
               <h2 id={`${id}-res`} className="verdict-answer">
                 {result.answer} <span className="verdict-conf">· {pct(result.confidence)}</span>
               </h2>
-              {result.uncertain && <p className="verdict-warn">Incerto: {result.note}</p>}
-              {result.expected !== undefined && <p className="hint">Voto atteso: {result.expected}</p>}
-              <ul className="verdict-bars" aria-label="Probabilita' di ogni opzione">
+              {result.uncertain && <p className="verdict-warn">{t('verdict.uncertain', { note: result.note ?? '' })}</p>}
+              {result.expected !== undefined && <p className="hint">{t('verdict.expected', { v: result.expected })}</p>}
+              <ul className="verdict-bars" aria-label={t('verdict.probsAria')}>
                 {result.probabilities.map((p) => (
                   <li key={p.option}>
                     <span className="verdict-bar-label">{p.option}</span>
@@ -227,23 +248,23 @@ export function VerdictView() {
                 <p className="verdict-why">{result.explanation}</p>
               ) : (
                 <button type="button" className="btn small-btn verdict-why-btn" disabled={explaining} onClick={() => void run(true)}>
-                  {explaining ? 'Ci penso…' : 'Perché?'}
+                  {explaining ? t('verdict.thinking') : t('verdict.why')}
                 </button>
               )}
               <p className="hint">
                 {result.models.join(' + ')}
-                {result.method === 'campioni' && ' · probabilita\' dal voto di 7 risposte'} · {(result.ms / 1000).toFixed(1)} s · costo{' '}
-                {result.cost < 0.001 ? 'meno di un decimo di centesimo' : `${(result.cost * 100).toFixed(2)} centesimi`}
+                {result.method === 'campioni' && ` · ${t('verdict.samples')}`} · {(result.ms / 1000).toFixed(1)} s · costo{' '}
+                {result.cost < 0.001 ? t('verdict.costTiny') : t('verdict.costCentesimi', { c: (result.cost * 100).toFixed(2) })}
               </p>
             </section>
           )}
         </div>
 
         <details className="pii-card">
-          <summary className="verdict-n8n-summary">Usalo da n8n o da uno script</summary>
+          <summary className="verdict-n8n-summary">{t('verdict.n8nTitle')}</summary>
           <p>
-            Un nodo HTTP Request con metodo POST verso <code>https://app.agicloud.dev/api/verdict/decide</code>, intestazione{' '}
-            <code>Authorization: Bearer</code> + il token di AgiCloud (meglio come credenziale di n8n, non scritto nel nodo) e corpo JSON:
+            {t('verdict.n8nPre')} <code>https://app.agicloud.dev/api/verdict/decide</code>, {t('verdict.n8nMid')}{' '}
+            <code>Authorization: Bearer</code> {t('verdict.n8nPost')}
           </p>
           <pre className="pii-out">{`{
   "text": "testo da valutare",
@@ -251,7 +272,7 @@ export function VerdictView() {
   "type": "yesno",            // oppure "choice" con "options": [...], oppure "score"
   "mode": "fast"              // oppure "double"
 }`}</pre>
-          <p className="hint">Risposta: answer, confidence, probabilities, uncertain, note. Gli agenti in chat hanno lo strumento "verdetto".</p>
+          <p className="hint">{t('verdict.answerHint')}</p>
         </details>
       </div>
     </section>

@@ -5,6 +5,7 @@
 import { useEffect, useId, useState } from 'react';
 import { api, ApiError, type DesignCatalog, type FileEntry, type ThreadSummary } from './api';
 import { Icon } from './icons';
+import { useT } from './i18n';
 
 const OUTPUT_DIR = 'design';
 
@@ -20,6 +21,7 @@ export function loadDesignCatalog(): Promise<DesignCatalog> {
 }
 
 export function DesignBar({ thread, running }: { thread: ThreadSummary; running: boolean }) {
+  const t = useT();
   const id = useId();
   const [open, setOpen] = useState(false);
   const [names, setNames] = useState<{ skill?: string; system?: string }>({});
@@ -78,21 +80,21 @@ export function DesignBar({ thread, running }: { thread: ThreadSummary; running:
     <div className="design-bar">
       <button type="button" className="design-toggle" aria-expanded={open} aria-controls={`${id}-panel`} onClick={() => setOpen((o) => !o)}>
         <Icon name="file" />
-        <span>Anteprima design</span>
+        <span>{t('designpreview.toggle')}</span>
         <span className="hint">{label}</span>
       </button>
       {open && (
         <div id={`${id}-panel`} className="design-panel">
           {error && <p className="form-error" role="alert">{error}</p>}
           {pages === null ? (
-            <p className="hint">Caricamento…</p>
+            <p className="hint">{t('designpreview.loading')}</p>
           ) : pages.length === 0 ? (
-            <p className="hint">Nessuna pagina ancora: l'agente le scrive nella cartella {OUTPUT_DIR}/ del progetto.</p>
+            <p className="hint">{t('designpreview.empty', { dir: `${OUTPUT_DIR}/` })}</p>
           ) : (
             <>
               <div className="design-tools">
                 <label>
-                  <span className="visually-hidden">Pagina</span>
+                  <span className="visually-hidden">{t('designpreview.page')}</span>
                   <select value={selected} onChange={(e) => setSelected(e.target.value)}>
                     {pages.map((p) => (
                       <option key={p.name} value={p.name}>
@@ -103,14 +105,14 @@ export function DesignBar({ thread, running }: { thread: ThreadSummary; running:
                 </label>
                 {src && (
                   <a className="btn" href={src} target="_blank" rel="noopener noreferrer">
-                    Apri in una nuova scheda
+                    {t('designpreview.openNewTab')}
                   </a>
                 )}
               </div>
               {src && (
                 <iframe
                   className="design-frame"
-                  title={`Anteprima di ${selected}`}
+                  title={t('designpreview.previewOf', { nome: selected })}
                   src={src}
                   sandbox="allow-scripts allow-popups allow-forms allow-modals"
                 />
