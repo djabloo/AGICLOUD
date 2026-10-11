@@ -6,6 +6,9 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { Mailer } from './mailer.js';
 import type { Role, Status, User } from './db.js';
 import { hashPassword, newToken, sha256, verifyPassword } from './crypto.js';
+import type { Orchestrator } from './orchestrator.js';
+import { randomSubdomain, subdomainProblem } from './subdomain.js';
+import { randomBytes } from 'node:crypto';
 
 const SESSION_COOKIE = 'agicloud_session';
 const SESSION_MS = 30 * 24 * 3600_000;
@@ -24,11 +27,25 @@ export interface AppOptions {
   /** Indirizzo pubblico, per i link nelle email */
   baseUrl: string;
   secureCookies: boolean;
+  orchestrator: Orchestrator;
+  /** Dominio principale: gli ambienti stanno su <nome>.<rootDomain> */
+  rootDomain: string;
+  /** Avvisato quando un ambiente cambia (il proxy svuota la sua cache) */
+  onWorkspaceChange?: (subdomain: string) => void;
+}
+
+interface Workspace {
+  id: string;
+  user_id: number;
+  subdomain: string;
+  status: 'stopped' | 'running';
+  setup_token: string;
+  created_at: number;
 }
 
 const USER_COLS = 'id, email, name, role, status, created_at, last_login_at';
 
-export function createApp({ db, mailer, baseUrl, secureCookies }: AppOptions) {
+export function createApp({ db, mailer, baseUrl, secureCookies, orchestrator, rootDomain, onWorkspaceChange }: AppOptions) {
   const app = new Hono();
   const now = () => Date.now();
 
@@ -174,7 +191,11 @@ export function createApp({ db, mailer, baseUrl, secureCookies }: AppOptions) {
     // Un admin non puo' togliersi da solo i poteri o sospendersi: si resterebbe senza amministratori
     if (target.id === admin.id && (role !== 'admin' || status !== 'active')) throw new ApiError(409, 'Non puoi declassare o sospendere te stesso');
     db.prepare('UPDATE users SET role = ?, status = ? WHERE id = ?').run(role, status, id);
-    if (status === 'suspended') db.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
+    if (status === 'suspended') {
+      db.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
+      const w = workspaceOf(id);
+      if (w) await stopWorkspace(w).catch((err) => console.error('Ambiente non fermato:', err));
+    }
     return c.json({ user: db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(id) });
   });
 
@@ -183,6 +204,93 @@ export function createApp({ db, mailer, baseUrl, secureCookies }: AppOptions) {
     const id = Number(c.req.param('id'));
     if (id === admin.id) throw new ApiError(409, 'Non puoi eliminare te stesso');
     db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    return c.json({ ok: true });
+  });
+
+  // ---- Ambiente dell'utente (un container su <sottodominio>.<dominio>) ----
+  const workspaceOf = (userId: number) => db.prepare('SELECT * FROM workspaces WHERE user_id = ?').get(userId) as Workspace | undefined;
+  const publicWorkspace = async (w: Workspace | undefined) => {
+    if (!w) return null;
+    const live = await orchestrator.info(w.id).catch(() => null);
+    return {
+      subdomain: w.subdomain,
+      status: live?.status === 'running' ? 'running' : 'stopped',
+      url: `https://${w.subdomain}.${rootDomain}`,
+      // Il link di attivazione serve solo finche' l'utente non ha creato il suo accesso sul nuovo ambiente
+      setupUrl: `https://${w.subdomain}.${rootDomain}/?setup=${w.setup_token}`,
+      created_at: w.created_at,
+    };
+  };
+  const startWorkspace = async (w: Workspace) => {
+    await orchestrator.start(w.id, { SETUP_TOKEN: w.setup_token });
+    db.prepare("UPDATE workspaces SET status = 'running' WHERE id = ?").run(w.id);
+    onWorkspaceChange?.(w.subdomain);
+  };
+  const stopWorkspace = async (w: Workspace) => {
+    await orchestrator.stop(w.id);
+    db.prepare("UPDATE workspaces SET status = 'stopped' WHERE id = ?").run(w.id);
+    onWorkspaceChange?.(w.subdomain);
+  };
+
+  app.get('/api/workspace', async (c) => c.json({ workspace: await publicWorkspace(workspaceOf(requireUser(c).id)) }));
+
+  app.post('/api/workspace', async (c) => {
+    const u = requireUser(c);
+    if (workspaceOf(u.id)) throw new ApiError(409, 'Hai gia\' un ambiente');
+    const b = (await c.req.json().catch(() => ({}))) as { subdomain?: unknown };
+    const wanted = typeof b.subdomain === 'string' ? b.subdomain.trim().toLowerCase() : '';
+    let sub = wanted;
+    if (wanted) {
+      const problem = subdomainProblem(wanted);
+      if (problem) throw new ApiError(400, problem);
+    } else {
+      sub = randomSubdomain();
+    }
+    const w: Workspace = { id: `w-${randomBytes(8).toString('hex')}`, user_id: u.id, subdomain: sub, status: 'stopped', setup_token: randomBytes(16).toString('hex'), created_at: now() };
+    try {
+      db.prepare('INSERT INTO workspaces (id, user_id, subdomain, status, setup_token, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(w.id, w.user_id, w.subdomain, w.status, w.setup_token, w.created_at);
+    } catch {
+      throw new ApiError(409, 'Questo nome e\' gia\' preso');
+    }
+    try {
+      await startWorkspace(w);
+    } catch (err) {
+      db.prepare('DELETE FROM workspaces WHERE id = ?').run(w.id);
+      await orchestrator.remove(w.id, true).catch(() => {});
+      throw err;
+    }
+    return c.json({ workspace: await publicWorkspace(w) });
+  });
+
+  app.post('/api/workspace/:action{start|stop}', async (c) => {
+    const w = workspaceOf(requireUser(c).id);
+    if (!w) throw new ApiError(404, 'Non hai ancora un ambiente');
+    await (c.req.param('action') === 'start' ? startWorkspace(w) : stopWorkspace(w));
+    return c.json({ workspace: await publicWorkspace(w) });
+  });
+
+  app.delete('/api/workspace', async (c) => {
+    const w = workspaceOf(requireUser(c).id);
+    if (!w) throw new ApiError(404, 'Non hai ancora un ambiente');
+    if (c.req.query('confirm') !== w.subdomain) throw new ApiError(400, `Per eliminare scrivi il nome: ${w.subdomain}`);
+    await orchestrator.remove(w.id, true);
+    db.prepare('DELETE FROM workspaces WHERE id = ?').run(w.id);
+    onWorkspaceChange?.(w.subdomain);
+    return c.json({ ok: true });
+  });
+
+  app.get('/api/admin/workspaces', async (c) => {
+    requireAdmin(c);
+    const rows = db.prepare('SELECT w.id, w.subdomain, w.created_at, u.email FROM workspaces w JOIN users u ON u.id = w.user_id ORDER BY w.created_at DESC').all() as { id: string; subdomain: string; created_at: number; email: string }[];
+    const out = await Promise.all(rows.map(async (r) => ({ ...r, status: (await orchestrator.info(r.id).catch(() => null))?.status ?? 'unknown', url: `https://${r.subdomain}.${rootDomain}` })));
+    return c.json({ workspaces: out });
+  });
+
+  app.post('/api/admin/workspaces/:id/stop', async (c) => {
+    requireAdmin(c);
+    const w = db.prepare('SELECT * FROM workspaces WHERE id = ?').get(c.req.param('id')) as Workspace | undefined;
+    if (!w) throw new ApiError(404, 'Ambiente non trovato');
+    await stopWorkspace(w);
     return c.json({ ok: true });
   });
 

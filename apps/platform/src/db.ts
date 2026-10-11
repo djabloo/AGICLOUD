@@ -44,6 +44,15 @@ export function openDb(file: string): DatabaseSync {
       kind TEXT NOT NULL,
       expires_at INTEGER NOT NULL
     );
+    -- Ambiente AgiCloud dell'utente: un container su <subdomain>.<dominio>
+    CREATE TABLE IF NOT EXISTS workspaces (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      subdomain TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL DEFAULT 'stopped' CHECK (status IN ('stopped','running')),
+      setup_token TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
     -- Accessi esterni (Google, GitHub): un utente puo' averne piu' di uno
     CREATE TABLE IF NOT EXISTS identities (
       provider TEXT NOT NULL,
