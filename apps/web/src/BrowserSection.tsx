@@ -3,6 +3,7 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { api, type AgentInfo, type ThreadSummary } from './api';
 import { BrowserView } from './BrowserView';
+import { useT } from './i18n';
 import { Chat } from './Chat';
 
 const SELECTED_KEY = 'agicloud_browser_thread';
@@ -25,6 +26,7 @@ export function BrowserSection({
   onOpenTerminal: (cwd: string) => void;
 }) {
   const id = useId();
+  const t = useT();
   const chats = threads.filter((t) => t.browser && !t.archived).sort((a, b) => b.updatedAt - a.updatedAt);
   const [selected, setSelected] = useState<string | null>(() => localStorage.getItem(SELECTED_KEY));
   const [pane, setPane] = useState<'browser' | 'chat'>('browser');
@@ -50,10 +52,10 @@ export function BrowserSection({
       // La chat del browser lavora nella cartella del progetto piu' recente (serve solo come base)
       const p = await api.projects();
       const cwd = p.recent[0] ?? p.roots[0];
-      if (!cwd) throw new Error('Nessuna cartella di progetto disponibile');
-      const t = await api.createThread(agentId, cwd, false, null, true);
-      onCreated(t);
-      choose(t.id);
+      if (!cwd) throw new Error(t('browsersection.nessunaCartella'));
+      const th = await api.createThread(agentId, cwd, false, null, true);
+      onCreated(th);
+      choose(th.id);
       setPane('chat');
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -64,9 +66,9 @@ export function BrowserSection({
 
   const startForm = (
     <form className="browser-chat-start" onSubmit={(e) => void start(e)}>
-      <h2>Chatta con un agente sul browser</h2>
-      <p className="hint">L'agente vede e usa lo stesso browser: chiedigli di cercare, leggere, confrontare o compilare, e segui tutto in diretta.</p>
-      <label htmlFor={`${id}-agent`}>Agente</label>
+      <h2>{t('browsersection.chattaTitolo')}</h2>
+      <p className="hint">{t('browsersection.chattaHint')}</p>
+      <label htmlFor={`${id}-agent`}>{t('browsersection.agente')}</label>
       <select id={`${id}-agent`} value={agentId} onChange={(e) => setAgentId(e.target.value)}>
         {agents.map((a) => (
           <option key={a.id} value={a.id}>
@@ -75,7 +77,7 @@ export function BrowserSection({
         ))}
       </select>
       <button type="submit" className="btn primary" disabled={busy || !agentId}>
-        {busy ? 'Avvio…' : 'Inizia la chat'}
+        {busy ? t('browsersection.avvio') : t('browsersection.inizia')}
       </button>
       {error && (
         <p className="form-error" role="alert">
@@ -87,12 +89,12 @@ export function BrowserSection({
 
   return (
     <div className={`browser-layout show-${pane}${popup ? ' is-popup' : ''}`}>
-      <div className="browser-switch" role="group" aria-label="Mostra">
+      <div className="browser-switch" role="group" aria-label={t('browsersection.mostra')}>
         <button type="button" className="btn small-btn" aria-pressed={pane === 'browser'} onClick={() => setPane('browser')}>
-          Browser
+          {t('browsersection.pannelloBrowser')}
         </button>
         <button type="button" className="btn small-btn" aria-pressed={pane === 'chat'} onClick={() => setPane('chat')}>
-          Chat{current?.status === 'running' ? ' · al lavoro' : ''}
+          {current?.status === 'running' ? t('browsersection.pannelloChatLavoro') : t('browsersection.pannelloChat')}
         </button>
       </div>
 
@@ -100,19 +102,19 @@ export function BrowserSection({
         <BrowserView popup={popup} />
       </div>
 
-      <aside className="browser-chat" aria-label="Chat con l'agente sul browser">
+      <aside className="browser-chat" aria-label={t('browsersection.chatLabel')}>
         {chats.length > 0 && (
           <div className="browser-chat-pick">
             <label htmlFor={`${id}-pick`} className="visually-hidden">
-              Chat del browser
+              {t('browsersection.chatDelBrowser')}
             </label>
             <select id={`${id}-pick`} value={current?.id ?? ''} onChange={(e) => (e.target.value === '__new' ? setSelected('__new') : choose(e.target.value))}>
-              {chats.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title} · {agentLabel(t.agentId)}
+              {chats.map((th) => (
+                <option key={th.id} value={th.id}>
+                  {t('browsersection.chatOpzione', { title: th.title, agent: agentLabel(th.agentId) })}
                 </option>
               ))}
-              <option value="__new">+ Nuova chat del browser</option>
+              <option value="__new">{t('browsersection.nuovaChat')}</option>
             </select>
           </div>
         )}

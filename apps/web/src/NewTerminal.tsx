@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { ProjectPicker } from './ProjectPicker';
+import { useT } from './i18n';
 
 interface Props {
   open: boolean;
@@ -13,6 +14,7 @@ interface Props {
 
 export function NewTerminalDialog({ open, initialCwd, error, busy, onClose, onCreate }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
+  const t = useT();
   const id = useId();
   const [cwd, setCwd] = useState('');
   const [claude, setClaude] = useState(false);
@@ -35,13 +37,13 @@ export function NewTerminalDialog({ open, initialCwd, error, busy, onClose, onCr
   return (
     <dialog ref={ref} className="dialog" aria-labelledby={`${id}-title`} onClose={onClose}>
       <form onSubmit={submit}>
-        <h2 id={`${id}-title`}>Nuovo terminale</h2>
+        <h2 id={`${id}-title`}>{t('nuovoterminale.titolo')}</h2>
 
         <ProjectPicker active={open} cwd={cwd} onChange={setCwd} />
 
         <label className="check-row">
           <input type="checkbox" checked={claude} onChange={(e) => setClaude(e.target.checked)} />
-          <span>Avvia subito Claude Code (interfaccia da terminale)</span>
+          <span>{t('nuovoterminale.avviaClaude')}</span>
         </label>
 
         {error && (
@@ -52,10 +54,10 @@ export function NewTerminalDialog({ open, initialCwd, error, busy, onClose, onCr
 
         <div className="dialog-actions">
           <button type="button" className="btn" onClick={onClose}>
-            Annulla
+            {t('nuovoterminale.annulla')}
           </button>
           <button type="submit" className="btn primary" disabled={busy || !cwd.trim()}>
-            {busy ? 'Apertura…' : 'Apri'}
+            {busy ? t('nuovoterminale.apertura') : t('nuovoterminale.apri')}
           </button>
         </div>
       </form>
