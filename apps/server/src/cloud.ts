@@ -1,7 +1,7 @@
 // Plugin Cloud: i server Hetzner dentro AgiCloud (stato, costi, accensione, backup, snapshot,
 // nuove VPS da un'immagine). Token HETZNER_API_TOKEN dal portachiavi, mai al browser.
 //
-// Regole di sicurezza (come in AgyCloud):
+// Regole di sicurezza:
 // - eliminare, reinstallare da un'immagine: SOLO server creati da AgiCloud (etichetta agicloud=worker)
 //   e mai con la protezione di Hetzner attiva; il server di produzione non si tocca;
 // - eliminare uno snapshot: mai quello indicato come immagine dei nodi;
@@ -16,8 +16,8 @@ import type { Settings } from './settings.js';
 const API = 'https://api.hetzner.cloud/v1';
 const KEY_NAME = 'HETZNER_API_TOKEN';
 const WORKER_LABEL = 'agicloud';
-/** Snapshot base dei nodi (oggi quello di AgyCloud v3): protetto dall'eliminazione */
-const NODE_IMAGE = process.env.CLOUD_NODE_IMAGE || '438404993';
+/** Snapshot aggiuntivo da proteggere dall'eliminazione (facoltativo): quello in uso dei nodi e' gia' protetto da settings.nodeImage() */
+const NODE_IMAGE = process.env.CLOUD_NODE_IMAGE || '';
 
 type Json = Record<string, any>;
 
