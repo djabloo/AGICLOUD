@@ -1,9 +1,11 @@
 import { useEffect, useId, useState } from 'react';
 import { api, type DirListing } from './api';
+import { useT } from './i18n';
 
 /** Cartella del progetto: campo libero + recenti + navigazione tra le cartelle consentite */
 export function ProjectPicker({ active, cwd, onChange }: { active: boolean; cwd: string; onChange: (cwd: string) => void }) {
   const id = useId();
+  const t = useT();
   const [recent, setRecent] = useState<string[]>([]);
   const [listing, setListing] = useState<DirListing | null>(null);
   const [browseError, setBrowseError] = useState('');
@@ -32,7 +34,7 @@ export function ProjectPicker({ active, cwd, onChange }: { active: boolean; cwd:
 
   return (
     <>
-      <label htmlFor={`${id}-cwd`}>Cartella del progetto</label>
+      <label htmlFor={`${id}-cwd`}>{t('projectpicker.cartella')}</label>
       <input
         id={`${id}-cwd`}
         value={cwd}
@@ -47,7 +49,7 @@ export function ProjectPicker({ active, cwd, onChange }: { active: boolean; cwd:
       {recent.length > 0 && (
         <div className="recent">
           <h3 className="mini-title" id={`${id}-recent`}>
-            Recenti
+            {t('projectpicker.recenti')}
           </h3>
           <ul className="chips" aria-labelledby={`${id}-recent`}>
             {recent.map((r) => (
@@ -64,17 +66,17 @@ export function ProjectPicker({ active, cwd, onChange }: { active: boolean; cwd:
       <div className="browser">
         <div className="browser-head">
           <h3 className="mini-title" id={`${id}-browse`}>
-            Sfoglia
+            {t('projectpicker.sfoglia')}
           </h3>
           <span className="browser-path" title={listing?.path ?? undefined}>
-            {listing?.path ? shortPath(listing.path) : 'Radici consentite'}
+            {listing?.path ? shortPath(listing.path) : t('projectpicker.radici')}
           </span>
         </div>
         <ul className="dir-list" aria-labelledby={`${id}-browse`}>
           {listing?.path && (
             <li>
               <button type="button" className="dir-btn" onClick={() => void browse(listing.parent ?? undefined)}>
-                <span aria-hidden="true">↑</span> {listing.parent ? 'Cartella superiore' : 'Radici consentite'}
+                <span aria-hidden="true">↑</span> {listing.parent ? t('projectpicker.superiore') : t('projectpicker.radici')}
               </button>
             </li>
           )}
@@ -86,7 +88,7 @@ export function ProjectPicker({ active, cwd, onChange }: { active: boolean; cwd:
               </button>
             </li>
           ))}
-          {listing && listing.dirs.length === 0 && <li className="hint">Nessuna sottocartella</li>}
+          {listing && listing.dirs.length === 0 && <li className="hint">{t('projectpicker.nessunaSotto')}</li>}
         </ul>
         {browseError && (
           <p className="form-error" role="alert">

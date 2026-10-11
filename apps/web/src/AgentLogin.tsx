@@ -1,16 +1,11 @@
 // Login guidato di un agente, senza terminale: apri il link, (se serve) incolla il codice, fatto.
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { api, type GuidedLogin } from './api';
+import { useT } from './i18n';
 import { copyText } from './termText';
 
-const STATUS_TEXT: Record<GuidedLogin['state'], string> = {
-  waiting: 'In attesa del tuo accesso',
-  checking: 'Verifica del codice…',
-  done: 'Accesso completato',
-  failed: 'Accesso non riuscito',
-};
-
 export function AgentLogin({ agentId, label, onClose, onDone }: { agentId: string; label: string; onClose: () => void; onDone: () => void }) {
+  const t = useT();
   const id = useId();
   const [login, setLogin] = useState<GuidedLogin | null>(null);
   const [error, setError] = useState('');
@@ -72,31 +67,37 @@ export function AgentLogin({ agentId, label, onClose, onDone }: { agentId: strin
 
   const copy = async () => {
     if (!login?.url) return;
-    setCopied((await copyText(login.url)) ? 'Link copiato' : 'Copia non riuscita: tieni premuto sul pulsante "Apri" e copia da li\'');
+    setCopied((await copyText(login.url)) ? t('agentlogin.linkCopiato') : t('agentlogin.copiaFallita'));
   };
 
   const state = login?.state;
   const busy = !login || (!login.url && state === 'waiting');
+  const STATUS_TEXT: Record<GuidedLogin['state'], string> = {
+    waiting: t('agentlogin.statoAttesa'),
+    checking: t('agentlogin.statoVerifica'),
+    done: t('agentlogin.statoFatto'),
+    failed: t('agentlogin.statoFallito'),
+  };
 
   return (
     <section className="guided-login" aria-labelledby={`${id}-title`}>
       <h4 id={`${id}-title`} ref={headingRef} tabIndex={-1}>
-        Accesso a {label}
+        {t('agentlogin.titolo', { label })}
       </h4>
       <p className={`guided-status guided-${state ?? 'waiting'}`} role="status">
-        {busy ? 'Preparo il link di accesso…' : STATUS_TEXT[state!]}
+        {busy ? t('agentlogin.preparoLink') : STATUS_TEXT[state!]}
       </p>
 
       {login?.url && state !== 'done' && (
         <ol className="guided-steps">
           <li>
-            <span>Apri la pagina di accesso e conferma con il tuo account.</span>
+            <span>{t('agentlogin.apriEConferma')}</span>
             <span className="agent-actions">
               <a className="btn primary small-btn" href={login.url} target="_blank" rel="noopener noreferrer">
-                Apri la pagina di accesso<span className="visually-hidden"> (nuova scheda)</span>
+                {t('agentlogin.apriPagina')}<span className="visually-hidden">{t('agentlogin.nuovaScheda')}</span>
               </a>
               <button type="button" className="btn small-btn" onClick={() => void copy()}>
-                Copia link
+                {t('agentlogin.copiaLink')}
               </button>
             </span>
             <span className="hint" aria-live="polite">
@@ -106,7 +107,7 @@ export function AgentLogin({ agentId, label, onClose, onDone }: { agentId: strin
           {login.needsCode ? (
             <li>
               <form className="guided-code" onSubmit={(e) => void submit(e)}>
-                <label htmlFor={`${id}-code`}>La pagina ti mostra un codice: incollalo qui</label>
+                <label htmlFor={`${id}-code`}>{t('agentlogin.incollaCodice')}</label>
                 <div className="secret-row">
                   <input
                     id={`${id}-code`}
@@ -120,13 +121,13 @@ export function AgentLogin({ agentId, label, onClose, onDone }: { agentId: strin
                     aria-invalid={login.error ? true : undefined}
                   />
                   <button type="submit" className="btn primary" disabled={state === 'checking' || !code.trim()}>
-                    Invia codice
+                    {t('agentlogin.inviaCodice')}
                   </button>
                 </div>
               </form>
             </li>
           ) : (
-            <li>Fatto l'accesso, questa scheda si aggiorna da sola.</li>
+            <li>{t('agentlogin.autoAggiorna')}</li>
           )}
         </ol>
       )}
@@ -139,14 +140,14 @@ export function AgentLogin({ agentId, label, onClose, onDone }: { agentId: strin
 
       {login?.output && state !== 'done' && (
         <details className="guided-details">
-          <summary>Dettagli tecnici</summary>
+          <summary>{t('agentlogin.dettagli')}</summary>
           <pre>{login.output}</pre>
         </details>
       )}
 
       <div className="agent-actions">
         <button type="button" className="btn small-btn" onClick={cancel}>
-          {state === 'done' || state === 'failed' ? 'Chiudi' : 'Annulla'}
+          {state === 'done' || state === 'failed' ? t('agentlogin.chiudi') : t('agentlogin.annulla')}
         </button>
       </div>
     </section>

@@ -2,6 +2,7 @@
 // Scrivendo compare subito sotto l'elenco dei risultati (clic, oppure frecce + Invio);
 // la tendina nativa resta per sfogliare tutto, comoda su telefono e accessibile.
 import { useState, type KeyboardEvent } from 'react';
+import { useT } from './i18n';
 import type { ConfigOption } from './transcript';
 
 /** Oltre questo numero di voci compare il campo di ricerca */
@@ -34,6 +35,7 @@ export function SearchSelect({
 }) {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
+  const t = useT();
   const flat: Flat[] = options.flatMap((o) => ('group' in o ? o.options.map((g) => ({ ...g, group: o.name })) : [o]));
   const searchable = flat.length > SEARCH_FROM;
   // Ogni parola deve comparire nel nome, nel gruppo o nell'id (es. "zen pickle")
@@ -81,7 +83,7 @@ export function SearchSelect({
           <input
             type="search"
             className="cfg-filter"
-            placeholder="Cerca…"
+            placeholder={t('searchselect.cerca')}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -89,7 +91,7 @@ export function SearchSelect({
             }}
             onKeyDown={onKey}
             role="combobox"
-            aria-label={`Cerca in ${label}`}
+            aria-label={t('searchselect.cercaIn', { label })}
             aria-expanded={open}
             aria-controls={listId}
             aria-autocomplete="list"
@@ -98,10 +100,10 @@ export function SearchSelect({
             disabled={disabled}
           />
           {open && (
-            <ul id={listId} className="cfg-results" role="listbox" aria-label={`Risultati per ${label}`}>
+            <ul id={listId} className="cfg-results" role="listbox" aria-label={t('searchselect.risultatiPer', { label })}>
               {shown.length === 0 ? (
                 <li className="cfg-noresult" role="presentation">
-                  Nessun risultato
+                  {t('searchselect.nessunRisultato')}
                 </li>
               ) : (
                 shown.map((o, i) => (
@@ -125,13 +127,13 @@ export function SearchSelect({
               )}
               {results.length > MAX_RESULTS && (
                 <li className="cfg-noresult" role="presentation">
-                  Altri {results.length - MAX_RESULTS}: scrivi qualcosa in piu'
+                  {t('searchselect.altri', { n: results.length - MAX_RESULTS })}
                 </li>
               )}
             </ul>
           )}
           <span className="visually-hidden" aria-live="polite">
-            {open ? (results.length ? `${results.length} ${results.length === 1 ? 'risultato' : 'risultati'}` : 'Nessun risultato') : ''}
+            {open ? (results.length ? t('searchselect.contaRisultati', { n: results.length }) : t('searchselect.nessunRisultato')) : ''}
           </span>
         </div>
       )}

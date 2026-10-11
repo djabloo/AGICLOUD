@@ -9,24 +9,29 @@ import { SearchSelect } from './SearchSelect';
 import { LanguagePicker } from './i18n/LanguagePicker';
 import { PluginsSection } from './PluginsSection';
 import { getTheme, setTheme, type ThemeChoice } from './theme';
+import { useT } from './i18n';
 
-const LOGIN_TEXT: Record<AgentStatus['login']['state'], string> = {
-  ok: 'Collegato',
-  missing: 'Non collegato',
-  unknown: 'Stato sconosciuto',
-};
+function getLoginText(t: ReturnType<typeof useT>): Record<AgentStatus['login']['state'], string> {
+  return {
+    ok: t('impostazioni.collegato'),
+    missing: t('impostazioni.nonCollegato'),
+    unknown: t('impostazioni.statoSconosciuto'),
+  };
+}
 
 type PageId = 'agenti' | 'plugin' | 'chiavi' | 'notifiche' | 'aspetto' | 'generale' | 'accesso';
 
-const PAGES: { id: PageId; label: string; desc: string }[] = [
-  { id: 'agenti', label: 'Agenti', desc: 'Login, stato e scelte predefinite' },
-  { id: 'chiavi', label: 'Chiavi', desc: 'Portachiavi per processi e terminali' },
-  { id: 'notifiche', label: 'Notifiche e app', desc: 'Avvisi sul telefono, installazione' },
-  { id: 'plugin', label: 'Plugin', desc: 'Installa, attiva o spegni le funzioni in piu\'' },
-  { id: 'aspetto', label: 'Aspetto', desc: 'Tema chiaro o scuro' },
-  { id: 'generale', label: 'Cartelle e pausa', desc: 'Progetti consentiti, pausa degli agenti' },
-  { id: 'accesso', label: 'Accesso', desc: 'Esci da questo dispositivo' },
-];
+function getPages(t: ReturnType<typeof useT>): { id: PageId; label: string; desc: string }[] {
+  return [
+    { id: 'agenti', label: t('impostazioni.voceAgenti'), desc: t('impostazioni.voceAgentiDesc') },
+    { id: 'chiavi', label: t('impostazioni.voceChiavi'), desc: t('impostazioni.voceChiaviDesc') },
+    { id: 'notifiche', label: t('impostazioni.voceNotifiche'), desc: t('impostazioni.voceNotificheDesc') },
+    { id: 'plugin', label: t('impostazioni.vocePlugin'), desc: t('impostazioni.vocePluginDesc') },
+    { id: 'aspetto', label: t('impostazioni.voceAspetto'), desc: t('impostazioni.voceAspettoDesc') },
+    { id: 'generale', label: t('impostazioni.voceGenerale'), desc: t('impostazioni.voceGeneraleDesc') },
+    { id: 'accesso', label: t('impostazioni.voceAccesso'), desc: t('impostazioni.voceAccessoDesc') },
+  ];
+}
 
 /** page: voce scelta (#/settings/<voce>). Senza voce: su telefono l'elenco, su schermo largo la prima */
 export function SettingsView({
@@ -42,6 +47,8 @@ export function SettingsView({
   onPluginsChanged: (list: PluginInfo[]) => void;
   features: string[] | null;
 }) {
+  const t = useT();
+  const PAGES = getPages(t);
   const [agents, setAgents] = useState<AgentStatus[] | null>(null);
   const [general, setGeneral] = useState<GeneralSettings | null>(null);
   const [error, setError] = useState('');
@@ -59,7 +66,7 @@ export function SettingsView({
       const s = await api.settings(refresh);
       setAgents(s.agents);
       setGeneral(s.general);
-      if (refresh) setAnnounce('Stato degli agenti aggiornato');
+      if (refresh) setAnnounce(t('impostazioni.statoAgentiAggiornato'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -85,13 +92,13 @@ export function SettingsView({
     <section className="settings" aria-labelledby="settings-title">
       <header className="chat-header">
         <div className="chat-heading">
-          <h1 id="settings-title">Impostazioni</h1>
-          <p className="chat-meta">{current ? current.label : 'Scegli una voce'}</p>
+          <h1 id="settings-title">{t('impostazioni.titolo')}</h1>
+          <p className="chat-meta">{current ? current.label : t('impostazioni.scegliVoce')}</p>
         </div>
       </header>
 
       <div className={`settings-body settings-layout ${current ? 'has-page' : 'no-page'}`}>
-        <nav className="settings-nav" aria-label="Voci delle impostazioni">
+        <nav className="settings-nav" aria-label={t('impostazioni.vociLabel')}>
           <ul>
             {PAGES.map((p) => (
               <li key={p.id}>
@@ -106,7 +113,7 @@ export function SettingsView({
 
         <div className="settings-content" ref={contentRef}>
           <a className="settings-back" href="#/settings">
-            <span aria-hidden="true">‹ </span>Tutte le impostazioni
+            <span aria-hidden="true">‹ </span>{t('impostazioni.tutteLeImpostazioni')}
           </a>
           {error && (
             <p className="notice notice-error" role="alert">
@@ -118,15 +125,15 @@ export function SettingsView({
             <section aria-labelledby="agents-title" className="settings-group">
               <div className="group-head">
                 <h2 id="agents-title" tabIndex={-1}>
-                  Agenti
+                  {t('impostazioni.agenti')}
                 </h2>
                 <button type="button" className="btn small-btn" onClick={() => void load(true)} disabled={refreshing}>
                   <Icon name="refresh" />
-                  <span>{refreshing ? 'Controllo…' : 'Ricontrolla'}</span>
+                  <span>{refreshing ? t('impostazioni.controllo') : t('impostazioni.ricontrolla')}</span>
                 </button>
               </div>
               {!agents ? (
-                <p className="hint">Controllo degli agenti in corso…</p>
+                <p className="hint">{t('impostazioni.controlloInCorso')}</p>
               ) : (
                 <ul className="agent-cards">
                   {agents.map((a) => (
@@ -147,16 +154,15 @@ export function SettingsView({
 
           {shown.id === 'aspetto' && <AppearanceSection />}
 
-          {shown.id === 'generale' && (general ? <GeneralForm general={general} onSaved={setGeneral} /> : <p className="hint">Caricamento…</p>)}
+          {shown.id === 'generale' && (general ? <GeneralForm general={general} onSaved={setGeneral} /> : <p className="hint">{t('impostazioni.caricamento')}</p>)}
 
           {shown.id === 'accesso' && (
             <section aria-labelledby="access-title" className="settings-group">
               <h2 id="access-title" tabIndex={-1}>
-                Accesso
+                {t('impostazioni.accesso')}
               </h2>
               <p className="hint">
-                Il token di accesso sta sul server in <code>/home/user/.secrets/agicloud-app.env</code>. Uscendo, questo
-                browser lo dimentica e alla prossima apertura lo richiede.
+                {t('impostazioni.accessoHintPrima')} <code>/home/user/.secrets/agicloud-app.env</code>. {t('impostazioni.accessoHintDopo')}
               </p>
               <button
                 type="button"
@@ -166,7 +172,7 @@ export function SettingsView({
                   onLogout();
                 }}
               >
-                Esci da questo dispositivo
+                {t('impostazioni.esci')}
               </button>
             </section>
           )}
@@ -180,14 +186,18 @@ export function SettingsView({
   );
 }
 
-const THEMES: { id: ThemeChoice; label: string; desc: string }[] = [
-  { id: 'system', label: 'Automatico', desc: 'Segue il telefono o il computer' },
-  { id: 'light', label: 'Chiaro', desc: '' },
-  { id: 'dark', label: 'Scuro', desc: '' },
-];
+function getThemes(t: ReturnType<typeof useT>): { id: ThemeChoice; label: string; desc: string }[] {
+  return [
+    { id: 'system', label: t('impostazioni.temaAutomatico'), desc: t('impostazioni.temaAutomaticoDesc') },
+    { id: 'light', label: t('impostazioni.temaChiaro'), desc: '' },
+    { id: 'dark', label: t('impostazioni.temaScuro'), desc: '' },
+  ];
+}
 
 function AppearanceSection() {
+  const t = useT();
   const id = useId();
+  const THEMES = getThemes(t);
   const [theme, setThemeState] = useState<ThemeChoice>(getTheme);
   const choose = (t: ThemeChoice) => {
     setTheme(t);
@@ -196,10 +206,10 @@ function AppearanceSection() {
   return (
     <section aria-labelledby={`${id}-title`} className="settings-group">
       <h2 id={`${id}-title`} tabIndex={-1}>
-        Aspetto
+        {t('impostazioni.aspetto')}
       </h2>
       <fieldset className="choice-group">
-        <legend>Tema</legend>
+        <legend>{t('impostazioni.tema')}</legend>
         {THEMES.map((t) => (
           <label key={t.id} className="choice">
             <input type="radio" name={`${id}-theme`} value={t.id} checked={theme === t.id} onChange={() => choose(t.id)} />
@@ -211,7 +221,7 @@ function AppearanceSection() {
           </label>
         ))}
       </fieldset>
-      <p className="hint">Vale per questo dispositivo. Il terminale resta scuro.</p>
+      <p className="hint">{t('impostazioni.aspettoHint')}</p>
       <LanguagePicker />
     </section>
   );
@@ -226,6 +236,7 @@ function AgentCard({
   onOpenTerminal: (t: TerminalSummary) => void;
   onChanged: () => void;
 }) {
+  const t = useT();
   const id = useId();
   const [error, setError] = useState('');
   const loginState = agent.installed ? agent.login.state : 'unknown';
@@ -253,7 +264,7 @@ function AgentCard({
         <h3 id={`${id}-name`}>{agent.label}</h3>
         <p className={`badge badge-${loginState}`}>
           <span className="status-dot" aria-hidden="true" />
-          {agent.installed ? LOGIN_TEXT[agent.login.state] : 'Non installato'}
+          {agent.installed ? getLoginText(t)[agent.login.state] : t('impostazioni.nonInstallato')}
         </p>
       </div>
       <p className="agent-detail">
@@ -267,15 +278,15 @@ function AgentCard({
         <div className="agent-actions">
           {agent.guidedLogin && (
             <button ref={loginBtn} type="button" className={`btn small-btn${agent.login.state === 'ok' ? '' : ' primary'}`} onClick={() => setGuided(true)}>
-              <span>{agent.login.state === 'ok' ? 'Accedi di nuovo' : 'Accedi'}</span>
+              <span>{agent.login.state === 'ok' ? t('impostazioni.accediDiNuovo') : t('impostazioni.accedi')}</span>
             </button>
           )}
           <button type="button" className="btn small-btn" onClick={() => void login()}>
             <Icon name="terminal" />
-            <span>{agent.guidedLogin ? 'Dal terminale' : agent.login.state === 'ok' ? 'Gestisci login' : 'Accedi'}</span>
+            <span>{agent.guidedLogin ? t('impostazioni.dalTerminale') : agent.login.state === 'ok' ? t('impostazioni.gestisciLogin') : t('impostazioni.accedi')}</span>
           </button>
           <span className="hint">
-            {agent.guidedLogin ? 'Ti serve solo il browser' : 'Apre un terminale con'} {!agent.guidedLogin && <code>{agent.loginCommand}</code>}
+            {agent.guidedLogin ? t('impostazioni.serveSoloBrowser') : t('impostazioni.apreTerminaleCon')} {!agent.guidedLogin && <code>{agent.loginCommand}</code>}
           </span>
         </div>
       )}
@@ -319,6 +330,7 @@ function SecretField({
   isSet: boolean;
   onChanged: () => void;
 }) {
+  const t = useT();
   const id = useId();
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
@@ -331,7 +343,7 @@ function SecretField({
     try {
       await api.setAgentEnv(agentId, name, value.trim());
       setValue('');
-      setMsg('Chiave salvata');
+      setMsg(t('impostazioni.chiaveSalvata'));
       onChanged();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : String(err));
@@ -344,7 +356,7 @@ function SecretField({
     setBusy(true);
     try {
       await api.setAgentEnv(agentId, name, null);
-      setMsg('Chiave rimossa');
+      setMsg(t('impostazioni.chiaveRimossa'));
       onChanged();
     } finally {
       setBusy(false);
@@ -354,7 +366,7 @@ function SecretField({
   return (
     <form className="secret-field" onSubmit={save}>
       <label htmlFor={`${id}-v`}>
-        {label} <span className="hint">({isSet ? 'impostata' : 'non impostata'})</span>
+        {label} <span className="hint">({isSet ? t('impostazioni.impostata') : t('impostazioni.nonImpostata')})</span>
       </label>
       <div className="secret-row">
         <input
@@ -364,15 +376,15 @@ function SecretField({
           spellCheck={false}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={isSet ? '•••••••• (inserisci per sostituire)' : name}
+          placeholder={isSet ? t('impostazioni.sostituisciPlaceholder') : name}
           aria-describedby={`${id}-msg`}
         />
         <button type="submit" className="btn small-btn" disabled={busy || !value.trim()}>
-          Salva
+          {t('impostazioni.salva')}
         </button>
         {isSet && (
           <button type="button" className="btn small-btn" disabled={busy} onClick={() => void remove()}>
-            Rimuovi
+            {t('impostazioni.rimuovi')}
           </button>
         )}
       </div>
@@ -385,6 +397,7 @@ function SecretField({
 
 /** Scelte predefinite (modalita', modello...) per le nuove conversazioni con questo agente */
 function Defaults({ agent }: { agent: AgentStatus }) {
+  const t = useT();
   const id = useId();
   const [values, setValues] = useState(agent.defaults);
   const [msg, setMsg] = useState('');
@@ -393,7 +406,7 @@ function Defaults({ agent }: { agent: AgentStatus }) {
   if (!selects.length) {
     return (
       <p className="hint">
-        Modalita' e modello predefiniti: apri una conversazione con {agent.label} e le scelte disponibili compariranno qui.
+        {t('impostazioni.sceltePredefiniteHint', { agente: agent.label })}
       </p>
     );
   }
@@ -408,7 +421,7 @@ function Defaults({ agent }: { agent: AgentStatus }) {
     });
     try {
       await api.setAgentDefault(agent.id, configId, v);
-      setMsg('Salvato: vale per le nuove conversazioni');
+      setMsg(t('impostazioni.salvatoNuoveConversazioni'));
     } catch (err) {
       setMsg(err instanceof Error ? err.message : String(err));
     }
@@ -416,7 +429,7 @@ function Defaults({ agent }: { agent: AgentStatus }) {
 
   return (
     <fieldset className="defaults">
-      <legend>Per le nuove conversazioni</legend>
+      <legend>{t('impostazioni.perNuoveConversazioni')}</legend>
       <div className="defaults-row">
         {selects.map((o) => (
           <SearchSelect
@@ -424,7 +437,7 @@ function Defaults({ agent }: { agent: AgentStatus }) {
             id={`${id}-${o.id}`}
             label={o.name}
             value={String(values[o.id] ?? '')}
-            options={[{ value: '', name: 'Predefinito dell\'agente' }, ...(o.options ?? [])]}
+            options={[{ value: '', name: t('impostazioni.predefinitoAgente') }, ...(o.options ?? [])]}
             onChange={(v) => void change(o.id, v)}
           />
         ))}
@@ -437,6 +450,7 @@ function Defaults({ agent }: { agent: AgentStatus }) {
 }
 
 function GeneralForm({ general, onSaved }: { general: GeneralSettings; onSaved: (g: GeneralSettings) => void }) {
+  const t = useT();
   const id = useId();
   const [roots, setRoots] = useState(general.projectRoots.join('\n'));
   const [idle, setIdle] = useState(String(general.idleMinutes));
@@ -454,7 +468,7 @@ function GeneralForm({ general, onSaved }: { general: GeneralSettings; onSaved: 
       });
       onSaved(g);
       setRoots(g.projectRoots.join('\n'));
-      setMsg('Impostazioni salvate');
+      setMsg(t('impostazioni.impostazioniSalvate'));
     } catch (error) {
       setErr(error instanceof Error ? error.message : String(error));
     }
@@ -463,10 +477,10 @@ function GeneralForm({ general, onSaved }: { general: GeneralSettings; onSaved: 
   return (
     <section aria-labelledby={`${id}-title`} className="settings-group">
       <h2 id={`${id}-title`} tabIndex={-1}>
-        Cartelle e pausa
+        {t('impostazioni.cartelleEPausa')}
       </h2>
       <form className="general-form" onSubmit={save}>
-        <label htmlFor={`${id}-roots`}>Cartelle consentite</label>
+        <label htmlFor={`${id}-roots`}>{t('impostazioni.cartelleConsentite')}</label>
         <textarea
           id={`${id}-roots`}
           className="mono-input"
@@ -477,10 +491,10 @@ function GeneralForm({ general, onSaved }: { general: GeneralSettings; onSaved: 
           spellCheck={false}
         />
         <p id={`${id}-roots-hint`} className="hint">
-          Una per riga. Conversazioni e terminali si possono aprire solo qui dentro.
+          {t('impostazioni.cartelleHint')}
         </p>
 
-        <label htmlFor={`${id}-idle`}>Pausa dopo (minuti di inattivita')</label>
+        <label htmlFor={`${id}-idle`}>{t('impostazioni.pausaDopo')}</label>
         <input
           id={`${id}-idle`}
           type="number"
@@ -493,7 +507,7 @@ function GeneralForm({ general, onSaved }: { general: GeneralSettings; onSaved: 
           aria-describedby={`${id}-idle-hint`}
         />
         <p id={`${id}-idle-hint`} className="hint">
-          Dopo questo tempo l'agente si spegne; al messaggio successivo riprende la stessa sessione.
+          {t('impostazioni.pausaHint')}
         </p>
 
         {err && (
@@ -503,7 +517,7 @@ function GeneralForm({ general, onSaved }: { general: GeneralSettings; onSaved: 
         )}
         <div className="dialog-actions start">
           <button type="submit" className="btn primary">
-            Salva
+            {t('impostazioni.salva')}
           </button>
           <span className="hint" aria-live="polite">
             {msg}
