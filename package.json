@@ -9,7 +9,7 @@
   "scripts": {
     "typecheck": "tsc -p . && tsc -p apps/web",
     "probe": "tsx packages/bridge/src/probe.ts",
-    "test": "tsx --test 'packages/*/src/**/*.test.ts'",
+    "test": "tsx --test 'packages/*/src/**/*.test.ts' 'apps/server/src/**/*.test.ts'",
     "build": "npm run build -w @agicloud/web",
     "start": "npm start -w @agicloud/server"
   },

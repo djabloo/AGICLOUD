@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { config } from './config.js';
 import { HttpError } from './errors.js';
+import { isAllowed, PLAN_ERROR } from './features.js';
 
 export interface PluginSpec {
   id: string;
@@ -59,7 +60,14 @@ export class Plugins {
 
   isEnabled(id: string): boolean {
     const st = this.state[id];
+    // Un plugin non consentito dal piano non risulta mai attivo
+    if (!isAllowed(config.features, id)) return false;
     return Boolean(st?.installed && st.enabled);
+  }
+
+  /** Errore se il plugin non e' consentito dal piano */
+  private requirePlan(id: string): void {
+    if (!isAllowed(config.features, id)) throw new HttpError(409, `${this.specs.get(id)?.name ?? id}: ${PLAN_ERROR.toLowerCase()}`);
   }
 
   /** Errore chiaro se una funzione del plugin viene usata a plugin spento */
@@ -82,7 +90,7 @@ export class Plugins {
           requires: s.requires ?? null,
           source: s.source,
           installed: st.installed,
-          enabled: st.installed && st.enabled,
+          enabled: st.installed && st.enabled && isAllowed(config.features, s.id),
           health,
         };
       }),
@@ -91,6 +99,7 @@ export class Plugins {
 
   async install(id: string): Promise<void> {
     const spec = this.spec(id);
+    this.requirePlan(id);
     try {
       await spec.install?.();
     } catch (err) {
@@ -109,6 +118,7 @@ export class Plugins {
 
   setEnabled(id: string, enabled: boolean): void {
     const spec = this.spec(id);
+    if (enabled) this.requirePlan(id);
     const st = this.state[id];
     if (!st?.installed) throw new HttpError(409, `${spec.name} non e' installato`);
     st.enabled = enabled;
@@ -120,7 +130,10 @@ export class Plugins {
     app.use('*', async (c, next) => {
       const path = c.req.path;
       for (const s of this.specs.values()) {
-        if (s.routes.some((r) => path.startsWith(r)) && !this.isEnabled(s.id)) {
+        if (!s.routes.some((r) => path.startsWith(r))) continue;
+        // Prima il piano (403), poi il plugin spento (404)
+        if (!isAllowed(config.features, s.id)) return c.json({ error: PLAN_ERROR }, 403);
+        if (!this.isEnabled(s.id)) {
           return c.json({ error: `Il plugin ${s.name} non e' attivo` }, 404);
         }
       }

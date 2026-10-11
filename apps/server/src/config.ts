@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { parseFeatures } from './features.js';
 
 const env = process.env;
 
@@ -15,6 +16,8 @@ const dataDir = resolve(env.DATA_DIR || 'data');
 const workspacesRoot = resolve(env.WORKSPACES_ROOT || `${dataDir}/workspaces`);
 mkdirSync(workspacesRoot, { recursive: true });
 mkdirSync(`${dataDir}/threads`, { recursive: true });
+
+const features = parseFeatures(env.AGICLOUD_FEATURES);
 
 export const config = {
   host: env.HOST || '127.0.0.1',
@@ -50,6 +53,10 @@ export const config = {
   maxSessions: Number(env.MAX_SESSIONS || 6),
   /** Dopo quanto un agente inattivo viene spento (riprende da solo al messaggio successivo) */
   idleMs: Number(env.IDLE_MINUTES || 30) * 60_000,
+  /** Sezioni consentite dal piano (AGICLOUD_FEATURES): null = tutto */
+  features,
+  /** Elenco per l'interfaccia (GET /api/session): null = tutto */
+  featuresList: features ? [...features] : null,
 };
 
 // Il token non deve finire nell'ambiente di agenti e terminali

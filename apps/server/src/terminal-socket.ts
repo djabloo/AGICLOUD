@@ -17,13 +17,13 @@ const MAX_MESSAGE = 1024 * 1024;
 /** Altri WebSocket (es. Browser): true se la richiesta era sua */
 export type UpgradeHandler = (req: IncomingMessage, socket: Duplex, head: Buffer) => boolean;
 
-export function attachTerminalSockets(server: Server, terminals: TerminalStore, checkAccess: CheckAccess, others: UpgradeHandler[] = []): void {
+export function attachTerminalSockets(server: Server, terminals: TerminalStore, checkAccess: CheckAccess, others: UpgradeHandler[] = [], allowed: () => boolean = () => true): void {
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE });
 
   server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
     const match = PATH.exec(new URL(req.url ?? '/', 'http://x').pathname);
     if (!match && others.some((h) => h(req, socket, head))) return;
-    if (!match || !sameOrigin(req)) {
+    if (!match || !sameOrigin(req) || !allowed()) {
       socket.end('HTTP/1.1 403 Forbidden\r\n\r\n');
       return;
     }

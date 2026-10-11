@@ -107,6 +107,14 @@ export interface TerminalSummary {
   exited: boolean;
 }
 
+export interface SessionInfo {
+  ok: boolean;
+  authRequired?: boolean;
+  setupPending?: boolean;
+  /** Sezioni consentite dal piano: null = tutto */
+  features?: string[] | null;
+}
+
 export interface VaultKey {
   name: string;
   note: string;
@@ -343,7 +351,7 @@ export interface CloudBuildJob {
 }
 
 export const api = {
-  session: () => request<{ ok: boolean }>('GET', '/session'),
+  session: () => request<SessionInfo>('GET', '/session'),
   agents: () => request<AgentInfo[]>('GET', '/agents'),
   projects: () => request<{ roots: string[]; recent: string[] }>('GET', '/projects'),
   dirs: (path?: string) => request<DirListing>('GET', `/dirs${path ? `?path=${encodeURIComponent(path)}` : ''}`),

@@ -2,7 +2,7 @@
 import { useEffect, useId, useState } from 'react';
 import { api, type PluginInfo } from './api';
 
-export function PluginsSection({ onChanged }: { onChanged: (list: PluginInfo[]) => void }) {
+export function PluginsSection({ onChanged, features }: { onChanged: (list: PluginInfo[]) => void; features: string[] | null }) {
   const id = useId();
   const [list, setList] = useState<PluginInfo[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -73,7 +73,9 @@ export function PluginsSection({ onChanged }: { onChanged: (list: PluginInfo[]) 
                   </p>
                 )}
                 <div className="agent-actions">
-                  {!p.installed ? (
+                  {features !== null && !features.includes(p.id) ? (
+                    <p className="hint">Non incluso nel tuo piano</p>
+                  ) : !p.installed ? (
                     <button type="button" className="btn small-btn primary" disabled={busy !== null} onClick={() => void act(p, 'install')}>
                       {busy === p.id ? 'Installazione…' : 'Installa'}
                     </button>

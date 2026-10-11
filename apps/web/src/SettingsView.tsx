@@ -33,11 +33,13 @@ export function SettingsView({
   onOpenTerminal,
   onLogout,
   onPluginsChanged,
+  features,
 }: {
   page: string | null;
   onOpenTerminal: (t: TerminalSummary) => void;
   onLogout: () => void;
   onPluginsChanged: (list: PluginInfo[]) => void;
+  features: string[] | null;
 }) {
   const [agents, setAgents] = useState<AgentStatus[] | null>(null);
   const [general, setGeneral] = useState<GeneralSettings | null>(null);
@@ -140,7 +142,7 @@ export function SettingsView({
 
           {shown.id === 'notifiche' && <NotificationsSection />}
 
-          {shown.id === 'plugin' && <PluginsSection onChanged={onPluginsChanged} />}
+          {shown.id === 'plugin' && <PluginsSection onChanged={onPluginsChanged} features={features} />}
 
           {shown.id === 'aspetto' && <AppearanceSection />}
 

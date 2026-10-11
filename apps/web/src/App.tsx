@@ -77,6 +77,10 @@ export function App() {
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const pluginOn = (id: string) => plugins.some((p) => p.id === id && p.enabled);
+  /** Sezioni consentite dal piano (null = tutto); impostazioni sempre visibili */
+  const [features, setFeatures] = useState<string[] | null>(null);
+  const allowed = (id: Section) => id === 'settings' || id === 'chat' || features === null || features.includes(id);
+  const pluginAllowed = (id: string) => features === null || features.includes(id);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [terminals, setTerminals] = useState<TerminalSummary[]>([]);
   const [route, setRoute] = useState<Route>(routeFromHash);
@@ -92,11 +96,19 @@ export function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [a, t, term, pl] = await Promise.all([api.agents(), api.threads(), api.terminals(), api.plugins()]);
+      // Terminali e plugin possono rispondere 403 se fuori dal piano: non e' un errore di accesso
+      const [a, t, term, pl, s] = await Promise.all([
+        api.agents(),
+        api.threads(),
+        api.terminals().catch(() => [] as TerminalSummary[]),
+        api.plugins().catch(() => [] as PluginInfo[]),
+        api.session(),
+      ]);
       setAgents(a);
       setPlugins(pl);
       setThreads(t);
       setTerminals(term);
+      setFeatures(s.features ?? null);
       setAuth('ok');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
@@ -332,7 +344,7 @@ export function App() {
 
         <nav aria-label="Sezioni">
           <ul className="sections">
-            {SECTIONS.filter((s) => !s.plugin || pluginOn(s.plugin)).map((s) => (
+            {SECTIONS.filter((s) => (!s.plugin || pluginOn(s.plugin)) && allowed(s.id)).map((s) => (
               <li key={s.id}>
                 <button
                   type="button"
@@ -429,7 +441,12 @@ export function App() {
       <div className="backdrop" hidden={!drawerOpen} onClick={closeDrawer} />
 
       <main id="main" className="main" tabIndex={-1} inert={drawerOpen || undefined}>
-        {inFiles ? (
+        {!allowed(route.section) ? (
+          <section className="welcome" aria-labelledby="welcome-title">
+            <h1 id="welcome-title">Non incluso nel tuo piano</h1>
+            <p>Questa sezione non fa parte del tuo piano. Torna alla <a href="#">Chat</a> per continuare.</p>
+          </section>
+        ) : inFiles ? (
           <FilesView path={route.id} onNavigate={(p) => go({ section: 'files', id: p })} />
         ) : inCloud ? (
           pluginOn('cloud') ? (
@@ -493,6 +510,7 @@ export function App() {
           <SettingsView
             page={route.id}
             onPluginsChanged={setPlugins}
+            features={features}
             onOpenTerminal={(t) => {
               setTerminals((ts) => [t, ...ts]);
               go({ section: 'terminal', id: t.id });
