@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Piattaforma AgiCloud</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <strong>Piattaforma AgiCloud</strong>
+  <nav id="menu" hidden>
+    <button type="button" data-view="account">Il mio account</button>
+    <button type="button" data-view="admin" id="adminTab" hidden>Amministrazione</button>
+    <button type="button" id="logoutBtn">Esci</button>
+  </nav>
+</header>
+<main>
+  <div id="banner" class="banner" role="status" hidden></div>
+
+  <section id="view-login" class="card" hidden>
+    <h1>Accedi</h1>
+    <form id="loginForm">
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" name="email" type="email" required autocomplete="email">
+      <label for="loginPass">Password</label>
+      <input id="loginPass" name="password" type="password" required autocomplete="current-password">
+      <p class="err" id="loginErr" role="alert" hidden></p>
+      <button type="submit">Accedi</button>
+    </form>
+    <p>Non hai un account? <button type="button" class="link" data-view="register">Registrati</button></p>
+  </section>
+
+  <section id="view-register" class="card" hidden>
+    <h1>Registrati</h1>
+    <form id="regForm">
+      <label for="regName">Nome (facoltativo)</label>
+      <input id="regName" name="name" type="text" autocomplete="name" maxlength="80">
+      <label for="regEmail">Email</label>
+      <input id="regEmail" name="email" type="email" required autocomplete="email">
+      <label for="regPass">Password (almeno 10 caratteri)</label>
+      <input id="regPass" name="password" type="password" required minlength="10" autocomplete="new-password">
+      <p class="err" id="regErr" role="alert" hidden></p>
+      <button type="submit">Crea account</button>
+    </form>
+    <p>Hai già un account? <button type="button" class="link" data-view="login">Accedi</button></p>
+  </section>
+
+  <section id="view-account" class="card" hidden>
+    <h1>Il mio account</h1>
+    <dl>
+      <dt>Email</dt><dd id="meEmail"></dd>
+      <dt>Stato</dt><dd id="meStatus"></dd>
+      <dt>Registrato il</dt><dd id="meCreated"></dd>
+    </dl>
+    <form id="nameForm">
+      <label for="meName">Nome</label>
+      <input id="meName" name="name" type="text" maxlength="80">
+      <p class="err" id="nameErr" role="alert" hidden></p>
+      <button type="submit">Salva nome</button>
+    </form>
+  </section>
+
+  <section id="view-admin" class="card wide" hidden>
+    <h1>Amministrazione</h1>
+    <div id="stats" class="stats"></div>
+    <form id="searchForm" class="search">
+      <label for="q">Cerca utenti</label>
+      <input id="q" name="q" type="search" placeholder="email o nome">
+      <button type="submit">Cerca</button>
+    </form>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Email</th><th>Nome</th><th>Ruolo</th><th>Stato</th><th>Azioni</th></tr></thead>
+      <tbody id="usersBody"></tbody>
+    </table>
+    </div>
+    <p class="err" id="adminErr" role="alert" hidden></p>
+  </section>
+</main>
+<script src="/app.js" defer></script>
+</body>
+</html>
