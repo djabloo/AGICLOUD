@@ -6,8 +6,6 @@ WORKDIR /opt/agicloud
 COPY package.json package-lock.json tsconfig.json ./
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
-COPY apps/platform/package.json apps/platform/
-COPY apps/orchestrator/package.json apps/orchestrator/
 COPY packages/bridge/package.json packages/bridge/
 COPY packages/design/package.json packages/design/
 RUN npm ci --include=dev --no-audit --no-fund

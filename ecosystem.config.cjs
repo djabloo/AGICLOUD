@@ -18,25 +18,5 @@ module.exports = {
       },
       max_memory_restart: '600M',
     },
-    {
-      // Unico servizio che parla con Docker (container degli utenti). Solo 127.0.0.1.
-      name: 'agicloud-orchestrator',
-      cwd: __dirname,
-      script: 'apps/orchestrator/src/index.ts',
-      interpreter: 'node',
-      node_args: `--env-file=${process.env.AGICLOUD_PLATFORM_ENV || '/opt/agicloud/.env'} --import tsx`,
-      env: { NODE_ENV: 'production' },
-      max_memory_restart: '200M',
-    },
-    {
-      // Smista <nome>.agicloud.dev verso i container degli utenti (senza Docker ne' segreti). Solo 127.0.0.1.
-      name: 'agicloud-edge',
-      cwd: __dirname,
-      script: 'apps/edge/src/index.ts',
-      interpreter: 'node',
-      node_args: '--import tsx',
-      env: { NODE_ENV: 'production', ROUTES_FILE: '/opt/agicloud/run/routes.json', EDGE_PORT: '3112' },
-      max_memory_restart: '150M',
-    },
   ],
 };
