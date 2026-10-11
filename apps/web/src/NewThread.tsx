@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { AgentInfo, DesignCatalog, DesignChoice } from './api';
 import { ProjectPicker } from './ProjectPicker';
 import { loadDesignCatalog } from './DesignPreview';
+import { t, useT } from './i18n';
 
 interface Props {
   open: boolean;
@@ -28,6 +29,7 @@ function lastAgent(): string {
 
 /** Dialogo nativo: trappola del focus, Esc e ritorno del focus li gestisce il browser */
 export function NewThreadDialog({ open, agents, error, busy, preset, designEnabled = true, onClose, onCreate }: Props) {
+  const t = useT();
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   const [agentId, setAgentId] = useState('');
@@ -87,10 +89,10 @@ export function NewThreadDialog({ open, agents, error, busy, preset, designEnabl
   return (
     <dialog ref={ref} className="dialog" aria-labelledby={`${id}-title`} onClose={onClose}>
       <form onSubmit={submit}>
-        <h2 id={`${id}-title`}>Nuova conversazione</h2>
+        <h2 id={`${id}-title`}>{t('nuovothread.nuovaConversazione')}</h2>
 
         <fieldset>
-          <legend>Agente</legend>
+          <legend>{t('nuovothread.agente')}</legend>
           <div className="agent-options">
             {agents.map((a) => (
               <label key={a.id} className="agent-option">
@@ -112,11 +114,11 @@ export function NewThreadDialog({ open, agents, error, busy, preset, designEnabl
           <label className="choice lead-choice">
             <input type="checkbox" checked={lead} onChange={(e) => setLead(e.target.checked)} aria-describedby={`${id}-lead-hint`} />
             <span className="choice-text">
-              <span>Conversazione capo</span>
+              <span>{t('nuovothread.conversazioneCapo')}</span>
               <span className="hint" id={`${id}-lead-hint`}>
-                Puo' proporti di affidare compiti ad altri agenti, ognuno in una copia separata del progetto. Approvi tu ogni delega.
-                {agentId === 'agy' && ' agy non puo\' chiedere permessi: da capo lavora con "Consenti tutto".'}
-                {agentId === 'cursor' && ' Cursor ti chiedera\' il permesso per usare gli strumenti del capo.'}
+                {t('nuovothread.capoSpiegazione')}
+                {agentId === 'agy' && t('nuovothread.agyNota')}
+                {agentId === 'cursor' && t('nuovothread.cursorNota')}
               </span>
             </span>
           </label>
@@ -126,9 +128,9 @@ export function NewThreadDialog({ open, agents, error, busy, preset, designEnabl
         <label className="choice">
           <input type="checkbox" checked={designOn} onChange={(e) => setDesignOn(e.target.checked)} aria-describedby={`${id}-design-hint`} />
           <span className="choice-text">
-            <span>Conversazione di design</span>
+            <span>{t('nuovothread.conversazioneDesign')}</span>
             <span className="hint" id={`${id}-design-hint`}>
-              L'agente usa una skill e uno stile della sezione Design e scrive le pagine in design/, con anteprima dal vivo.
+              {t('nuovothread.designSpiegazione')}
             </span>
           </span>
         </label>
@@ -146,10 +148,10 @@ export function NewThreadDialog({ open, agents, error, busy, preset, designEnabl
 
         <div className="dialog-actions">
           <button type="button" className="btn" onClick={onClose}>
-            Annulla
+            {t('nuovothread.annulla')}
           </button>
           <button type="submit" className="btn primary" disabled={busy || !agentId || !cwd.trim()}>
-            {busy ? 'Avvio…' : 'Inizia'}
+            {busy ? t('nuovothread.avvio') : t('nuovothread.inizia')}
           </button>
         </div>
       </form>
@@ -157,12 +159,13 @@ export function NewThreadDialog({ open, agents, error, busy, preset, designEnabl
   );
 }
 
-const MODE_LABEL: Record<string, string> = {
-  prototype: 'Pagine e prototipi',
-  deck: 'Presentazioni',
-  template: 'Modelli pronti',
-  'design-system': 'Brief, revisione e scrittura',
-};
+function modeLabel(mode: string): string {
+  if (mode === 'prototype') return t('nuovothread.paginePrototipi');
+  if (mode === 'deck') return t('nuovothread.presentazioni');
+  if (mode === 'template') return t('nuovothread.modelliPronti');
+  if (mode === 'design-system') return t('nuovothread.designSystemBrief');
+  return mode;
+}
 
 function groupBy<T>(items: T[], key: (t: T) => string): [string, T[]][] {
   const groups = new Map<string, T[]>();
@@ -178,19 +181,20 @@ function DesignFields(props: {
   onSkill: (v: string) => void;
   onSystem: (v: string) => void;
 }) {
+  const t = useT();
   const { catalog, error, skill, system } = props;
   const id = useId();
-  if (error) return <p className="form-error" role="alert">Catalogo design non disponibile: {error}</p>;
-  if (!catalog) return <p className="hint">Caricamento del catalogo…</p>;
+  if (error) return <p className="form-error" role="alert">{t('nuovothread.catalogoNonDisponibile', { errore: error })}</p>;
+  if (!catalog) return <p className="hint">{t('nuovothread.caricamentoCatalogo')}</p>;
   const sk = catalog.skills.find((s) => s.id === skill);
   const sys = catalog.systems.find((s) => s.id === system);
   return (
     <div className="design-choice">
       <label>
-        Skill
+        {t('nuovothread.skill')}
         <select value={skill} onChange={(e) => props.onSkill(e.target.value)} aria-describedby={`${id}-skill`}>
-          <option value="">Nessuna</option>
-          {groupBy(catalog.skills, (s) => MODE_LABEL[s.mode] ?? s.mode).map(([group, skills]) => (
+          <option value="">{t('nuovothread.nessuna')}</option>
+          {groupBy(catalog.skills, (s) => modeLabel(s.mode)).map(([group, skills]) => (
             <optgroup key={group} label={group}>
               {skills.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -202,13 +206,13 @@ function DesignFields(props: {
         </select>
       </label>
       <p className="hint" id={`${id}-skill`}>
-        {sk ? sk.description : 'Il modo di lavorare: tipo di pagina, presentazione, revisione…'}
-        {sk?.needsSystem && !system && ' Rende meglio con un design system.'}
+        {sk ? sk.description : t('nuovothread.modoLavoro')}
+        {sk?.needsSystem && !system && t('nuovothread.rendeMeglio')}
       </p>
       <label>
-        Design system
+        {t('nuovothread.designSystem')}
         <select value={system} onChange={(e) => props.onSystem(e.target.value)} aria-describedby={`${id}-system`}>
-          <option value="">Nessuno</option>
+          <option value="">{t('nuovothread.nessuno')}</option>
           {groupBy(catalog.systems, (s) => s.category).map(([group, systems]) => (
             <optgroup key={group} label={group}>
               {systems.map((s) => (
@@ -221,7 +225,7 @@ function DesignFields(props: {
         </select>
       </label>
       <p className="hint" id={`${id}-system`}>
-        {sys ? sys.description : 'Lo stile: colori, caratteri e componenti da rispettare.'}
+        {sys ? sys.description : t('nuovothread.stileSpiegazione')}
       </p>
     </div>
   );

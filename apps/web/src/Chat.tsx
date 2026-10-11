@@ -3,6 +3,7 @@ import { api, apiFetch, followEvents, type FileEntry, type ThreadSummary } from 
 import { emptyTranscript, reduce, type ConfigOption, type Item, type SlashCommand } from './transcript';
 import { Markdown } from './markdown';
 import { Icon } from './icons';
+import { fmtDateTime, fmtNumber, t, useT } from './i18n';
 import { DiffStat, DiffView, diffStats } from './DiffView';
 import { ChildPanel, DelegationView, LeadChildren } from './LeadViews';
 import { SearchSelect } from './SearchSelect';
@@ -18,19 +19,21 @@ interface Props {
   onOpenTerminal: () => void;
 }
 
-const STATUS_TEXT: Record<string, string> = {
-  idle: 'In pausa',
-  starting: 'Avvio dell\'agente…',
-  ready: 'Pronto',
-  running: 'Sta lavorando…',
-  auth_required: 'Login richiesto',
-  error: 'Errore',
-  closed: 'Chiusa',
-};
+function statusText(s: string): string {
+  if (s === 'idle') return t('chat.statoInPausa');
+  if (s === 'starting') return t('chat.statoAvvio');
+  if (s === 'ready') return t('chat.statoPronto');
+  if (s === 'running') return t('chat.statoLavoro');
+  if (s === 'auth_required') return t('chat.statoLogin');
+  if (s === 'error') return t('chat.statoErrore');
+  if (s === 'closed') return t('chat.statoChiusa');
+  return s;
+}
 
 type Action = { type: 'event'; event: Parameters<typeof reduce>[1] } | { type: 'reset' };
 
 export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: Props) {
+  const t = useT();
   const [state, dispatch] = useReducer(
     (s: typeof emptyTranscript, a: Action) => (a.type === 'reset' ? emptyTranscript : reduce(s, a.event)),
     emptyTranscript,
@@ -55,17 +58,17 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
   const seenPermissions = useRef(new Set<string>());
   const seenErrors = useRef(new Set<string>());
   useEffect(() => {
-    if (prevRunning.current && !state.running) setAnnounce((a) => ({ ...a, polite: 'Risposta completata' }));
-    if (!prevRunning.current && state.running) setAnnounce((a) => ({ ...a, polite: 'L\'agente sta lavorando' }));
+    if (prevRunning.current && !state.running) setAnnounce((a) => ({ ...a, polite: t('chat.rispostaCompletata') }));
+    if (!prevRunning.current && state.running) setAnnounce((a) => ({ ...a, polite: t('chat.agenteLavora') }));
     prevRunning.current = state.running;
     for (const it of state.items) {
       if (it.kind === 'permission' && it.resolved === undefined && !seenPermissions.current.has(it.id)) {
         seenPermissions.current.add(it.id);
-        setAnnounce((a) => ({ ...a, assertive: `Permesso richiesto: ${it.title}` }));
+        setAnnounce((a) => ({ ...a, assertive: t('chat.permessoRichiesto', { titolo: it.title }) }));
       }
       if (it.kind === 'delegation' && it.state === 'pending' && !seenPermissions.current.has(it.id)) {
         seenPermissions.current.add(it.id);
-        setAnnounce((a) => ({ ...a, assertive: `Il capo propone di affidare "${it.title}" a ${it.agentLabel}` }));
+        setAnnounce((a) => ({ ...a, assertive: t('chat.delegaProposta', { titolo: it.title, agente: it.agentLabel }) }));
       }
       if (it.kind === 'error' && !seenErrors.current.has(it.id)) {
         seenErrors.current.add(it.id);
@@ -120,38 +123,38 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
           <h1 id="chat-title">{thread.title}</h1>
           <p className="chat-meta">
             <span>
-              {thread.lead && 'Capo · '}
+              {thread.lead && t('chat.capo')}
               {state.agentName ?? agentLabel}
             </span>
             <span aria-hidden="true"> · </span>
             <span title={thread.cwd}>
-              <span className="visually-hidden">Progetto </span>
+              <span className="visually-hidden">{t('chat.progetto')}</span>
               {thread.cwd}
             </span>
           </p>
         </div>
         <p className={`status status-${state.status}`}>
           <span className="status-dot" aria-hidden="true" />
-          {STATUS_TEXT[state.status] ?? state.status}
-          {!connected && <span className="status-offline"> — riconnessione…</span>}
+          {statusText(state.status)}
+          {!connected && <span className="status-offline">{t('chat.riconnessione')}</span>}
         </p>
         <button type="button" className="btn icon-btn" aria-expanded={handoverOpen} onClick={() => setHandoverOpen((v) => !v)}>
           <Icon name="swap" />
-          <span className="visually-hidden">Passa il lavoro a un altro agente</span>
+          <span className="visually-hidden">{t('chat.passaLavoro')}</span>
         </button>
         <button type="button" className="btn icon-btn" onClick={onOpenTerminal}>
           <Icon name="terminal" />
-          <span className="visually-hidden">Apri un terminale in questa cartella</span>
+          <span className="visually-hidden">{t('chat.apriTerminale')}</span>
         </button>
         <button
           type="button"
           className="btn icon-btn"
           onClick={() => {
-            if (confirm('Chiudere questa conversazione? L\'agente verra\' fermato.')) onDelete();
+            if (confirm(t('chat.chiudiConferma'))) onDelete();
           }}
         >
           <Icon name="trash" />
-          <span className="visually-hidden">Chiudi conversazione</span>
+          <span className="visually-hidden">{t('chat.chiudiConversazione')}</span>
         </button>
       </header>
 
@@ -168,16 +171,16 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
       {thread.parentId && <ChildPanel thread={thread} threads={threads} running={state.running} />}
       {thread.design && <DesignBar thread={thread} running={state.running} />}
 
-      <div className="transcript" ref={scroller} onScroll={onScroll} tabIndex={0} aria-label="Messaggi">
+      <div className="transcript" ref={scroller} onScroll={onScroll} tabIndex={0} aria-label={t('chat.messaggi')}>
         {state.items.length === 0 && state.status !== 'error' && state.status !== 'auth_required' && (
-          <p className="empty">{state.status === 'starting' ? 'Avvio dell\'agente…' : 'Scrivi il primo messaggio.'}</p>
+          <p className="empty">{state.status === 'starting' ? t('chat.statoAvvio') : t('chat.scriviPrimo')}</p>
         )}
         {state.status === 'idle' && state.items.length > 0 && (
-          <p className="empty">Agente in pausa: si riattiva da solo al prossimo messaggio, con la stessa sessione.</p>
+          <p className="empty">{t('chat.agentePausa')}</p>
         )}
         {(state.status === 'error' || state.status === 'auth_required') && state.statusMessage && (
           <div className="notice notice-error" role="alert">
-            <strong>{STATUS_TEXT[state.status]}</strong>
+            <strong>{statusText(state.status)}</strong>
             <pre>{state.statusMessage}</pre>
           </div>
         )}
@@ -196,7 +199,7 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
         {awayFromBottom && (
           <button type="button" className="btn icon-btn jump-bottom" onClick={jumpToBottom}>
             <span aria-hidden="true">↓</span>
-            <span className="visually-hidden">Vai alla fine della conversazione</span>
+            <span className="visually-hidden">{t('chat.vaiAllaFine')}</span>
           </button>
         )}
       </div>
@@ -228,18 +231,19 @@ export function Chat({ thread, threads, agentLabel, onDelete, onOpenTerminal }: 
 }
 
 function ItemView({ item, threadId, cwd, threads }: { item: Item; threadId: string; cwd: string; threads: ThreadSummary[] }) {
+  const t = useT();
   switch (item.kind) {
     case 'message':
       if (item.auto) {
         return (
           <details className="auto-message">
-            <summary>Messaggio automatico di AgiCloud</summary>
+            <summary>{t('chat.messaggioAutomatico')}</summary>
             <p className="user-text">{item.text}</p>
           </details>
         );
       }
       return (
-        <article className="message" aria-label={item.role === 'user' ? 'Tu' : 'Agente'}>
+        <article className="message" aria-label={item.role === 'user' ? t('chat.ruoloTu') : t('chat.ruoloAgente')}>
           {item.role === 'user' ? <p className="user-text">{item.text}</p> : <Markdown text={item.text} chat />}
         </article>
       );
@@ -252,7 +256,7 @@ function ItemView({ item, threadId, cwd, threads }: { item: Item; threadId: stri
           {item.childId && (
             <>
               {' '}
-              <a href={`#/t/${item.childId}`}>{item.linkLabel ?? 'Apri il thread'}</a>
+              <a href={`#/t/${item.childId}`}>{item.linkLabel ?? t('chat.apriThread')}</a>
             </>
           )}
         </p>
@@ -260,7 +264,7 @@ function ItemView({ item, threadId, cwd, threads }: { item: Item; threadId: stri
     case 'reasoning':
       return (
         <details className="reasoning">
-          <summary>Ragionamento</summary>
+          <summary>{t('chat.ragionamento')}</summary>
           <p>{item.text}</p>
         </details>
       );
@@ -271,7 +275,7 @@ function ItemView({ item, threadId, cwd, threads }: { item: Item; threadId: stri
     case 'plan':
       return (
         <div className="plan">
-          <h2 className="plan-title">Piano</h2>
+          <h2 className="plan-title">{t('chat.piano')}</h2>
           <ol>
             {item.entries.map((e, i) => (
               <li key={i} className={`plan-${e.status}`}>
@@ -286,7 +290,7 @@ function ItemView({ item, threadId, cwd, threads }: { item: Item; threadId: stri
       return <p className="notice notice-error">{item.message}</p>;
     case 'attachments':
       return (
-        <ul className="attach-list sent" aria-label="File allegati">
+        <ul className="attach-list sent" aria-label={t('chat.fileAllegati')}>
           {item.files.map((f) => (
             <li key={f.path} className="attach-chip" title={f.path}>
               <Icon name="file" />
@@ -300,8 +304,9 @@ function ItemView({ item, threadId, cwd, threads }: { item: Item; threadId: stri
 }
 
 function ToolView({ item, cwd }: { item: Extract<Item, { kind: 'tool' }>; cwd: string }) {
+  const t = useT();
   const statusLabel =
-    item.status === 'completed' ? 'completato' : item.status === 'failed' ? 'fallito' : item.status === 'in_progress' ? 'in corso' : 'in attesa';
+    item.status === 'completed' ? t('chat.strumentoCompletato') : item.status === 'failed' ? t('chat.strumentoFallito') : item.status === 'in_progress' ? t('chat.strumentoCorso') : t('chat.strumentoAttesa');
   const fileHref = (p: string) => `#/files/${encodeURIComponent(p.startsWith('/') ? p : `${cwd}/${p}`)}`;
   const stats = item.diffs ? diffStats(item.diffs) : null;
   return (
@@ -334,6 +339,7 @@ function ToolView({ item, cwd }: { item: Extract<Item, { kind: 'tool' }>; cwd: s
 }
 
 function PermissionView({ item, threadId }: { item: Extract<Item, { kind: 'permission' }>; threadId: string }) {
+  const t = useT();
   const id = useId();
   const [busy, setBusy] = useState(false);
   const answer = async (optionId: string | null) => {
@@ -351,12 +357,12 @@ function PermissionView({ item, threadId }: { item: Extract<Item, { kind: 'permi
       <p id={`${id}-t`} className="permission-title">
         <Icon name="shield" />
         <span>
-          <span className="visually-hidden">Permesso richiesto: </span>
+          <span className="visually-hidden">{t('chat.permessoRichiestoLabel')}</span>
           {item.title}
         </span>
       </p>
       {resolved ? (
-        <p className="permission-outcome">{chosen ? `Scelta: ${chosen.name}` : 'Annullato'}</p>
+        <p className="permission-outcome">{chosen ? t('chat.scelta', { nome: chosen.name }) : t('chat.annullato')}</p>
       ) : (
         <div className="permission-actions">
           {item.options.map((o) => (
@@ -377,6 +383,7 @@ function PermissionView({ item, threadId }: { item: Extract<Item, { kind: 'permi
 }
 
 function ConfigBar({ threadId, options, disabled }: { threadId: string; options: ConfigOption[]; disabled: boolean }) {
+  const t = useT();
   const id = useId();
   const [error, setError] = useState('');
   const change = async (configId: string, value: string | boolean) => {
@@ -408,13 +415,13 @@ function ConfigBar({ threadId, options, disabled }: { threadId: string; options:
         onClick={() => setOpen((o) => !o)}
       >
         <Icon name="settings" />
-        <span className="visually-hidden">Impostazioni dell'agente: </span>
-        <span className="config-summary">{summary || 'Impostazioni'}</span>
+        <span className="visually-hidden">{t('chat.impostazioniDuePunti')}</span>
+        <span className="config-summary">{summary || t('chat.impostazioni')}</span>
         <span className="config-chevron" aria-hidden="true">
           {open ? '▾' : '▸'}
         </span>
       </button>
-      <div id={panelId} className="config-panel" role="group" aria-label="Impostazioni dell'agente" hidden={!open}>
+      <div id={panelId} className="config-panel" role="group" aria-label={t('chat.impostazioniAgente')} hidden={!open}>
       {options.map((o) =>
         o.type === 'boolean' ? (
           <label key={o.id} className="cfg cfg-bool" title={o.description ?? undefined}>
@@ -483,6 +490,7 @@ function Composer({
   onStop: () => void;
 }) {
   const [text, setText] = useState('');
+  const t = useT();
   const [files, setFiles] = useState<PendingFile[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
   const [fileMsg, setFileMsg] = useState('');
@@ -498,7 +506,7 @@ function Composer({
       status: 'uploading',
     }));
     setFiles((cur) => [...cur, ...entries]);
-    setFileMsg(`Caricamento di ${picked.length} file…`);
+    setFileMsg(t('chat.caricamentoFile', { n: fmtNumber(picked.length) }));
     try {
       const saved = await api.upload(threadId, picked);
       setFiles((cur) =>
@@ -507,11 +515,11 @@ function Composer({
           return i >= 0 ? { ...p, status: 'ready', path: saved[i]?.path } : p;
         }),
       );
-      setFileMsg(`${picked.length} file pronti da inviare`);
+      setFileMsg(t('chat.filePronti', { n: fmtNumber(picked.length) }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setFiles((cur) => cur.map((p) => (entries.some((e) => e.key === p.key) ? { ...p, status: 'error', error: msg } : p)));
-      setFileMsg(`Caricamento non riuscito: ${msg}`);
+      setFileMsg(t('chat.caricamentoFallito', { errore: msg }));
     }
   };
 
@@ -522,7 +530,7 @@ function Composer({
       ...cur,
       ...fresh.map((f) => ({ key: `pii-${f.name}`, name: f.name, size: f.size, status: 'ready' as const, path: `pii-clean/${f.name}` })),
     ]);
-    if (fresh.length) setFileMsg(`${fresh.length} ${fresh.length === 1 ? 'documento anonimizzato pronto' : 'documenti anonimizzati pronti'} da inviare`);
+    if (fresh.length) setFileMsg(fresh.length === 1 ? t('chat.documentoPronto', { n: fmtNumber(fresh.length) }) : t('chat.documentiPronti', { n: fmtNumber(fresh.length) }));
     area.current?.focus();
   };
   const [attachMenu, setAttachMenu] = useState(false);
@@ -552,12 +560,12 @@ function Composer({
       canvas.getContext('2d')!.drawImage(video, 0, 0);
       stream.getTracks().forEach((t) => t.stop());
       const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
-      if (!blob) throw new Error('immagine vuota');
+      if (!blob) throw new Error(t('chat.immagineVuota'));
       await addFiles([new File([blob], `screenshot-${stamp()}.png`, { type: 'image/png' })]);
     } catch (err) {
       // Annullato da te: nessun messaggio
       if (err instanceof DOMException && err.name === 'NotAllowedError') return;
-      setFileMsg(`Screenshot non riuscito: ${err instanceof Error ? err.message : err}`);
+      setFileMsg(t('chat.screenshotFallito', { errore: err instanceof Error ? err.message : String(err) }));
     } finally {
       area.current?.focus();
     }
@@ -566,12 +574,12 @@ function Composer({
   /** Screenshot della pagina aperta nel Browser condiviso */
   const captureBrowser = async () => {
     setAttachMenu(false);
-    setFileMsg('Screenshot del Browser…');
+    setFileMsg(t('chat.screenshotBrowser'));
     try {
       const blob = await (await apiFetch('/browser/screenshot')).blob();
       await addFiles([new File([blob], `browser-${stamp()}.png`, { type: 'image/png' })]);
     } catch (err) {
-      setFileMsg(`Screenshot del Browser non riuscito: ${err instanceof Error ? err.message : err}`);
+      setFileMsg(t('chat.screenshotBrowserFallito', { errore: err instanceof Error ? err.message : String(err) }));
     } finally {
       area.current?.focus();
     }
@@ -680,17 +688,17 @@ function Composer({
       }}
     >
       {files.length > 0 && (
-        <ul className="attach-list pending" aria-label="File da inviare">
+        <ul className="attach-list pending" aria-label={t('chat.fileDaInviare')}>
           {files.map((f) => (
             <li key={f.key} className={`attach-chip is-${f.status}`}>
               {f.preview ? <img src={f.preview} alt="" className="attach-thumb" /> : <Icon name="file" />}
               <span className="attach-name">{f.name}</span>
               <span className="attach-size">
-                {f.status === 'uploading' ? 'caricamento…' : f.status === 'error' ? 'errore' : formatSize(f.size)}
+                {f.status === 'uploading' ? t('chat.caricamento') : f.status === 'error' ? t('chat.errore') : formatSize(f.size)}
               </span>
               <button type="button" className="attach-remove" onClick={() => removeFile(f.key)}>
                 <Icon name="close" />
-                <span className="visually-hidden">Togli {f.name}</span>
+                <span className="visually-hidden">{t('chat.togli', { nome: f.name })}</span>
               </button>
             </li>
           ))}
@@ -716,14 +724,14 @@ function Composer({
           onClick={() => setAttachMenu((v) => !v)}
         >
           <Icon name="clip" />
-          <span className="visually-hidden">Allega file</span>
+          <span className="visually-hidden">{t('chat.allegaFile')}</span>
         </button>
         {attachMenu && (
           <div
             id={`${id}-attach-menu`}
             className="thread-menu attach-menu"
             role="group"
-            aria-label="Allega"
+            aria-label={t('chat.allega')}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 setAttachMenu(false);
@@ -739,16 +747,16 @@ function Composer({
                 fileInput.current?.click();
               }}
             >
-              Dal dispositivo…
+              {t('chat.dalDispositivo')}
             </button>
             {canCapture && (
               <button type="button" onClick={() => void captureScreen()}>
-                Cattura schermo…
+                {t('chat.catturaSchermo')}
               </button>
             )}
             {browserOn && (
               <button type="button" onClick={() => void captureBrowser()}>
-                Screenshot del Browser condiviso
+                {t('chat.screenshotCondiviso')}
               </button>
             )}
             <button
@@ -758,13 +766,13 @@ function Composer({
                 setPiiOpen(true);
               }}
             >
-              Documenti anonimizzati (PII)
+              {t('chat.documentiAnonimizzati')}
             </button>
           </div>
         )}
       </div>
       {open && (
-        <ul id={listId} className="suggestions" role="listbox" aria-label="Comandi">
+        <ul id={listId} className="suggestions" role="listbox" aria-label={t('chat.comandi')}>
           {suggestions.map((c, i) => (
             <li
               key={c.name}
@@ -784,7 +792,7 @@ function Composer({
         </ul>
       )}
       <label htmlFor={`${id}-msg`} className="visually-hidden">
-        Messaggio all'agente
+        {t('chat.messaggioAgente')}
       </label>
       <textarea
         id={`${id}-msg`}
@@ -804,7 +812,7 @@ function Composer({
             void addFiles(e.clipboardData.files);
           }
         }}
-        placeholder="Scrivi all'agente…"
+        placeholder={t('chat.scriviAgente')}
         aria-controls={open ? listId : undefined}
         aria-activedescendant={open ? `${listId}-${activeIndex}` : undefined}
         aria-autocomplete="list"
@@ -813,26 +821,26 @@ function Composer({
       {running ? (
         <button type="button" className="btn send-btn danger" onClick={onStop}>
           <Icon name="stop" />
-          <span className="visually-hidden">Interrompi</span>
+          <span className="visually-hidden">{t('chat.interrompi')}</span>
         </button>
       ) : (
         <button type="submit" className="btn send-btn primary" disabled={disabled || uploading || (!text.trim() && !ready.length)}>
           <Icon name="send" />
-          <span className="visually-hidden">Invia</span>
+          <span className="visually-hidden">{t('chat.invia')}</span>
         </button>
       )}
       <p id={`${id}-hint`} className="composer-hint">
-        Invio per inviare, Maiusc+Invio per andare a capo
-        {commands.length > 0 && ', / per i comandi'}
+        {t('chat.invioSuggerimento')}
+        {commands.length > 0 && t('chat.slashComandi')}
         {usage && (
           <span className="usage">
             {' '}
-            · contesto {Math.round((usage.used / usage.size) * 100)}%
+            {t('chat.contesto', { perc: fmtNumber(Math.round((usage.used / usage.size) * 100)) })}
           </span>
         )}
       </p>
       <div className="visually-hidden" aria-live="polite">
-        {open ? `${suggestions.length} comandi disponibili, frecce per scegliere` : fileMsg}
+        {open ? t('chat.comandiDisponibili', { n: suggestions.length }) : fileMsg}
       </div>
       {error && (
         <p id={`${id}-err`} className="form-error" role="alert">
@@ -860,11 +868,12 @@ function formatSize(bytes: number): string {
 }
 
 function planStatus(s: string): string {
-  return s === 'completed' ? 'fatto' : s === 'in_progress' ? 'in corso' : 'da fare';
+  return s === 'completed' ? t('chat.pianoFatto') : s === 'in_progress' ? t('chat.pianoCorso') : t('chat.pianoDaFare');
 }
 
 /** Scelta dei documenti anonimizzati del progetto (pii-clean/) da allegare al messaggio */
 function PiiPicker({ open, cwd, onClose, onPick }: { open: boolean; cwd: string; onClose: () => void; onPick: (files: FileEntry[]) => void }) {
+  const t = useT();
   const id = useId();
   const ref = useRef<HTMLDialogElement>(null);
   const [list, setList] = useState<FileEntry[] | null>(null);
@@ -894,19 +903,19 @@ function PiiPicker({ open, cwd, onClose, onPick }: { open: boolean; cwd: string;
           onClose();
         }}
       >
-        <h2 id={`${id}-t`}>Documenti anonimizzati</h2>
+        <h2 id={`${id}-t`}>{t('chat.documentiTitolo')}</h2>
         <p className="hint">
-          Da <code>pii-clean/</code> di questo progetto. L'agente legge solo la versione anonimizzata.
+          {t('chat.daCodice')} <code>pii-clean/</code> {t('chat.documentiSpiegazione')}
         </p>
         {list === null ? (
-          <p className="hint">Caricamento…</p>
+          <p className="hint">{t('chat.caricamentoTrePunti')}</p>
         ) : list.length === 0 ? (
           <p>
-            Nessun documento qui. Anonimizzali nella sezione <a href="#/pii">PII</a> e salvali in questo progetto (<code>{cwd}</code>).
+            {t('chat.nessunDocumento')} <a href="#/pii">PII</a> {t('chat.eSalva', { cwd })}
           </p>
         ) : (
           <fieldset className="pii-pick">
-            <legend className="visually-hidden">Scegli i documenti</legend>
+            <legend className="visually-hidden">{t('chat.scegliDocumenti')}</legend>
             {list.map((f) => (
               <label key={f.name} className="choice">
                 <input
@@ -917,7 +926,7 @@ function PiiPicker({ open, cwd, onClose, onPick }: { open: boolean; cwd: string;
                 <span className="choice-text">
                   <span>{f.name}</span>
                   <span className="hint">
-                    {formatSize(f.size)} · {new Date(f.mtime).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}
+                    {formatSize(f.size)} · {fmtDateTime(f.mtime, { dateStyle: 'short', timeStyle: 'short' })}
                   </span>
                 </span>
               </label>
@@ -926,10 +935,10 @@ function PiiPicker({ open, cwd, onClose, onPick }: { open: boolean; cwd: string;
         )}
         <div className="dialog-actions">
           <button type="button" className="btn" onClick={onClose}>
-            Annulla
+            {t('chat.annulla')}
           </button>
           <button type="submit" className="btn primary" disabled={!chosen.length}>
-            Allega {chosen.length ? `(${chosen.length})` : ''}
+            {chosen.length ? t('chat.allegaConteggio', { n: `(${fmtNumber(chosen.length)})` }) : t('chat.allegaSenzaConteggio')}
           </button>
         </div>
       </form>

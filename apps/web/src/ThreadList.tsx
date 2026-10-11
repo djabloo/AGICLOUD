@@ -1,15 +1,16 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { api, type SearchHit, type ThreadSummary } from './api';
 import { Icon } from './icons';
+import { fmtNumber, t, useT } from './i18n';
 
-/** Stato di un thread affidato dal capo */
-export const CHILD_STATE_TEXT: Record<NonNullable<ThreadSummary['childState']>, string> = {
-  running: 'in corso',
-  waiting: 'aspetta te',
-  done: 'finito',
-  error: 'errore',
-  idle: 'fermo',
-};
+/** Stato di un thread affidato dal capo (tradotto; da chiamare al momento dell'uso) */
+export function childStateText(s: NonNullable<ThreadSummary['childState']>): string {
+  if (s === 'running') return t('threadlist.inCorso');
+  if (s === 'waiting') return t('threadlist.aspettaTe');
+  if (s === 'done') return t('threadlist.finito');
+  if (s === 'error') return t('threadlist.errore');
+  return t('threadlist.fermo');
+}
 
 interface Props {
   threads: ThreadSummary[];
@@ -23,7 +24,9 @@ interface Props {
 }
 
 /** Lista conversazioni: ricerca (titoli + testo), fissate in cima, archiviate a parte */
-export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged, onDelete, title = 'Conversazioni' }: Props) {
+export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged, onDelete, title }: Props) {
+  const tr = useT();
+  const heading = title ?? tr('threadlist.conversazioni');
   const id = useId();
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<SearchHit[] | null>(null);
@@ -42,7 +45,7 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
         .searchThreads(q)
         .then((h) => {
           setHits(h);
-          setAnnounce(`${h.length} ${h.length === 1 ? 'conversazione trovata' : 'conversazioni trovate'}`);
+          setAnnounce(h.length === 1 ? tr('threadlist.trovataUna', { n: fmtNumber(h.length) }) : tr('threadlist.trovate', { n: fmtNumber(h.length) }));
         })
         .catch(() => setHits([]));
     }, 250);
@@ -71,26 +74,26 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
       active={t.id === activeId}
       meta={
         t.parentId && t.childState
-          ? `${agentLabel(t.agentId)} · ${CHILD_STATE_TEXT[t.childState]}`
+          ? `${agentLabel(t.agentId)} · ${childStateText(t.childState)}`
           : t.lead
-            ? `Capo · ${agentLabel(t.agentId)}`
+            ? tr('threadlist.capo', { agente: agentLabel(t.agentId) })
             : agentLabel(t.agentId)
       }
       nested={
         kids.length > 0 && (
-          <ul className="threads child-threads" aria-label={`Thread affidati da ${t.title}`}>
+          <ul className="threads child-threads" aria-label={tr('threadlist.threadAffidatiDa', { titolo: t.title })}>
             {kids.map((k) => row(k, undefined, false))}
           </ul>
         )
       }
       snippet={snippet}
       onSelect={() => onSelect(t.id)}
-      onRename={(title) => update(t, { title }, 'Conversazione rinominata')}
-      onPin={() => update(t, { pinned: !t.pinned }, t.pinned ? 'Tolta dalle fissate' : 'Fissata in cima')}
-      onArchive={() => update(t, { archived: !t.archived }, t.archived ? 'Ripristinata' : 'Archiviata')}
+      onRename={(nuovo) => update(t, { title: nuovo }, tr('threadlist.rinominata'))}
+      onPin={() => update(t, { pinned: !t.pinned }, t.pinned ? tr('threadlist.toltaFissate') : tr('threadlist.fissata'))}
+      onArchive={() => update(t, { archived: !t.archived }, t.archived ? tr('threadlist.ripristinata') : tr('threadlist.archiviata'))}
       onDelete={() => {
-        const extra = t.worktree?.state === 'open' ? ' Anche la sua copia separata, con le modifiche non unite.' : '';
-        if (confirm(`Eliminare "${t.title}"? La conversazione verra' cancellata.${extra}`)) onDelete(t.id);
+        const extra = t.worktree?.state === 'open' ? tr('threadlist.copiaSeparataExtra') : '';
+        if (confirm(tr('threadlist.eliminaConferma', { titolo: t.title, extra }))) onDelete(t.id);
       }}
     />
     );
@@ -105,12 +108,12 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
     <div className="thread-list">
       <div className="thread-search">
         <label htmlFor={`${id}-q`} className="visually-hidden">
-          Cerca nelle conversazioni
+          {tr('threadlist.cerca')}
         </label>
         <input
           id={`${id}-q`}
           type="search"
-          placeholder="Cerca…"
+          placeholder={tr('threadlist.cercaPlaceholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Escape' && setQuery('')}
@@ -121,10 +124,10 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
       {searching ? (
         <>
           <h2 className="sidebar-title" id={`${id}-res`}>
-            Risultati
+            {tr('threadlist.risultati')}
           </h2>
           {hits.length === 0 ? (
-            <p className="sidebar-empty">Nessun risultato</p>
+            <p className="sidebar-empty">{tr('threadlist.nessunRisultato')}</p>
           ) : (
             <ul className="threads" aria-labelledby={`${id}-res`}>
               {hits.map((h) => {
@@ -135,13 +138,13 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
           )}
         </>
       ) : threads.length === 0 ? (
-        <p className="sidebar-empty">Nessuna conversazione</p>
+        <p className="sidebar-empty">{tr('threadlist.nessunaConversazione')}</p>
       ) : (
         <>
           {pinned.length > 0 && (
             <>
               <h2 className="sidebar-title" id={`${id}-pin`}>
-                Fissate
+                {tr('threadlist.fissate')}
               </h2>
               <ul className="threads" aria-labelledby={`${id}-pin`}>
                 {pinned.map((t) => row(t))}
@@ -149,10 +152,10 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
             </>
           )}
           <h2 className="sidebar-title" id={`${id}-rec`}>
-            {title}
+            {heading}
           </h2>
           {recent.length === 0 ? (
-            <p className="sidebar-empty">Nessuna conversazione recente</p>
+            <p className="sidebar-empty">{tr('threadlist.nessunaRecente')}</p>
           ) : (
             <ul className="threads" aria-labelledby={`${id}-rec`}>
               {recent.map((t) => row(t))}
@@ -167,9 +170,9 @@ export function ThreadList({ threads, activeId, agentLabel, onSelect, onChanged,
                 aria-controls={`${id}-arc`}
                 onClick={() => setShowArchived((v) => !v)}
               >
-                <span aria-hidden="true">{showArchived ? '▾' : '▸'}</span> Archiviate ({archived.length})
+                <span aria-hidden="true">{showArchived ? '▾' : '▸'}</span> {tr('threadlist.archiviate', { n: fmtNumber(archived.length) })}
               </button>
-              <ul className="threads" id={`${id}-arc`} hidden={!showArchived} aria-label="Conversazioni archiviate">
+              <ul className="threads" id={`${id}-arc`} hidden={!showArchived} aria-label={tr('threadlist.archiviateLabel')}>
                 {archived.map((t) => row(t, undefined, false))}
               </ul>
             </>
@@ -208,6 +211,7 @@ function ThreadRow({
   onDelete: () => void;
 }) {
   const id = useId();
+  const tr = useT();
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(t.title);
@@ -259,7 +263,7 @@ function ThreadRow({
       <li className="thread-row is-editing">
         <form onSubmit={submit} className="rename-form">
           <label htmlFor={`${id}-t`} className="visually-hidden">
-            Nuovo titolo
+            {tr('threadlist.nuovoTitolo')}
           </label>
           <input
             id={`${id}-t`}
@@ -294,7 +298,7 @@ function ThreadRow({
         </span>
         <span className="thread-meta">
           {meta} · {t.project}
-          {t.status === 'running' && !t.parentId && <span className="thread-running"> · al lavoro</span>}
+          {t.status === 'running' && !t.parentId && <span className="thread-running"> {tr('threadlist.alLavoro')}</span>}
         </span>
         {snippet && <span className="thread-snippet">{snippet}</span>}
       </button>
@@ -307,23 +311,23 @@ function ThreadRow({
         onClick={() => setMenu((m) => !m)}
       >
         <span aria-hidden="true">⋯</span>
-        <span className="visually-hidden">Azioni per {t.title}</span>
+        <span className="visually-hidden">{tr('threadlist.azioniPer', { titolo: t.title })}</span>
       </button>
       {menu && (
-        <div id={`${id}-menu`} ref={menuRef} className="thread-menu" role="group" aria-label={`Azioni per ${t.title}`} onKeyDown={onMenuKey}>
+        <div id={`${id}-menu`} ref={menuRef} className="thread-menu" role="group" aria-label={tr('threadlist.azioniPer', { titolo: t.title })} onKeyDown={onMenuKey}>
           <button type="button" onClick={() => act(() => setEditing(true))}>
-            Rinomina
+            {tr('threadlist.rinomina')}
           </button>
           {!t.archived && (
             <button type="button" onClick={() => act(onPin)}>
-              {t.pinned ? 'Togli dalle fissate' : 'Fissa in cima'}
+              {t.pinned ? tr('threadlist.togliFissate') : tr('threadlist.fissaInCima')}
             </button>
           )}
           <button type="button" onClick={() => act(onArchive)}>
-            {t.archived ? 'Ripristina' : 'Archivia'}
+            {t.archived ? tr('threadlist.ripristina') : tr('threadlist.archivia')}
           </button>
           <button type="button" className="danger-text" onClick={() => act(onDelete)}>
-            Elimina
+            {tr('threadlist.elimina')}
           </button>
         </div>
       )}
