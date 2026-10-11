@@ -28,5 +28,15 @@ module.exports = {
       env: { NODE_ENV: 'production' },
       max_memory_restart: '200M',
     },
+    {
+      // Smista <nome>.agicloud.dev verso i container degli utenti (senza Docker ne' segreti). Solo 127.0.0.1.
+      name: 'agicloud-edge',
+      cwd: __dirname,
+      script: 'apps/edge/src/index.ts',
+      interpreter: 'node',
+      node_args: '--import tsx',
+      env: { NODE_ENV: 'production', ROUTES_FILE: '/opt/agicloud/run/routes.json', EDGE_PORT: '3112' },
+      max_memory_restart: '150M',
+    },
   ],
 };

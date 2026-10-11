@@ -15,6 +15,7 @@
     "packages/*/src",
     "apps/server/src",
     "apps/platform/src",
-    "apps/orchestrator/src"
+    "apps/orchestrator/src",
+    "apps/edge/src"
   ]
 }

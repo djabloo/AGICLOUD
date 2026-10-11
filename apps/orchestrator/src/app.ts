@@ -26,11 +26,11 @@ export function createApp(runners: Runners, secret: string) {
   app.get('/v1/runners', async (c) => c.json({ runners: await runners.list() }));
 
   app.post('/v1/runners', async (c) => {
-    const b = (await c.req.json().catch(() => ({}))) as { id?: string; limits?: Partial<Limits>; env?: Record<string, string> };
+    const b = (await c.req.json().catch(() => ({}))) as { id?: string; subdomain?: string; limits?: Partial<Limits>; env?: Record<string, string> };
     if (!b.id || !ID_RE.test(b.id)) return c.json({ error: 'Id non valido' }, 400);
     const limits = { ...DEFAULT_LIMITS, ...b.limits };
     if (!CPUS_RE.test(String(limits.cpus)) || !MEM_RE.test(String(limits.memory)) || !Number.isInteger(limits.pids)) return c.json({ error: 'Limiti non validi' }, 400);
-    return c.json(await runners.start(b.id, { cpus: String(limits.cpus), memory: String(limits.memory), pids: limits.pids }, b.env));
+    return c.json(await runners.start(b.id, { cpus: String(limits.cpus), memory: String(limits.memory), pids: limits.pids }, b.env, b.subdomain));
   });
 
   app.get('/v1/runners/:id', async (c) => {

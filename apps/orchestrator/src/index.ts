@@ -1,4 +1,5 @@
-import { serve } from '@hono/node-server';
+import { createAdaptorServer } from '@hono/node-server';
+import { chmodSync, rmSync } from 'node:fs';
 import { createApp } from './app.js';
 import { Runners } from './docker.js';
 
@@ -13,8 +14,17 @@ const runners = new Runners({
   internalPort: Number(env.RUNNER_PORT ?? 3095),
   network: env.RUNNER_NETWORK ?? 'agicloud-runners',
   dataRoot: env.RUNNERS_DATA_DIR ?? '/opt/agicloud/runners',
+  routesFile: env.ROUTES_FILE ?? '/opt/agicloud/run/routes.json',
+  rootDomain: env.PLATFORM_ROOT_DOMAIN ?? 'agicloud.dev',
   user: env.RUNNER_USER ?? `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`,
 });
-const port = Number(env.ORCHESTRATOR_PORT ?? 3111);
-// Mai 0.0.0.0: l'orchestratore parla solo con la piattaforma sulla stessa macchina
-serve({ fetch: createApp(runners, secret).fetch, port, hostname: '127.0.0.1' }, () => console.log(`Orchestratore su 127.0.0.1:${port}`));
+// Niente rete: l'orchestratore parla con la piattaforma solo su un socket Unix (montato nel suo container).
+// Accesso comunque protetto dal segreto; il socket e' apribile a tutti perche' il container gira con un altro uid.
+const socketPath = env.ORCHESTRATOR_SOCKET ?? '/opt/agicloud/run/orchestrator.sock';
+rmSync(socketPath, { force: true });
+const server = createAdaptorServer({ fetch: createApp(runners, secret).fetch });
+server.listen(socketPath, () => {
+  runners.writeRoutes().catch((err) => console.error('Rotte non scritte:', err));
+  chmodSync(socketPath, 0o666);
+  console.log(`Orchestratore su ${socketPath}`);
+});

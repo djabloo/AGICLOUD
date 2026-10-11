@@ -6,7 +6,6 @@ import { createApp, ensureAdmin } from './app.js';
 import { openDb } from './db.js';
 import { consoleMailer } from './mailer.js';
 import { httpOrchestrator } from './orchestrator.js';
-import { createProxy } from './proxy.js';
 import { mountStatic } from './static.js';
 
 const port = Number(process.env.PLATFORM_PORT ?? 3110);
@@ -20,8 +19,8 @@ const adminPassword = process.env.PLATFORM_ADMIN_PASSWORD;
 if (adminEmail && adminPassword) await ensureAdmin(db, adminEmail, adminPassword);
 else if (!db.prepare("SELECT 1 FROM users WHERE role = 'admin'").get()) console.warn('Nessun amministratore: imposta PLATFORM_ADMIN_EMAIL e PLATFORM_ADMIN_PASSWORD');
 
-const orchestrator = httpOrchestrator(process.env.ORCHESTRATOR_URL ?? 'http://127.0.0.1:3111', process.env.ORCHESTRATOR_SECRET ?? '');
-const proxy = createProxy(db, orchestrator, rootDomain);
+const orchestrator = httpOrchestrator(process.env.ORCHESTRATOR_URL ?? 'unix:/run/orchestrator/orchestrator.sock', process.env.ORCHESTRATOR_SECRET ?? '');
+const adminHost = process.env.PLATFORM_ADMIN_HOST?.toLowerCase();
 
 const api = createApp({
   db,
@@ -30,22 +29,16 @@ const api = createApp({
   secureCookies: baseUrl.startsWith('https://'),
   orchestrator,
   rootDomain,
-  onWorkspaceChange: proxy.forget,
 });
 const app = new Hono();
 // Le API admin rispondono solo sul dominio riservato (es. admin-323cloud.agicloud.dev): altrove sembrano non esistere
-const adminHost = process.env.PLATFORM_ADMIN_HOST?.toLowerCase();
 if (adminHost) {
   app.use('/api/admin/*', async (c, next) => ((c.req.header('host') ?? '').toLowerCase().replace(/:\d+$/, '') === adminHost ? next() : c.notFound()));
 }
 app.route('/', api);
 mountStatic(app);
 
-const listener = getRequestListener(app.fetch);
-const server = createServer((req, res) => {
-  if (proxy.isWorkspaceHost(req.headers.host)) proxy.http(req, res).catch(() => res.destroy());
-  else listener(req, res);
-});
-server.on('upgrade', (req, socket, head) => void proxy.upgrade(req, socket, head).catch(() => socket.destroy()));
+// Gli ambienti utente (<nome>.agicloud.dev) non passano da qui: li smista il proxy di bordo (apps/edge)
+const server = createServer(getRequestListener(app.fetch));
 // Dentro il container serve ascoltare su tutte le interfacce (PLATFORM_HOST); l'host lo espone solo su 127.0.0.1
 server.listen(port, process.env.PLATFORM_HOST ?? '127.0.0.1', () => console.log(`Piattaforma AgiCloud su ${baseUrl}`));

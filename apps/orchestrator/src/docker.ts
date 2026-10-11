@@ -3,7 +3,7 @@
 // limiti di CPU/memoria/processi, rete dedicata senza comunicazione tra container, porta solo su 127.0.0.1.
 
 import { execFile } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -25,6 +25,10 @@ export interface RunnerConfig {
   internalPort: number;
   network: string;
   dataRoot: string;
+  /** File JSON {host: porta} letto dal proxy di bordo (apps/edge); vuoto = nessun file */
+  routesFile?: string;
+  /** Dominio principale degli ambienti */
+  rootDomain?: string;
   /** Utente con cui gira l'app nel container */
   user: string;
 }
@@ -41,13 +45,14 @@ const ENV_NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
 
 export const containerName = (id: string) => `agicloud-u-${id}`;
 
-export function buildRunArgs(cfg: RunnerConfig, id: string, limits: Limits, envNames: string[]): string[] {
+export function buildRunArgs(cfg: RunnerConfig, id: string, limits: Limits, envNames: string[], subdomain = ''): string[] {
   const name = containerName(id);
   return [
     'run', '-d',
     '--name', name,
     '--label', 'app=agicloud-runner',
     '--label', `runner_id=${id}`,
+    '--label', `subdomain=${subdomain}`,
     '--user', cfg.user,
     '--cpus', limits.cpus,
     '--memory', limits.memory,
@@ -84,13 +89,15 @@ export class Runners {
     }
   }
 
-  async start(id: string, limits: Limits, envVars: Record<string, string> = {}): Promise<RunnerInfo> {
+  async start(id: string, limits: Limits, envVars: Record<string, string> = {}, subdomain = ''): Promise<RunnerInfo> {
     if (!ID_RE.test(id)) throw new Error('Id non valido');
+    if (subdomain && !/^[a-z0-9][a-z0-9-]{1,40}$/.test(subdomain)) throw new Error('Sottodominio non valido');
     await this.ensureNetwork();
     const name = containerName(id);
     const existing = await this.info(id);
     if (existing) {
       if (existing.status !== 'running') await this.exec(['start', name]);
+      await this.writeRoutes();
       return (await this.info(id))!;
     }
     mkdirSync(join(this.cfg.dataRoot, id), { recursive: true, mode: 0o700 });
@@ -101,7 +108,8 @@ export class Runners {
       env[k] = String(v);
       names.push(k);
     }
-    await this.exec(buildRunArgs(this.cfg, id, limits, names), env);
+    await this.exec(buildRunArgs(this.cfg, id, limits, names, subdomain), env);
+    await this.writeRoutes();
     return (await this.info(id))!;
   }
 
@@ -119,6 +127,7 @@ export class Runners {
 
   async stop(id: string): Promise<void> {
     if (ID_RE.test(id)) await this.exec(['stop', '-t', '5', containerName(id)]).catch(() => {});
+    await this.writeRoutes();
   }
 
   /** Elimina il container; i dati restano nella cartella salvo purge */
@@ -129,6 +138,22 @@ export class Runners {
       const { rmSync } = await import('node:fs');
       rmSync(join(this.cfg.dataRoot, id), { recursive: true, force: true });
     }
+    await this.writeRoutes();
+  }
+
+  /** Aggiorna host → porta per gli ambienti in esecuzione (scrittura atomica: il proxy non legge mai un file a meta') */
+  async writeRoutes(): Promise<void> {
+    if (!this.cfg.routesFile) return;
+    const out = await this.exec(['ps', '--filter', 'label=app=agicloud-runner', '--filter', 'status=running', '--format', '{{.Label "runner_id"}}|{{.Label "subdomain"}}']);
+    const routes: Record<string, number> = {};
+    for (const line of out.split('\n').filter(Boolean)) {
+      const [id, sub] = line.split('|');
+      const port = sub ? (await this.info(id))?.port : null;
+      if (sub && port) routes[`${sub}.${this.cfg.rootDomain ?? 'agicloud.dev'}`] = port;
+    }
+    const tmp = `${this.cfg.routesFile}.tmp`;
+    writeFileSync(tmp, JSON.stringify(routes), { mode: 0o644 });
+    renameSync(tmp, this.cfg.routesFile);
   }
 
   async list(): Promise<RunnerInfo[]> {

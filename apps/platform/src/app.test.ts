@@ -10,7 +10,7 @@ async function setup() {
   const mails: string[] = [];
   const running = new Map<string, Record<string, string>>();
   const orchestrator: Orchestrator = {
-    start: async (id, env) => (running.set(id, env), { id, status: 'running', port: 40000 }),
+    start: async (id, _sub, env) => (running.set(id, env), { id, status: 'running', port: 40000 }),
     info: async (id) => (running.has(id) ? { id, status: 'running', port: 40000 } : null),
     stop: async (id) => void running.delete(id),
     remove: async (id) => void running.delete(id),

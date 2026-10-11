@@ -30,8 +30,6 @@ export interface AppOptions {
   orchestrator: Orchestrator;
   /** Dominio principale: gli ambienti stanno su <nome>.<rootDomain> */
   rootDomain: string;
-  /** Avvisato quando un ambiente cambia (il proxy svuota la sua cache) */
-  onWorkspaceChange?: (subdomain: string) => void;
 }
 
 interface Workspace {
@@ -45,7 +43,7 @@ interface Workspace {
 
 const USER_COLS = 'id, email, name, role, status, created_at, last_login_at';
 
-export function createApp({ db, mailer, baseUrl, secureCookies, orchestrator, rootDomain, onWorkspaceChange }: AppOptions) {
+export function createApp({ db, mailer, baseUrl, secureCookies, orchestrator, rootDomain }: AppOptions) {
   const app = new Hono();
   const now = () => Date.now();
 
@@ -222,14 +220,12 @@ export function createApp({ db, mailer, baseUrl, secureCookies, orchestrator, ro
     };
   };
   const startWorkspace = async (w: Workspace) => {
-    await orchestrator.start(w.id, { SETUP_TOKEN: w.setup_token });
+    await orchestrator.start(w.id, w.subdomain, { SETUP_TOKEN: w.setup_token });
     db.prepare("UPDATE workspaces SET status = 'running' WHERE id = ?").run(w.id);
-    onWorkspaceChange?.(w.subdomain);
   };
   const stopWorkspace = async (w: Workspace) => {
     await orchestrator.stop(w.id);
     db.prepare("UPDATE workspaces SET status = 'stopped' WHERE id = ?").run(w.id);
-    onWorkspaceChange?.(w.subdomain);
   };
 
   app.get('/api/workspace', async (c) => c.json({ workspace: await publicWorkspace(workspaceOf(requireUser(c).id)) }));
@@ -275,7 +271,6 @@ export function createApp({ db, mailer, baseUrl, secureCookies, orchestrator, ro
     if (c.req.query('confirm') !== w.subdomain) throw new ApiError(400, `Per eliminare scrivi il nome: ${w.subdomain}`);
     await orchestrator.remove(w.id, true);
     db.prepare('DELETE FROM workspaces WHERE id = ?').run(w.id);
-    onWorkspaceChange?.(w.subdomain);
     return c.json({ ok: true });
   });
 
