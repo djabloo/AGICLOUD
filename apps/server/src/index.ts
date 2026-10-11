@@ -8,6 +8,7 @@ import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { AGENTS } from '@agicloud/bridge';
 import { config } from './config.js';
+import { isAllowed, PLAN_ERROR, sectionOf } from './features.js';
 import { listDirs } from './projects.js';
 import { TerminalStore } from './terminals.js';
 import { saveUploads } from './uploads.js';
@@ -136,6 +137,13 @@ app.onError((err, c) => {
   return c.json({ error: 'Errore interno' }, 500);
 });
 
+// ── Piano: sezioni non consentite da AGICLOUD_FEATURES (prima dei plugin, cosi' vince il 403) ──
+app.use('*', async (c, next) => {
+  const section = sectionOf(c.req.path);
+  if (section && !isAllowed(config.features, section)) return c.json({ error: PLAN_ERROR }, 403);
+  return next();
+});
+
 // Plugin: elenco, installa/attiva/disattiva; le route di un plugin spento rispondono 404.
 // Va registrato prima delle route dei plugin.
 const plugins = new Plugins(
@@ -184,7 +192,7 @@ registerCloud(app, settings);
 registerNodeImageBuild(app, settings, new NodeImageBuilder());
 
 // ── API ──────────────────────────────────────────────────────────────────────
-app.get('/api/session', (c) => c.json({ ok: true, authRequired: Boolean(config.authToken), setupPending: !config.authToken && Boolean(config.setupToken) }));
+app.get('/api/session', (c) => c.json({ ok: true, authRequired: Boolean(config.authToken), setupPending: !config.authToken && Boolean(config.setupToken), features: config.featuresList }));
 
 app.get('/api/agents', (c) =>
   c.json(Object.values(AGENTS).map(({ id, label, native, note }) => ({ id, label, native, note }))),
@@ -490,7 +498,9 @@ const server = serve({ fetch: app.fetch, hostname: config.host, port: config.por
 
 attachTerminalSockets(server as Server, terminals, checkAccess, [
   browserUpgrade(checkAccess, wsClientIp, () => plugins.isEnabled('browser')),
-]);
+],
+// I terminali fuori dal piano non si aprono nemmeno via WebSocket
+() => isAllowed(config.features, 'terminal'));
 
 async function shutdown() {
   terminals.detachAll();
