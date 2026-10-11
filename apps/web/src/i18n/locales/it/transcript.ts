@@ -1,0 +1,16 @@
+export default {
+  sessionePersa: "Non e' stato possibile riprendere la sessione: l'agente riparte senza ricordare i messaggi precedenti.",
+  azioneAgente: "Azione dell'agente",
+  passatoClaude: 'Lavoro ripassato a Claude.',
+  passatoAltro: "Lavoro passato a un altro agente.",
+  apriConversazione: 'Apri la conversazione',
+  limiteRaggiunto: "Limite dell'abbonamento raggiunto. {message} Puoi passare il lavoro a un altro agente dal riquadro in alto.",
+  unite: 'Modifiche di "{title}" unite nel progetto (commit {commit}).',
+  uniteChiuse: "Modifiche unite nel progetto (commit {commit}). La copia separata e' stata chiusa.",
+  scartate: "Modifiche scartate. La copia separata e' stata chiusa.",
+  stopInterrotto: 'Interrotto.',
+  stopMaxToken: 'Risposta troncata: raggiunto il limite di lunghezza.',
+  stopMaxTurni: "L'agente si e' fermato: troppi passaggi in un solo turno.",
+  stopRifiuto: "L'agente ha rifiutato la richiesta.",
+  stopAltro: 'Turno terminato ({reason}).',
+} satisfies Record<string, string>;

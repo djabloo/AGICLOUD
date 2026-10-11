@@ -2,6 +2,7 @@
 
 import { EventType, type BaseEvent } from '@ag-ui/core';
 import type { ThreadStatus } from './api';
+import { t } from './i18n';
 
 export interface PermissionOption {
   optionId: string;
@@ -153,7 +154,7 @@ function reduceCustom(state: Transcript, name: string, v: any): Transcript {
             ...state,
             items: [
               ...items,
-              { kind: 'error', id: `lost-${items.length}`, message: 'Non e\' stato possibile riprendere la sessione: l\'agente riparte senza ricordare i messaggi precedenti.' },
+              { kind: 'error', id: `lost-${items.length}`, message: t('transcript.sessionePersa') },
             ],
           }
         : state;
@@ -184,7 +185,7 @@ function reduceCustom(state: Transcript, name: string, v: any): Transcript {
         ...state,
         items: [
           ...items,
-          { kind: 'permission', id: v.requestId, title: v.toolCall?.title ?? 'Azione dell\'agente', options: v.options ?? [] },
+          { kind: 'permission', id: v.requestId, title: v.toolCall?.title ?? t('transcript.azioneAgente'), options: v.options ?? [] },
         ],
       };
 
@@ -222,9 +223,9 @@ function reduceCustom(state: Transcript, name: string, v: any): Transcript {
           {
             kind: 'notice',
             id: `handover-${items.length}`,
-            text: v.back ? 'Lavoro ripassato a Claude.' : 'Lavoro passato a un altro agente.',
+            text: v.back ? t('transcript.passatoClaude') : t('transcript.passatoAltro'),
             childId: v.to,
-            linkLabel: 'Apri la conversazione',
+            linkLabel: t('transcript.apriConversazione'),
           },
         ],
       };
@@ -234,14 +235,14 @@ function reduceCustom(state: Transcript, name: string, v: any): Transcript {
         ...state,
         items: [
           ...items,
-          { kind: 'error', id: `limit-${items.length}`, message: `Limite dell'abbonamento raggiunto. ${v.message ?? ''} Puoi passare il lavoro a un altro agente dal riquadro in alto.` },
+          { kind: 'error', id: `limit-${items.length}`, message: t('transcript.limiteRaggiunto', { message: v.message ?? '' }) },
         ],
       };
 
     case 'agicloud.child_merged':
       return {
         ...state,
-        items: [...items, { kind: 'notice', id: `merged-${v.childId}`, text: `Modifiche di "${v.title}" unite nel progetto (commit ${v.commit}).`, childId: v.childId }],
+        items: [...items, { kind: 'notice', id: `merged-${v.childId}`, text: t('transcript.unite', { title: v.title, commit: v.commit }), childId: v.childId }],
       };
 
     case 'agicloud.worktree':
@@ -252,7 +253,7 @@ function reduceCustom(state: Transcript, name: string, v: any): Transcript {
           {
             kind: 'notice',
             id: `wt-${items.length}`,
-            text: v.state === 'merged' ? `Modifiche unite nel progetto (commit ${v.commit}). La copia separata e' stata chiusa.` : 'Modifiche scartate. La copia separata e\' stata chiusa.',
+            text: v.state === 'merged' ? t('transcript.uniteChiuse', { commit: v.commit }) : t('transcript.scartate'),
           },
         ],
       };
@@ -295,15 +296,15 @@ function contentText(content: unknown): string {
 function stopReasonText(reason: string): string {
   switch (reason) {
     case 'cancelled':
-      return 'Interrotto.';
+      return t('transcript.stopInterrotto');
     case 'max_tokens':
-      return 'Risposta troncata: raggiunto il limite di lunghezza.';
+      return t('transcript.stopMaxToken');
     case 'max_turn_requests':
-      return 'L\'agente si e\' fermato: troppi passaggi in un solo turno.';
+      return t('transcript.stopMaxTurni');
     case 'refusal':
-      return 'L\'agente ha rifiutato la richiesta.';
+      return t('transcript.stopRifiuto');
     default:
-      return `Turno terminato (${reason}).`;
+      return t('transcript.stopAltro', { reason });
   }
 }
 

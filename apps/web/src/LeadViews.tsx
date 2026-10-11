@@ -3,19 +3,21 @@
 import { useEffect, useId, useState } from 'react';
 import { api, type ThreadSummary, type WorktreeChanges } from './api';
 import type { Item } from './transcript';
-import { CHILD_STATE_TEXT } from './ThreadList';
+import { childStateText } from './ThreadList';
 import { DiffStat, PatchView } from './DiffView';
+import { fmtNumber, t, useT } from './i18n';
 
 type Delegation = Extract<Item, { kind: 'delegation' }>;
 
-const DELEGATION_STATE: Record<Delegation['state'], string> = {
-  pending: 'In attesa della tua risposta',
-  approved: 'Approvata',
-  rejected: 'Rifiutata',
-  expired: 'Scaduta senza risposta',
-};
+function delegationState(s: Delegation['state']): string {
+  if (s === 'pending') return t('leadviews.statoAttesa');
+  if (s === 'approved') return t('leadviews.statoApprovata');
+  if (s === 'rejected') return t('leadviews.statoRifiutata');
+  return t('leadviews.statoScaduta');
+}
 
 export function DelegationView({ item, threadId, threads }: { item: Delegation; threadId: string; threads: ThreadSummary[] }) {
+  const t = useT();
   const id = useId();
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -35,7 +37,7 @@ export function DelegationView({ item, threadId, threads }: { item: Delegation; 
 
   return (
     <section className={`delegation delegation-${item.state}`} aria-labelledby={`${id}-t`}>
-      <p className="delegation-kicker">Il capo propone di affidare un compito</p>
+      <p className="delegation-kicker">{t('leadviews.proposta')}</p>
       <h2 id={`${id}-t`} className="delegation-title">
         {item.title}
       </h2>
@@ -44,34 +46,34 @@ export function DelegationView({ item, threadId, threads }: { item: Delegation; 
         {item.reason && <> · {item.reason}</>}
       </p>
       <details className="delegation-task">
-        <summary>Istruzioni per l'agente</summary>
+        <summary>{t('leadviews.istruzioni')}</summary>
         <p>{item.task}</p>
       </details>
 
       {item.state === 'pending' ? (
         <>
           <label htmlFor={`${id}-note`} className="delegation-note-label">
-            Nota per l'agente (facoltativa)
+            {t('leadviews.notaLabel')}
           </label>
           <textarea id={`${id}-note`} rows={2} value={note} onChange={(e) => setNote(e.target.value)} disabled={busy} />
           <div className="permission-actions">
             <button type="button" className="btn primary" disabled={busy} onClick={() => void decide(true)}>
-              Approva e avvia
+              {t('leadviews.approva')}
             </button>
             <button type="button" className="btn" disabled={busy} onClick={() => void decide(false)}>
-              Rifiuta
+              {t('leadviews.rifiuta')}
             </button>
           </div>
         </>
       ) : (
         <p className="delegation-outcome">
-          {DELEGATION_STATE[item.state]}
-          {item.note && <> · nota: {item.note}</>}
+          {delegationState(item.state)}
+          {item.note && <> · {t('leadviews.nota', { nota: item.note })}</>}
           {child && (
             <>
               {' · '}
               <a href={`#/t/${child.id}`}>
-                Apri il thread{child.childState && <> ({CHILD_STATE_TEXT[child.childState]})</>}
+                {t('leadviews.apriThread')}{child.childState && <> ({childStateText(child.childState)})</>}
               </a>
             </>
           )}
@@ -88,6 +90,7 @@ export function DelegationView({ item, threadId, threads }: { item: Delegation; 
 
 /** Nella conversazione del capo: i suoi thread con lo stato in diretta */
 export function LeadChildren({ lead, threads }: { lead: ThreadSummary; threads: ThreadSummary[] }) {
+  const t = useT();
   const kids = threads.filter((t) => t.parentId === lead.id && !t.archived).sort((a, b) => a.createdAt - b.createdAt);
   if (!kids.length) return null;
   const waiting = kids.filter((k) => k.pendingPermission);
@@ -96,14 +99,14 @@ export function LeadChildren({ lead, threads }: { lead: ThreadSummary; threads: 
     {waiting.map((k) => (
       <ChildPermission key={`${k.id}-${k.pendingPermission!.requestId}`} child={k} />
     ))}
-    <nav className="lead-children" aria-label="Thread affidati dal capo">
+    <nav className="lead-children" aria-label={t('leadviews.threadAffidati')}>
       <ul>
         {kids.map((k) => (
           <li key={k.id}>
             <a href={`#/t/${k.id}`} className={`child-chip child-${k.childState ?? 'idle'}`}>
               <span className="status-dot" aria-hidden="true" />
               <span className="child-chip-title">{k.title}</span>
-              <span className="child-chip-state">{k.childState ? CHILD_STATE_TEXT[k.childState] : ''}</span>
+              <span className="child-chip-state">{k.childState ? childStateText(k.childState) : ''}</span>
             </a>
           </li>
         ))}
@@ -115,6 +118,7 @@ export function LeadChildren({ lead, threads }: { lead: ThreadSummary; threads: 
 
 /** Permesso chiesto da un thread affidato, con la risposta direttamente dalla chat del capo */
 function ChildPermission({ child }: { child: ThreadSummary }) {
+  const t = useT();
   const id = useId();
   const p = child.pendingPermission!;
   const [busy, setBusy] = useState(false);
@@ -133,7 +137,7 @@ function ChildPermission({ child }: { child: ThreadSummary }) {
     <div className="permission child-permission" role="group" aria-labelledby={`${id}-t`}>
       <p id={`${id}-t`} className="permission-title">
         <span>
-          Il thread <a href={`#/t/${child.id}`}>{child.title}</a> aspetta un tuo permesso: <strong>{p.title}</strong>
+          {t('leadviews.threadParola')} <a href={`#/t/${child.id}`}>{child.title}</a> {t('leadviews.permessoAttesa')}: <strong>{p.title}</strong>
         </span>
       </p>
       <div className="permission-actions">
@@ -154,6 +158,7 @@ function ChildPermission({ child }: { child: ThreadSummary }) {
 
 /** Nel thread affidato: da quale capo arriva e cosa ha cambiato nella sua copia */
 export function ChildPanel({ thread, threads, running }: { thread: ThreadSummary; threads: ThreadSummary[]; running: boolean }) {
+  const t = useT();
   const id = useId();
   const lead = threads.find((t) => t.id === thread.parentId);
   const [changes, setChanges] = useState<WorktreeChanges | null>(null);
@@ -170,16 +175,16 @@ export function ChildPanel({ thread, threads, running }: { thread: ThreadSummary
   }, [thread.id, thread.worktree?.state, running, open]);
 
   const act = async (kind: 'merge' | 'discard') => {
-    if (kind === 'discard' && !confirm('Scartare tutte le modifiche di questo thread? Non si possono recuperare.')) return;
+    if (kind === 'discard' && !confirm(t('leadviews.scartaConferma'))) return;
     setBusy(true);
     setError('');
     try {
       if (kind === 'merge') {
         const r = await api.mergeThread(thread.id);
-        setMessage(`Modifiche unite nel progetto (commit ${r.commit}).`);
+        setMessage(t('leadviews.uniteCommit', { commit: r.commit }));
       } else {
         await api.discardThread(thread.id);
-        setMessage('Modifiche scartate.');
+        setMessage(t('leadviews.scartateMsg'));
       }
       setChanges(null);
     } catch (err) {
@@ -196,39 +201,39 @@ export function ChildPanel({ thread, threads, running }: { thread: ThreadSummary
   return (
     <div className="child-panel">
       <p className="child-origin">
-        Affidato dal capo {lead ? <a href={`#/t/${lead.id}`}>{lead.title}</a> : '(conversazione chiusa)'}
+        {t('leadviews.affidatoDa')} {lead ? <a href={`#/t/${lead.id}`}>{lead.title}</a> : t('leadviews.conversazioneChiusa')}
         {thread.worktree && (
           <>
-            {' · '}copia separata <code>{thread.worktree.branch}</code>
-            {thread.worktree.state !== 'open' && <> ({thread.worktree.state === 'merged' ? 'unita' : 'scartata'})</>}
+            {' · '}{t('leadviews.copiaSeparata')} <code>{thread.worktree.branch}</code>
+            {thread.worktree.state !== 'open' && <> ({thread.worktree.state === 'merged' ? t('leadviews.unita') : t('leadviews.scartata')})</>}
           </>
         )}
       </p>
       {wtOpen && (
         <div className="child-changes">
           <button type="button" className="btn small-btn" aria-expanded={open} aria-controls={`${id}-diff`} onClick={() => setOpen((v) => !v)}>
-            <span>{nFiles ? `Modifiche: ${nFiles} ${nFiles === 1 ? 'file' : 'file'}` : 'Nessuna modifica'}</span>
+            <span>{nFiles ? t('leadviews.modifiche', { n: fmtNumber(nFiles) }) : t('leadviews.nessunaModifica')}</span>
             {nFiles > 0 && <DiffStat added={added} removed={removed} />}
           </button>
           <button type="button" className="btn small-btn primary" disabled={busy || running || !nFiles} onClick={() => void act('merge')}>
-            Unisci nel progetto
+            {t('leadviews.unisci')}
           </button>
           <button type="button" className="btn small-btn" disabled={busy || running} onClick={() => void act('discard')}>
-            Scarta
+            {t('leadviews.scarta')}
           </button>
-          {running && <span className="hint">Disponibile quando l'agente ha finito</span>}
+          {running && <span className="hint">{t('leadviews.disponibileFinito')}</span>}
         </div>
       )}
       <div id={`${id}-diff`} hidden={!open || !wtOpen}>
         {changes?.patch ? (
           <PatchView patch={changes.patch} />
         ) : (
-          <p className="hint">Nessuna modifica rispetto al progetto.</p>
+          <p className="hint">{t('leadviews.nessunaModificaProgetto')}</p>
         )}
-        {changes?.truncated && <p className="hint">Diff troppo grande: mostrato solo l'inizio.</p>}
+        {changes?.truncated && <p className="hint">{t('leadviews.diffGrande')}</p>}
       </div>
       {thread.worktree && thread.worktree.state !== 'open' && (
-        <p className="hint">Thread concluso: per altro lavoro chiedi al capo un nuovo thread.</p>
+        <p className="hint">{t('leadviews.threadConcluso')}</p>
       )}
       <div aria-live="polite" className="child-message">
         {message}

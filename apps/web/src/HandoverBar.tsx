@@ -1,22 +1,26 @@
 // Capo di riserva: avvisi sul limite di Claude e passaggio di consegne a un altro agente.
 import { useEffect, useId, useState } from 'react';
 import { api, type AgentInfo, type ClaudeLimit, type ThreadSummary } from './api';
+import { getLang, t, useT } from './i18n';
 
 function when(ms: number | null): string {
   if (!ms) return '';
+  const loc = getLang();
   const d = new Date(ms);
   const sameDay = d.toDateString() === new Date().toDateString();
-  return sameDay
-    ? `alle ${d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`
-    : d.toLocaleString('it-IT', { weekday: 'long', hour: '2-digit', minute: '2-digit' });
+  const ora = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+  if (sameDay) return t('handoverbar.alleOre', { ora });
+  const giorno = d.toLocaleDateString(loc, { weekday: 'long' });
+  return t('handoverbar.giornoOre', { giorno, ora });
 }
 
-const TYPE_TEXT: Record<string, string> = {
-  five_hour: 'delle 5 ore',
-  seven_day: 'settimanale',
-  seven_day_opus: 'settimanale di Opus',
-  seven_day_sonnet: 'settimanale di Sonnet',
-};
+function typeText(ty: string): string {
+  if (ty === 'five_hour') return t('handoverbar.tipoCinqueOre');
+  if (ty === 'seven_day') return t('handoverbar.tipoSettimanale');
+  if (ty === 'seven_day_opus') return t('handoverbar.tipoOpus');
+  if (ty === 'seven_day_sonnet') return t('handoverbar.tipoSonnet');
+  return '';
+}
 
 export function HandoverBar({
   thread,
@@ -32,6 +36,7 @@ export function HandoverBar({
   onManualClose: () => void;
   onMoved: (t: ThreadSummary) => void;
 }) {
+  useT();
   const id = useId();
   const [limit, setLimit] = useState<ClaudeLimit | null>(null);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -75,7 +80,7 @@ export function HandoverBar({
     const to = threads.find((t) => t.id === thread.handedOverTo);
     return (
       <div className="handover-bar is-done" role="status">
-        Il lavoro e' passato a <a href={`#/t/${thread.handedOverTo}`}>{to?.title ?? 'un\'altra conversazione'}</a>.
+        {t('handoverbar.passatoA')} <a href={`#/t/${thread.handedOverTo}`}>{to?.title ?? t('handoverbar.altraConversazione')}</a>.
       </div>
     );
   }
@@ -87,27 +92,27 @@ export function HandoverBar({
   const showLimit = isClaude && limit?.warning;
   if (!manual && !showLimit && !claudeBack) return null;
 
-  const typeText = limit?.type ? (TYPE_TEXT[limit.type] ?? '') : '';
+  const typeText_ = limit?.type ? typeText(limit.type) : '';
   return (
     <section className={`handover-bar${limit?.blocked && isClaude ? ' is-blocked' : ''}`} aria-labelledby={`${id}-t`}>
       <p id={`${id}-t`} className="handover-title">
         {claudeBack && !manual
-          ? 'Claude e\' di nuovo disponibile: puoi ripassargli il lavoro, ricorda tutto quello che aveva fatto.'
+          ? t('handoverbar.claudeDiNuovo')
           : showLimit && limit
             ? limit.blocked
-              ? `Claude ha finito il limite ${typeText}${limit.resetsAt ? `: si azzera ${when(limit.resetsAt)}` : ''}. Puoi passare il lavoro a un altro agente.`
-              : `Claude e' al ${Math.round((limit.utilization ?? 0.9) * 100)}% del limite ${typeText}${limit.resetsAt ? ` (si azzera ${when(limit.resetsAt)})` : ''}.`
-            : 'Passa questo lavoro a un altro agente: riceve un riassunto della conversazione e i thread affidati.'}
+              ? t('handoverbar.limiteFinito', { tipo: typeText_, azzeramento: limit.resetsAt ? t('handoverbar.azzeramento', { quando: when(limit.resetsAt) }) : '' })
+              : t('handoverbar.limiteQuasi', { perc: Math.round((limit.utilization ?? 0.9) * 100), tipo: typeText_, azzeramento: limit.resetsAt ? t('handoverbar.azzeramentoParentesi', { quando: when(limit.resetsAt) }) : '' })
+            : t('handoverbar.passaSpiegazione')}
       </p>
       <div className="agent-actions">
         {claudeBack && !manual ? (
           <button type="button" className="btn small-btn primary" disabled={busy} onClick={() => void go('claude')}>
-            Ripassa a Claude
+            {t('handoverbar.ripassaClaude')}
           </button>
         ) : (
           <>
             <label htmlFor={`${id}-to`} className="visually-hidden">
-              Agente a cui passare il lavoro
+              {t('handoverbar.agenteDestinatario')}
             </label>
             <select id={`${id}-to`} value={target} onChange={(e) => setTarget(e.target.value)}>
               {others.map((a) => (
@@ -117,13 +122,13 @@ export function HandoverBar({
               ))}
             </select>
             <button type="button" className="btn small-btn primary" disabled={busy || !target} onClick={() => void go(target)}>
-              {busy ? 'Passaggio…' : 'Passa il lavoro'}
+              {busy ? t('handoverbar.passaggio') : t('handoverbar.passaLavoro')}
             </button>
           </>
         )}
         {manual && (
           <button type="button" className="btn small-btn" onClick={onManualClose}>
-            Annulla
+            {t('handoverbar.annulla')}
           </button>
         )}
       </div>
