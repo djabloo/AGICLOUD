@@ -28,6 +28,7 @@ import { registerDesign } from './design.js';
 import { catalog as designCatalog, normalizeChoice } from '@agicloud/design';
 import { Plugins } from './plugins.js';
 import { piiPlugin, registerPii } from './pii.js';
+import { flowMcpServer, flowPlugin, registerFlow } from './flow.js';
 import { registerVerdict, verdictMcpServer, verdictPlugin } from './verdict.js';
 import { cloudPlugin, registerCloud } from './cloud.js';
 import { NodeImageBuilder, registerNodeImageBuild } from './node-image.js';
@@ -174,6 +175,7 @@ const plugins = new Plugins(
       source: 'builtin',
     },
     piiPlugin,
+    flowPlugin,
     browserPlugin,
     verdictPlugin(settings),
     cloudPlugin(settings),
@@ -191,6 +193,7 @@ store.extraMcpServers = async () => {
     servers.push(browserMcpServer());
   }
   if (plugins.isEnabled('verdict')) servers.push(verdictMcpServer());
+  if (plugins.isEnabled('flow')) servers.push(flowMcpServer());
   return servers;
 };
 // Strumenti dei plugin che Claude usa senza chiedere (Verdict: solo una lettura che costa frazioni di centesimo)
@@ -199,6 +202,7 @@ store.extraAllowedTools = () => (plugins.isEnabled('verdict') ? ['mcp__verdict']
 // Plugin Design: catalogo (/api/design, col token) e anteprime (/preview, col token dell'anteprima)
 registerDesign(app);
 registerPii(app);
+registerFlow(app);
 registerBrowserStart(app);
 registerVerdict(app, settings);
 registerHandover(app, store, limits);
