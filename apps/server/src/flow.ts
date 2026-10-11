@@ -132,7 +132,7 @@ async function readCredits(force = false): Promise<number | null> {
 let login: { key: string; port: number; startedAt: number } | null = null;
 let loginTimer: NodeJS.Timeout | undefined;
 
-const loginUrl = (key: string) => `/flow-novnc/${key}/vnc.html?autoconnect=1&resize=scale&reconnect=1&path=${encodeURIComponent(`flow-novnc/${key}/websockify`)}`;
+const loginUrl = (key: string) => `/flow-novnc/${key}/vnc.html?autoconnect=1&resize=scale&reconnect=1`; // noVNC cerca websockify accanto alla pagina
 
 async function loginRunning(): Promise<boolean> {
   try {
@@ -168,7 +168,13 @@ async function startLogin(): Promise<{ url: string }> {
     }
     if (!port) await new Promise((r) => setTimeout(r, 500));
   }
-  if (!port) {
+  // La porta e' pubblicata prima che noVNC sia pronto: si aspetta che risponda, altrimenti la prima apertura dell'indirizzo da' "Bad gateway"
+  let ready = false;
+  for (let i = 0; i < 60 && port && !ready; i++) {
+    ready = await fetch(`http://127.0.0.1:${port}/vnc.html`, { signal: AbortSignal.timeout(2000) }).then((r) => r.ok, () => false);
+    if (!ready) await new Promise((r) => setTimeout(r, 500));
+  }
+  if (!port || !ready) {
     await stopLogin();
     throw new HttpError(409, 'Accesso non avviato: la sessione grafica non risponde');
   }
@@ -388,9 +394,12 @@ export function registerFlow(app: Hono<any>): void {
   app.all('/flow-novnc/:key/*', async (c) => {
     if (!keyOk(c.req.param('key')) || !login) return c.text('Not found', 404);
     const rest = new URL(c.req.url).pathname.replace(/^\/flow-novnc\/[0-9a-f]+\//, '');
-    const upstream = await fetch(`http://127.0.0.1:${login.port}/${rest}`, { signal: AbortSignal.timeout(15_000) }).catch(() => null);
+    const get = () => fetch(`http://127.0.0.1:${login!.port}/${rest}`, { signal: AbortSignal.timeout(15_000) }).catch(() => null);
+    const upstream = (await get()) ?? (await new Promise((r) => setTimeout(r, 1500)).then(get));
     if (!upstream) return c.text('Bad gateway', 502);
-    return new Response(upstream.body, { status: upstream.status, headers: { 'content-type': upstream.headers.get('content-type') ?? 'application/octet-stream', 'cache-control': 'no-store' } });
+    // noVNC e' una pagina con uno script in linea e un WebSocket: serve una CSP piu' larga, solo per questo percorso
+    const csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'none'";
+    return new Response(upstream.body, { status: upstream.status, headers: { 'content-type': upstream.headers.get('content-type') ?? 'application/octet-stream', 'cache-control': 'no-store', 'content-security-policy': csp } });
   });
 
   // Dagli strumenti degli agenti (token proprio, mai il token di AgiCloud)

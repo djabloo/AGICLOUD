@@ -6,7 +6,7 @@ FROM python:3.12-slim
 RUN apt-get update && apt-get install -y --no-install-recommends xvfb xauth x11vnc novnc websockify ca-certificates curl procps chromium \
  && rm -rf /var/lib/apt/lists/* \
  && mv /usr/bin/chromium /usr/bin/chromium.real \
- && printf '#!/bin/sh\nexec /usr/bin/chromium.real --no-sandbox --disable-dev-shm-usage --disable-gpu "$@"\n' > /usr/bin/chromium \
+ && printf '#!/bin/sh\nexec /usr/bin/chromium.real --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=1280,780 "$@"\n' > /usr/bin/chromium \
  && chmod +x /usr/bin/chromium
 ARG GFLOW_VERSION=0.83.2
 RUN pip install --no-cache-dir gflow-cli==${GFLOW_VERSION}
