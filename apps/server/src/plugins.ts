@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { config } from './config.js';
 import { HttpError } from './errors.js';
+import { parseAccept, tPlugin, type Lang } from './i18n.js';
 import { isAllowed, PLAN_ERROR } from './features.js';
 
 export interface PluginSpec {
@@ -75,7 +76,7 @@ export class Plugins {
     if (!this.isEnabled(id)) throw new HttpError(400, `Il plugin ${this.specs.get(id)?.name ?? id} non e' attivo: attivalo in Impostazioni → Plugin`);
   }
 
-  async list() {
+  async list(lang: Lang = 'it') {
     return Promise.all(
       [...this.specs.values()].map(async (s) => {
         const st = this.state[s.id] ?? { installed: false, enabled: false };
@@ -84,10 +85,10 @@ export class Plugins {
           id: s.id,
           name: s.name,
           version: s.version,
-          description: s.description,
+          description: tPlugin(s.description, lang),
           section: s.section ?? null,
-          credits: s.credits ?? null,
-          requires: s.requires ?? null,
+          credits: s.credits ? { ...s.credits, text: tPlugin(s.credits.text, lang) } : null,
+          requires: s.requires ? tPlugin(s.requires, lang) : null,
           source: s.source,
           installed: st.installed,
           enabled: st.installed && st.enabled && isAllowed(config.features, s.id),
@@ -139,19 +140,19 @@ export class Plugins {
       }
       return next();
     });
-    app.get('/api/plugins', async (c) => c.json(await this.list()));
+    app.get('/api/plugins', async (c) => c.json(await this.list(parseAccept(c.req.header('accept-language')) ?? 'it')));
     app.post('/api/plugins/:id/install', async (c) => {
       await this.install(c.req.param('id'));
-      return c.json(await this.list());
+      return c.json(await this.list(parseAccept(c.req.header('accept-language')) ?? 'it'));
     });
     app.post('/api/plugins/:id/uninstall', async (c) => {
       await this.uninstall(c.req.param('id'));
-      return c.json(await this.list());
+      return c.json(await this.list(parseAccept(c.req.header('accept-language')) ?? 'it'));
     });
     app.post('/api/plugins/:id/enabled', async (c) => {
       const body = (await c.req.json().catch(() => ({}))) as { enabled?: unknown };
       this.setEnabled(c.req.param('id'), body.enabled === true);
-      return c.json(await this.list());
+      return c.json(await this.list(parseAccept(c.req.header('accept-language')) ?? 'it'));
     });
   }
 

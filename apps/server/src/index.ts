@@ -8,6 +8,7 @@ import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { AGENTS } from '@agicloud/bridge';
 import { config } from './config.js';
+import { currentLang, initLastLang, parseAccept, rememberLang, tError, tNotice } from './i18n.js';
 import { isAllowed, PLAN_ERROR, sectionOf } from './features.js';
 import { listDirs } from './projects.js';
 import { TerminalStore } from './terminals.js';
@@ -35,7 +36,7 @@ import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser, registe
 const settings = new Settings();
 const store = new ThreadStore(settings);
 const push = new Push();
-store.onNotify = (n) => push.send(n).catch((err) => console.error('[push]', err));
+store.onNotify = (n) => push.send({ ...n, title: tNotice(n.title, currentLang()), body: tNotice(n.body, currentLang()) }).catch((err) => console.error('[push]', err));
 const lead = new LeadManager(store, settings);
 store.lead = lead;
 const limits = new Limits();
@@ -43,6 +44,19 @@ store.limits = limits;
 store.load();
 const terminals = new TerminalStore(() => settings.vaultEnv('terminals'));
 const app = new Hono<{ Bindings: HttpBindings }>();
+
+// Lingua dell'interfaccia: i messaggi d'errore (anche quelli scritti direttamente con c.json({ error })) escono nella lingua scelta
+initLastLang(join(config.threadsDir, '..'));
+app.use('*', async (c, next) => {
+  const lang = parseAccept(c.req.header('accept-language'));
+  if (lang) rememberLang(lang);
+  await next();
+  if (!lang || lang === 'it' || c.res.status < 400 || !(c.res.headers.get('content-type') ?? '').includes('application/json')) return;
+  const body = (await c.res.clone().json().catch(() => null)) as { error?: unknown } | null;
+  if (typeof body?.error !== 'string') return;
+  const translated = tError(body.error, lang);
+  if (translated !== body.error) c.res = c.json({ ...body, error: translated }, c.res.status as 400);
+});
 
 app.use('*', async (c, next) => {
   await next();
@@ -448,7 +462,7 @@ app.post('/api/push/unsubscribe', async (c) => {
 });
 
 app.post('/api/push/test', async (c) => {
-  const sent = await push.send({ title: 'AgiCloud', body: 'Le notifiche funzionano.', url: '/#/settings', tag: 'test' });
+  const sent = await push.send({ title: 'AgiCloud', body: tNotice('Le notifiche funzionano.', currentLang()), url: '/#/settings', tag: 'test' });
   return c.json({ sent });
 });
 
