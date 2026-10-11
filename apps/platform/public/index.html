@@ -30,6 +30,30 @@
       <button type="submit">Accedi</button>
     </form>
     <p>Non hai un account? <button type="button" class="link" data-view="register">Registrati</button></p>
+    <p><button type="button" class="link" data-view="forgot">Password dimenticata?</button></p>
+  </section>
+
+  <section id="view-forgot" class="card" hidden>
+    <h1>Password dimenticata</h1>
+    <p>Inserisci la tua email per ricevere un link per reimpostare la password.</p>
+    <form id="forgotForm">
+      <label for="forgotEmail">Email</label>
+      <input id="forgotEmail" name="email" type="email" required autocomplete="email">
+      <p class="err" id="forgotErr" role="alert" hidden></p>
+      <button type="submit">Invia link di reimpostazione</button>
+    </form>
+    <p><button type="button" class="link" data-view="login">Torna ad Accedi</button></p>
+  </section>
+
+  <section id="view-reset" class="card" hidden>
+    <h1>Nuova password</h1>
+    <form id="resetForm">
+      <label for="resetPass">Nuova password (almeno 10 caratteri)</label>
+      <input id="resetPass" name="password" type="password" required minlength="10" autocomplete="new-password">
+      <p class="err" id="resetErr" role="alert" hidden></p>
+      <button type="submit">Salva nuova password</button>
+    </form>
+    <p><button type="button" class="link" data-view="login">Torna ad Accedi</button></p>
   </section>
 
   <section id="view-register" class="card" hidden>
@@ -59,6 +83,17 @@
       <input id="meName" name="name" type="text" maxlength="80">
       <p class="err" id="nameErr" role="alert" hidden></p>
       <button type="submit">Salva nome</button>
+    </form>
+    <hr style="margin:24px 0;border:0;border-top:1px solid var(--border,#334155)">
+    <form id="passForm">
+      <h2>Cambia password</h2>
+      <label for="curPass">Password attuale</label>
+      <input id="curPass" name="currentPassword" type="password" required autocomplete="current-password">
+      <label for="newPass">Nuova password (almeno 10 caratteri)</label>
+      <input id="newPass" name="newPassword" type="password" required minlength="10" autocomplete="new-password">
+      <p class="err" id="passErr" role="alert" hidden></p>
+      <p id="passOk" role="status" style="color:var(--ok,#22c55e);margin:8px 0" hidden></p>
+      <button type="submit">Aggiorna password</button>
     </form>
   </section>
 

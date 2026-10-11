@@ -95,3 +95,33 @@ test('ambiente: crea (nome scelto o casuale), un solo ambiente, nomi unici, sosp
   assert.equal((await call('DELETE', `/api/workspace?confirm=${random.json.workspace.subdomain}`, undefined, b)).res.status, 200);
   assert.equal(running.size, 0);
 });
+
+test('cambio password e reimpostazione via email', async () => {
+  const { call, login, mails } = await setup();
+  const cookie = await login('a@b.it', 'password-lunga-1');
+
+  // Cambio password dal profilo: errore password attuale errata o nuova troppo corta
+  assert.equal((await call('POST', '/api/me/password', { currentPassword: 'errata', newPassword: 'nuova-password-1' }, cookie)).res.status, 401);
+  assert.equal((await call('POST', '/api/me/password', { currentPassword: 'password-lunga-1', newPassword: 'corta' }, cookie)).res.status, 400);
+
+  // Cambio password riuscito
+  assert.equal((await call('POST', '/api/me/password', { currentPassword: 'password-lunga-1', newPassword: 'nuova-password-valida' }, cookie)).res.status, 200);
+
+  // Login con la nuova password
+  assert.equal((await call('POST', '/api/auth/login', { email: 'a@b.it', password: 'password-lunga-1' })).res.status, 401);
+  assert.equal((await call('POST', '/api/auth/login', { email: 'a@b.it', password: 'nuova-password-valida' })).res.status, 200);
+
+  // Reimposta password via email (forgot-password)
+  const initialMails = mails.length;
+  await call('POST', '/api/auth/forgot-password', { email: 'a@b.it' });
+  assert.equal(mails.length, initialMails + 1);
+  const resetToken = mails.at(-1)!.match(/reset=(\S+)/)![1];
+
+  // Reset con password non valida o token errato
+  assert.equal((await call('POST', '/api/auth/reset-password', { token: 'token-falso', newPassword: 'password-reset-1' })).res.status, 400);
+  assert.equal((await call('POST', '/api/auth/reset-password', { token: resetToken, newPassword: 'corta' })).res.status, 400);
+
+  // Reset riuscito
+  assert.equal((await call('POST', '/api/auth/reset-password', { token: resetToken, newPassword: 'password-reset-funzionante' })).res.status, 200);
+  assert.equal((await call('POST', '/api/auth/login', { email: 'a@b.it', password: 'password-reset-funzionante' })).res.status, 200);
+});

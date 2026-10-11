@@ -147,6 +147,50 @@ export function createApp({ db, mailer, baseUrl, secureCookies, orchestrator, ro
     return c.json({ ok: true });
   });
 
+  app.post('/api/auth/forgot-password', async (c) => {
+    const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const email = String(b.email ?? '').trim().toLowerCase();
+    if (EMAIL_RE.test(email)) {
+      const user = db.prepare('SELECT id, status FROM users WHERE email = ?').get(email) as { id: number; status: Status } | undefined;
+      if (user && user.status === 'active') {
+        const token = newToken();
+        db.prepare('INSERT INTO email_tokens (token_hash, user_id, kind, expires_at) VALUES (?, ?, ?, ?)').run(
+          sha256(token),
+          user.id,
+          'reset',
+          now() + 3600_000,
+        );
+        await mailer
+          .send(
+            email,
+            'Reimposta la password di AgiCloud',
+            `Hai richiesto di reimpostare la tua password per AgiCloud.\n\nReimposta la password aprendo questo link:\n${baseUrl}/?reset=${token}\n\nIl link vale 1 ora. Se non hai fatto tu la richiesta, ignora questa email.`,
+          )
+          .catch((err) => console.error('Email reimposta password non inviata:', err));
+      }
+    }
+    return c.json({ ok: true, message: "Se l'indirizzo e' valido, ti abbiamo inviato un'email per reimpostare la password" });
+  });
+
+  app.post('/api/auth/reset-password', async (c) => {
+    const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const token = String(b.token ?? '').trim();
+    const newPassword = String(b.newPassword ?? '');
+    if (!token) throw new ApiError(400, 'Token mancante');
+    if (newPassword.length < 10) throw new ApiError(400, 'La nuova password deve avere almeno 10 caratteri');
+
+    const row = db.prepare("SELECT user_id FROM email_tokens WHERE token_hash = ? AND kind = 'reset' AND expires_at > ?").get(
+      sha256(token),
+      now(),
+    ) as { user_id: number } | undefined;
+    if (!row) throw new ApiError(400, 'Link non valido o scaduto');
+
+    db.prepare('UPDATE users SET pass_hash = ? WHERE id = ?').run(await hashPassword(newPassword), row.user_id);
+    db.prepare('DELETE FROM email_tokens WHERE token_hash = ?').run(sha256(token));
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(row.user_id);
+    return c.json({ ok: true, message: 'Password aggiornata con successo! Ora puoi accedere' });
+  });
+
   app.get('/api/me', (c) => c.json({ user: requireUser(c) }));
 
   app.patch('/api/me', async (c) => {
@@ -154,6 +198,24 @@ export function createApp({ db, mailer, baseUrl, secureCookies, orchestrator, ro
     const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     db.prepare('UPDATE users SET name = ? WHERE id = ?').run(String(b.name ?? '').trim().slice(0, 80), u.id);
     return c.json({ user: db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(u.id) });
+  });
+
+  app.post('/api/me/password', async (c) => {
+    const u = requireUser(c);
+    const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const currentPassword = String(b.currentPassword ?? '');
+    const newPassword = String(b.newPassword ?? '');
+    if (newPassword.length < 10) throw new ApiError(400, 'La nuova password deve avere almeno 10 caratteri');
+
+    const row = db.prepare('SELECT pass_hash FROM users WHERE id = ?').get(u.id) as { pass_hash: string | null } | undefined;
+    if (row?.pass_hash) {
+      if (!currentPassword) throw new ApiError(400, 'Inserisci la password attuale');
+      const valid = await verifyPassword(currentPassword, row.pass_hash);
+      if (!valid) throw new ApiError(401, 'Password attuale non corretta');
+    }
+
+    db.prepare('UPDATE users SET pass_hash = ? WHERE id = ?').run(await hashPassword(newPassword), u.id);
+    return c.json({ ok: true, message: 'Password aggiornata con successo' });
   });
 
   // ---- Admin ----

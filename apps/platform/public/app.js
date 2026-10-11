@@ -1,8 +1,9 @@
 "use strict";
 // SPA minimale: parla con l'API JSON, niente innerHTML con dati utente.
 const $ = (id) => document.getElementById(id);
-const views = ["login", "register", "account", "env", "admin"];
+const views = ["login", "register", "account", "env", "admin", "forgot", "reset"];
 let me = null;
+let currentResetToken = "";
 
 function show(name) {
   for (const v of views) $("view-" + v).hidden = v !== name;
@@ -195,6 +196,50 @@ $("nameForm").addEventListener("submit", async (e) => {
   } catch (err) { setErr("nameErr", err.message); }
 });
 
+$("passForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); setErr("passErr", "");
+  const ok = $("passOk"); ok.hidden = true; ok.textContent = "";
+  try {
+    const d = await api("/api/me/password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword: $("curPass").value, newPassword: $("newPass").value }),
+    });
+    ok.textContent = d.message; ok.hidden = false;
+    $("curPass").value = ""; $("newPass").value = "";
+  } catch (err) { setErr("passErr", err.message); }
+});
+
+$("forgotForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); setErr("forgotErr", "");
+  try {
+    const d = await api("/api/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email: $("forgotEmail").value }),
+    });
+    const banner = $("banner");
+    banner.textContent = d.message;
+    banner.hidden = false;
+    $("forgotEmail").value = "";
+    show("login");
+  } catch (err) { setErr("forgotErr", err.message); }
+});
+
+$("resetForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); setErr("resetErr", "");
+  try {
+    const d = await api("/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token: currentResetToken, newPassword: $("resetPass").value }),
+    });
+    const banner = $("banner");
+    banner.textContent = d.message;
+    banner.hidden = false;
+    $("resetPass").value = "";
+    currentResetToken = "";
+    show("login");
+  } catch (err) { setErr("resetErr", err.message); }
+});
+
 $("logoutBtn").addEventListener("click", async () => {
   await api("/api/auth/logout", { method: "POST" }).catch(() => {});
   me = null; $("menu").hidden = true; show("login");
@@ -244,6 +289,13 @@ $("deleteForm").addEventListener("submit", async (e) => {
     banner.textContent = "Email confermata: ora puoi accedere.";
     banner.hidden = false;
     history.replaceState(null, "", location.pathname);
+  }
+  const reset = params.get("reset");
+  if (reset) {
+    currentResetToken = reset;
+    history.replaceState(null, "", location.pathname);
+    show("reset");
+    return;
   }
   if (await refreshMe()) { renderAccount(); show("account"); }
   else show("login");
