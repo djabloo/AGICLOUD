@@ -1,0 +1,155 @@
+"use strict";
+// SPA minimale: parla con l'API JSON, niente innerHTML con dati utente.
+const $ = (id) => document.getElementById(id);
+const views = ["login", "register", "account", "admin"];
+let me = null;
+
+function show(name) {
+  for (const v of views) $("view-" + v).hidden = v !== name;
+}
+
+function setErr(id, msg) {
+  const el = $(id);
+  if (!msg) { el.hidden = true; el.textContent = ""; return; }
+  el.textContent = msg;
+  el.hidden = false;
+}
+
+async function api(path, opts) {
+  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || "Errore (" + r.status + ")");
+  return data;
+}
+
+function fmtDate(ms) {
+  return new Date(ms).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
+}
+
+async function refreshMe() {
+  try {
+    const d = await api("/api/me");
+    me = d.user;
+  } catch { me = null; return false; }
+  return true;
+}
+
+function renderAccount() {
+  $("meEmail").textContent = me.email;
+  $("meStatus").textContent = me.status === "active" ? "Attivo" : me.status === "suspended" ? "Sospeso" : "In attesa di conferma";
+  $("meCreated").textContent = fmtDate(me.created_at);
+  $("meName").value = me.name || "";
+  $("menu").hidden = false;
+  $("adminTab").hidden = me.role !== "admin";
+}
+
+async function renderAdmin() {
+  setErr("adminErr", "");
+  try {
+    const s = await api("/api/admin/stats");
+    const stats = $("stats");
+    stats.textContent = "";
+    const voci = [["Utenti totali", s.users], ["Attivi", s.active], ["In attesa", s.pending], ["Sospesi", s.suspended], ["Nuovi (7 giorni)", s.newLast7Days], ["Amministratori", s.admins]];
+    for (const [k, v] of voci) {
+      const box = document.createElement("div");
+      const dt = document.createElement("dt"); dt.textContent = k;
+      const dd = document.createElement("dd"); dd.textContent = String(v);
+      const dl = document.createElement("dl"); dl.append(dt, dd);
+      box.append(dl); stats.append(box);
+    }
+    await loadUsers();
+  } catch (e) { setErr("adminErr", e.message); }
+}
+
+async function loadUsers() {
+  const q = $("q").value.trim();
+  const d = await api("/api/admin/users" + (q ? "?q=" + encodeURIComponent(q) : ""));
+  const body = $("usersBody");
+  body.textContent = "";
+  for (const u of d.users) {
+    const tr = document.createElement("tr");
+    const tdE = document.createElement("td"); tdE.textContent = u.email;
+    const tdN = document.createElement("td"); tdN.textContent = u.name || "—";
+    const tdR = document.createElement("td"); tdR.textContent = u.role === "admin" ? "Admin" : "Utente";
+    const tdS = document.createElement("td"); tdS.textContent = u.status;
+    const tdA = document.createElement("td");
+    const mk = (label, fn) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = label;
+      b.addEventListener("click", async () => { try { await fn(); await renderAdmin(); } catch (e) { setErr("adminErr", e.message); } });
+      return b;
+    };
+    tdA.append(
+      u.status === "suspended"
+        ? mk("Riattiva", () => api("/api/admin/users/" + u.id, { method: "PATCH", body: JSON.stringify({ status: "active" }) }))
+        : mk("Sospendi", () => api("/api/admin/users/" + u.id, { method: "PATCH", body: JSON.stringify({ status: "suspended" }) })),
+      u.role === "admin"
+        ? mk("Rendi utente", () => api("/api/admin/users/" + u.id, { method: "PATCH", body: JSON.stringify({ role: "user" }) }))
+        : mk("Rendi admin", () => api("/api/admin/users/" + u.id, { method: "PATCH", body: JSON.stringify({ role: "admin" }) })),
+      mk("Elimina", async () => {
+        if (!window.confirm("Eliminare " + u.email + "?")) return;
+        await api("/api/admin/users/" + u.id, { method: "DELETE" });
+      }),
+    );
+    tr.append(tdE, tdN, tdR, tdS, tdA);
+    body.append(tr);
+  }
+}
+
+document.querySelectorAll("[data-view]").forEach((b) => {
+  b.addEventListener("click", () => {
+    const v = b.getAttribute("data-view");
+    if (v === "admin") renderAdmin();
+    show(v);
+  });
+});
+
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); setErr("loginErr", "");
+  try {
+    const d = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: $("loginEmail").value, password: $("loginPass").value }) });
+    me = d.user; renderAccount(); show("account");
+  } catch (err) { setErr("loginErr", err.message); }
+});
+
+$("regForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); setErr("regErr", "");
+  try {
+    const d = await api("/api/auth/register", { method: "POST", body: JSON.stringify({ name: $("regName").value, email: $("regEmail").value, password: $("regPass").value }) });
+    const banner = $("banner");
+    banner.textContent = d.message + ": controlla la posta per confermare l'account.";
+    banner.hidden = false;
+    show("login");
+  } catch (err) { setErr("regErr", err.message); }
+});
+
+$("nameForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); setErr("nameErr", "");
+  try {
+    const d = await api("/api/me", { method: "PATCH", body: JSON.stringify({ name: $("meName").value }) });
+    me = d.user; renderAccount();
+  } catch (err) { setErr("nameErr", err.message); }
+});
+
+$("logoutBtn").addEventListener("click", async () => {
+  await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+  me = null; $("menu").hidden = true; show("login");
+});
+
+$("searchForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try { await loadUsers(); } catch (err) { setErr("adminErr", err.message); }
+});
+
+// Avvio: banner conferma, poi stato sessione.
+(async () => {
+  const params = new URLSearchParams(location.search);
+  if (params.get("confermato") === "1") {
+    const banner = $("banner");
+    banner.textContent = "Email confermata: ora puoi accedere.";
+    banner.hidden = false;
+    history.replaceState(null, "", location.pathname);
+  }
+  if (await refreshMe()) { renderAccount(); show("account"); }
+  else show("login");
+})();
