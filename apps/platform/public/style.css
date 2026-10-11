@@ -26,3 +26,9 @@ button.link { background: none; border: none; color: var(--acc); padding: 0; mar
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #26303a; }
 td button { margin: .15rem .25rem .15rem 0; padding: .35rem .6rem; font-size: .85rem; }
+.suffixrow { display: flex; gap: .5rem; align-items: center; }
+.suffixrow span { color: var(--muted); white-space: nowrap; }
+#envSetupBox p { margin: .5rem 0 0; }
+#envSetupBox a { color: var(--acc); overflow-wrap: anywhere; }
+#envUrl { overflow-wrap: anywhere; }
+@media (max-width: 480px) { .suffixrow { flex-wrap: wrap; } }

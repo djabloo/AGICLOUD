@@ -1,7 +1,7 @@
 "use strict";
 // SPA minimale: parla con l'API JSON, niente innerHTML con dati utente.
 const $ = (id) => document.getElementById(id);
-const views = ["login", "register", "account", "admin"];
+const views = ["login", "register", "account", "env", "admin"];
 let me = null;
 
 function show(name) {
@@ -34,6 +34,68 @@ async function refreshMe() {
   return true;
 }
 
+let env = null;
+
+function envStatusLabel(s) {
+  return s === "running" ? "In esecuzione" : s === "stopped" ? "Spento" : String(s);
+}
+
+function renderEnv() {
+  $("createForm").hidden = !!env;
+  $("envDetail").hidden = !env;
+  if (!env) return;
+  const link = $("envUrl");
+  link.textContent = env.url;
+  link.href = env.url;
+  $("envStatus").textContent = envStatusLabel(env.status);
+  $("envStart").hidden = env.status === "running";
+  $("envStop").hidden = env.status !== "running";
+  const setup = $("envSetupUrl");
+  setup.href = env.setupUrl;
+  setup.textContent = "Apri il link di primo accesso";
+  $("envConfirm").value = "";
+}
+
+async function loadEnv() {
+  setErr("envErr", "");
+  try {
+    const d = await api("/api/workspace");
+    env = d.workspace;
+    renderEnv();
+  } catch (e) { setErr("envErr", e.message); }
+}
+
+async function loadWorkspaces() {
+  const d = await api("/api/admin/workspaces");
+  const body = $("wsBody");
+  body.textContent = "";
+  for (const w of d.workspaces) {
+    const tr = document.createElement("tr");
+    const tdU = document.createElement("td"); tdU.textContent = w.email;
+    const tdUrl = document.createElement("td");
+    const a = document.createElement("a");
+    a.textContent = w.url; a.href = w.url;
+    a.target = "_blank"; a.rel = "noopener";
+    tdUrl.append(a);
+    const tdS = document.createElement("td"); tdS.textContent = w.status === "running" ? "In esecuzione" : w.status === "stopped" ? "Spento" : String(w.status);
+    const tdC = document.createElement("td"); tdC.textContent = fmtDate(w.created_at);
+    const tdA = document.createElement("td");
+    if (w.status === "running") {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = "Ferma";
+      b.addEventListener("click", async () => {
+        try { await api("/api/admin/workspaces/" + w.id + "/stop", { method: "POST" }); await renderAdmin(); }
+        catch (e) { setErr("adminErr", e.message); }
+      });
+      tdA.append(b);
+    } else {
+      tdA.textContent = "—";
+    }
+    tr.append(tdU, tdUrl, tdS, tdC, tdA);
+    body.append(tr);
+  }
+}
+
 function renderAccount() {
   $("meEmail").textContent = me.email;
   $("meStatus").textContent = me.status === "active" ? "Attivo" : me.status === "suspended" ? "Sospeso" : "In attesa di conferma";
@@ -58,6 +120,7 @@ async function renderAdmin() {
       box.append(dl); stats.append(box);
     }
     await loadUsers();
+    await loadWorkspaces();
   } catch (e) { setErr("adminErr", e.message); }
 }
 
@@ -100,6 +163,7 @@ document.querySelectorAll("[data-view]").forEach((b) => {
   b.addEventListener("click", () => {
     const v = b.getAttribute("data-view");
     if (v === "admin") renderAdmin();
+    if (v === "env") loadEnv();
     show(v);
   });
 });
@@ -139,6 +203,37 @@ $("logoutBtn").addEventListener("click", async () => {
 $("searchForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   try { await loadUsers(); } catch (err) { setErr("adminErr", err.message); }
+});
+
+$("createForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); setErr("envErr", "");
+  const btn = $("createBtn");
+  btn.disabled = true; btn.textContent = "Creazione in corso…";
+  try {
+    const d = await api("/api/workspace", { method: "POST", body: JSON.stringify({ subdomain: $("envName").value.trim() }) });
+    env = d.workspace; renderEnv();
+  } catch (err) { setErr("envErr", err.message); }
+  finally { btn.disabled = false; btn.textContent = "Crea il mio ambiente"; }
+});
+
+$("envStart").addEventListener("click", async () => {
+  setErr("envErr", "");
+  try { env = (await api("/api/workspace/start", { method: "POST" })).workspace; renderEnv(); }
+  catch (e) { setErr("envErr", e.message); }
+});
+
+$("envStop").addEventListener("click", async () => {
+  setErr("envErr", "");
+  try { env = (await api("/api/workspace/stop", { method: "POST" })).workspace; renderEnv(); }
+  catch (e) { setErr("envErr", e.message); }
+});
+
+$("deleteForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); setErr("envErr", "");
+  try {
+    await api("/api/workspace?confirm=" + encodeURIComponent($("envConfirm").value.trim()), { method: "DELETE" });
+    env = null; $("envName").value = ""; renderEnv();
+  } catch (err) { setErr("envErr", err.message); }
 });
 
 // Avvio: banner conferma, poi stato sessione.
