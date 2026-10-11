@@ -218,6 +218,7 @@ acp
 
     const toolIds = new Map<number, string>();
     const toolKinds = new Map<string, acp.ToolKind>();
+    let hasMessage = false;
     // Contenitore: assegnato dentro la callback, letto alla fine (TS non segue l'assegnazione nelle closure)
     const out: { result: AgyResult | null } = { result: null };
     let buffer = '';
@@ -238,7 +239,10 @@ acp
         const u = ev.step_update ?? {};
         if (u.step_type === 'agent_response') {
           if (u.thinking_delta) chain = chain.then(() => say({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: u.thinking_delta } }));
-          if (u.text_delta) chain = chain.then(() => say({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: u.text_delta } }));
+          if (u.text_delta) {
+            hasMessage = true;
+            chain = chain.then(() => say({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: u.text_delta } }));
+          }
         } else if (u.step_type === 'tool') {
           const name = u.tool_name ?? u.tool_info?.name ?? 'tool';
           let id = toolIds.get(u.step_index);
@@ -303,6 +307,10 @@ acp
       });
     }
     if (!r || r.status === 'ERROR') {
+      const isTransient503 = typeof r?.error === 'string' && r.error.includes('UNAVAILABLE (code 503)');
+      if (hasMessage && isTransient503) {
+        return { stopReason: 'end_turn' as const };
+      }
       throw new Error(r?.error || stderr.trim().split('\n').pop() || `agy terminato con codice ${exit.code}`);
     }
     return { stopReason: 'end_turn' as const };
