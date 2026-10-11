@@ -1,0 +1,16 @@
+export default {
+  sessionePersa: "The session could not be resumed: the agent restarts without remembering the previous messages.",
+  azioneAgente: "Agent action",
+  passatoClaude: "Work handed back to Claude.",
+  passatoAltro: "Work handed over to another agent.",
+  apriConversazione: "Open the conversation",
+  limiteRaggiunto: "Subscription limit reached. {message} You can hand the work over to another agent from the panel above.",
+  unite: "Changes of \"{title}\" merged into the project (commit {commit}).",
+  uniteChiuse: "Changes merged into the project (commit {commit}). The separate copy has been closed.",
+  scartate: "Changes discarded. The separate copy has been closed.",
+  stopInterrotto: "Stopped.",
+  stopMaxToken: "Reply cut off: the length limit was reached.",
+  stopMaxTurni: "The agent stopped: too many steps in a single turn.",
+  stopRifiuto: "The agent refused the request.",
+  stopAltro: "Turn ended ({reason}).",
+} satisfies Record<string, string | Record<string, string>>;

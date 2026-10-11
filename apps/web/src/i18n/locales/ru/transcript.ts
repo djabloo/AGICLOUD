@@ -1,0 +1,16 @@
+export default {
+  sessionePersa: "Не удалось возобновить сессию: агент запускается заново и не помнит прежних сообщений.",
+  azioneAgente: "Действие агента",
+  passatoClaude: "Работа возвращена Claude.",
+  passatoAltro: "Работа передана другому агенту.",
+  apriConversazione: "Открыть диалог",
+  limiteRaggiunto: "Лимит подписки достигнут. {message} Вы можете передать работу другому агенту через панель выше.",
+  unite: "Изменения «{title}» объединены с проектом (коммит {commit}).",
+  uniteChiuse: "Изменения объединены с проектом (коммит {commit}). Отдельная копия закрыта.",
+  scartate: "Изменения отклонены. Отдельная копия закрыта.",
+  stopInterrotto: "Прервано.",
+  stopMaxToken: "Ответ обрезан: достигнут предел длины.",
+  stopMaxTurni: "Агент остановился: слишком много шагов за один ход.",
+  stopRifiuto: "Агент отказался выполнять запрос.",
+  stopAltro: "Ход завершён ({reason}).",
+} satisfies Record<string, string | Record<string, string>>;

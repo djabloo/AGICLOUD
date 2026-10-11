@@ -11,6 +11,7 @@ export default async function ({ page }) {
   out.console = [];
   page.on('console', (m) => { if (m.type() === 'error') out.console.push(m.text().slice(0, 300)); });
   page.on('pageerror', (e) => out.console.push('PAGEERROR ' + String(e).slice(0, 300)));
+  await page.evaluateOnNewDocument(() => localStorage.setItem('agicloud.lang', '${process.env.LANGCODE || 'it'}'));
   ${DARK ? "await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);" : ''}
   const runAxe = async (label) => {
     await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js' });

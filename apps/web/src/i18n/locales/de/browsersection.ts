@@ -1,0 +1,16 @@
+export default {
+  chattaTitolo: "Mit einem Agenten über den Browser chatten",
+  chattaHint: "Der Agent sieht und nutzt denselben Browser: Bitte ihn zu suchen, zu lesen, zu vergleichen oder Formulare auszufüllen, und verfolge alles live.",
+  agente: "Agent",
+  avvio: "Startet…",
+  inizia: "Chat starten",
+  nessunaCartella: "Kein Projektordner verfügbar",
+  mostra: "Anzeigen",
+  pannelloBrowser: "Browser",
+  pannelloChat: "Chat",
+  pannelloChatLavoro: "Chat · arbeitet",
+  chatLabel: "Chat mit dem Agenten über den Browser",
+  chatDelBrowser: "Browser-Chat",
+  chatOpzione: "{title} · {agent}",
+  nuovaChat: "+ Neuer Browser-Chat",
+} satisfies Record<string, string | Record<string, string>>;

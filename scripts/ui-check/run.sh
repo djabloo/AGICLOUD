@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prova end-to-end dell'interfaccia con l'agente demo, in un container usa e getta,
 # usando il browserless del server (rete n8n_default). Uscita: screenshot + violazioni axe.
-# Richiede: npm run build gia' fatto.  Uso: scripts/ui-check/run.sh [--dark]
+# Richiede: npm run build gia' fatto.  Uso: scripts/ui-check/run.sh [--dark]  (LANGCODE=de|en|cs|ru per un'altra lingua)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 docker image inspect agicloud-uitest:latest >/dev/null 2>&1 || docker build -q -t agicloud-uitest:latest scripts/ui-check >/dev/null

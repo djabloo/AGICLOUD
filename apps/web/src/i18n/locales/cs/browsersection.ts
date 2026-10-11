@@ -1,0 +1,16 @@
+export default {
+  chattaTitolo: "Chatuj s agentem nad prohlížečem",
+  chattaHint: "Agent vidí a používá stejný prohlížeč: požádej ho, aby hledal, četl, porovnával nebo vyplňoval formuláře, a sleduj vše živě.",
+  agente: "Agent",
+  avvio: "Spouští se…",
+  inizia: "Zahájit chat",
+  nessunaCartella: "Žádná složka projektu není k dispozici",
+  mostra: "Zobrazit",
+  pannelloBrowser: "Prohlížeč",
+  pannelloChat: "Chat",
+  pannelloChatLavoro: "Chat · pracuje",
+  chatLabel: "Chat s agentem nad prohlížečem",
+  chatDelBrowser: "Chat prohlížeče",
+  chatOpzione: "{title} · {agent}",
+  nuovaChat: "+ Nový chat prohlížeče",
+} satisfies Record<string, string | Record<string, string>>;

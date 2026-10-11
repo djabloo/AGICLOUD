@@ -1,0 +1,16 @@
+export default {
+  chattaTitolo: "Чат с агентом о браузере",
+  chattaHint: "Агент видит тот же браузер и пользуется им: попросите его искать, читать, сравнивать или заполнять формы и следите за всем в реальном времени.",
+  agente: "Агент",
+  avvio: "Запуск…",
+  inizia: "Начать чат",
+  nessunaCartella: "Нет доступной папки проекта",
+  mostra: "Показать",
+  pannelloBrowser: "Браузер",
+  pannelloChat: "Чат",
+  pannelloChatLavoro: "Чат · работает",
+  chatLabel: "Чат с агентом о браузере",
+  chatDelBrowser: "Чат браузера",
+  chatOpzione: "{title} · {agent}",
+  nuovaChat: "+ Новый чат браузера",
+} satisfies Record<string, string | Record<string, string>>;

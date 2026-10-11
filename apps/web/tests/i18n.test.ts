@@ -1,5 +1,5 @@
 // Controlli sulle traduzioni: segnaposto coerenti, plurali validi, chiavi usate nel codice esistenti, lingue complete.
-// Le lingue incomplete passano finche' non si imposta I18N_STRICT=1 (il rapporto dice cosa manca).
+// Le lingue devono essere complete: il rapporto dice cosa manca.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -58,5 +58,5 @@ test('completezza delle lingue', async () => {
     console.log(`# ${lang}: ${Object.keys(it).length - missing.length}/${Object.keys(it).length} testi tradotti`);
     if (missing.length) problems.push(`${lang}: mancano ${missing.length} (es. ${missing.slice(0, 3).join(', ')})`);
   }
-  if (process.env.I18N_STRICT === '1') assert.deepEqual(problems, []);
+  assert.deepEqual(problems, [], 'lingue incomplete: aggiungi i testi mancanti');
 });

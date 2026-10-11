@@ -1,0 +1,16 @@
+export default {
+  sessionePersa: "Die Sitzung konnte nicht fortgesetzt werden: Der Agent startet neu, ohne sich an die bisherigen Nachrichten zu erinnern.",
+  azioneAgente: "Aktion des Agenten",
+  passatoClaude: "Arbeit wurde an Claude zurückgegeben.",
+  passatoAltro: "Arbeit wurde an einen anderen Agenten übergeben.",
+  apriConversazione: "Unterhaltung öffnen",
+  limiteRaggiunto: "Abo-Limit erreicht. {message} Du kannst die Arbeit über das Feld oben an einen anderen Agenten übergeben.",
+  unite: "Änderungen von „{title}“ ins Projekt übernommen (Commit {commit}).",
+  uniteChiuse: "Änderungen ins Projekt übernommen (Commit {commit}). Die separate Kopie wurde geschlossen.",
+  scartate: "Änderungen verworfen. Die separate Kopie wurde geschlossen.",
+  stopInterrotto: "Unterbrochen.",
+  stopMaxToken: "Antwort abgeschnitten: Das Längenlimit wurde erreicht.",
+  stopMaxTurni: "Der Agent hat angehalten: zu viele Schritte in einem einzigen Durchgang.",
+  stopRifiuto: "Der Agent hat die Anfrage abgelehnt.",
+  stopAltro: "Durchgang beendet ({reason}).",
+} satisfies Record<string, string | Record<string, string>>;

@@ -1,0 +1,16 @@
+export default {
+  sessionePersa: "Relaci se nepodařilo obnovit: agent začíná znovu a předchozí zprávy si nepamatuje.",
+  azioneAgente: "Akce agenta",
+  passatoClaude: "Práce byla předána zpět Claudovi.",
+  passatoAltro: "Práce byla předána jinému agentovi.",
+  apriConversazione: "Otevřít konverzaci",
+  limiteRaggiunto: "Limit předplatného byl dosažen. {message} Práci můžeš předat jinému agentovi v panelu nahoře.",
+  unite: "Změny z „{title}“ byly sloučeny do projektu (commit {commit}).",
+  uniteChiuse: "Změny byly sloučeny do projektu (commit {commit}). Samostatná kopie byla uzavřena.",
+  scartate: "Změny byly zahozeny. Samostatná kopie byla uzavřena.",
+  stopInterrotto: "Přerušeno.",
+  stopMaxToken: "Odpověď byla zkrácena: byl dosažen limit délky.",
+  stopMaxTurni: "Agent se zastavil: příliš mnoho kroků v jednom tahu.",
+  stopRifiuto: "Agent požadavek odmítl.",
+  stopAltro: "Tah skončil ({reason}).",
+} satisfies Record<string, string | Record<string, string>>;
