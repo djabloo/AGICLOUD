@@ -30,7 +30,7 @@ Un'interfaccia web generalista per **più agenti di coding**, organizzata a sezi
 | `apps/server` | ✅ funzionante | HTTP (Hono): conversazioni, registro eventi AG-UI per conversazione, flusso SSE con ripresa, permessi, cancel, token di accesso |
 | `packages/design` | ✅ plugin Design | Skill, design system e regole craft da Open Design; kit copiato nel progetto |
 | `apps/web` | ✅ Chat, Terminale, File, Design, Impostazioni | React + Vite, PWA installabile con notifiche push; responsive e accessibile |
-| piattaforma SaaS | ✅ repo separata | Account, dashboard admin, ambienti per utente e VPS: vive in `piattaforma (privata)` (non in questa repo). Questa repo e' solo la webUI; la piattaforma ne costruisce l'immagine da `node/Dockerfile` |
+| piattaforma SaaS | ✅ repo separata | Account, dashboard admin, ambienti per utente e VPS: vive nella repo `agicloud-saas` (non in questa repo). Questa repo e' solo la webUI; la piattaforma ne costruisce l'immagine da `node/Dockerfile` |
 
 ## Traduzione ACP → AG-UI (packages/bridge)
 
