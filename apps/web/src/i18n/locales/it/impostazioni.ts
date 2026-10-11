@@ -12,7 +12,7 @@ export default {
   vocePlugin: 'Plugin',
   vocePluginDesc: "Installa, attiva o spegni le funzioni in piu'",
   voceAspetto: 'Aspetto',
-  voceAspettoDesc: 'Tema chiaro o scuro',
+  voceAspettoDesc: 'Tema chiaro o scuro, lingua',
   voceGenerale: 'Cartelle e pausa',
   voceGeneraleDesc: 'Progetti consentiti, pausa degli agenti',
   voceAccesso: 'Accesso',
