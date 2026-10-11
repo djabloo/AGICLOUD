@@ -107,9 +107,9 @@ export function createApp({ db, mailer, baseUrl, secureCookies, orchestrator, ro
     const existing = db.prepare('SELECT id, status FROM users WHERE email = ?').get(email) as { id: number; status: Status } | undefined;
     if (!existing) {
       const r = db.prepare('INSERT INTO users (email, name, pass_hash, created_at) VALUES (?, ?, ?, ?)').run(email, name, await hashPassword(password), now());
-      await sendVerification({ id: Number(r.lastInsertRowid), email });
+      await sendVerification({ id: Number(r.lastInsertRowid), email }).catch((err) => console.error('Email di conferma non inviata:', err));
     } else if (existing.status === 'pending') {
-      await sendVerification({ id: existing.id, email });
+      await sendVerification({ id: existing.id, email }).catch((err) => console.error('Email di conferma non inviata:', err));
     }
     return c.json({ ok: true, message: 'Se l\'indirizzo e\' valido, ti abbiamo inviato un\'email di conferma' });
   });

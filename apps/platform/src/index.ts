@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { Hono } from 'hono';
 import { createApp, ensureAdmin } from './app.js';
 import { openDb } from './db.js';
-import { consoleMailer } from './mailer.js';
+import { brevoMailer, consoleMailer } from './mailer.js';
 import { httpOrchestrator } from './orchestrator.js';
 import { mountStatic } from './static.js';
 
@@ -24,7 +24,9 @@ const adminHost = process.env.PLATFORM_ADMIN_HOST?.toLowerCase();
 
 const api = createApp({
   db,
-  mailer: consoleMailer(join(dataDir, 'outbox.log')),
+  mailer: process.env.BREVO_API_KEY
+    ? brevoMailer(process.env.BREVO_API_KEY, { email: process.env.MAIL_FROM_EMAIL ?? 'noreply@agicloud.dev', name: process.env.MAIL_FROM_NAME ?? 'AgiCloud' })
+    : consoleMailer(join(dataDir, 'outbox.log')),
   baseUrl,
   secureCookies: baseUrl.startsWith('https://'),
   orchestrator,
