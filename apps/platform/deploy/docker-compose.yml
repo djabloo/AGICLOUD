@@ -1,0 +1,28 @@
+# Installazione: /opt/agicloud/docker-compose.yml (copia di questo file) + /opt/agicloud/.env + /opt/agicloud/data
+# Porta SOLO su 127.0.0.1: all'esterno ci pensa il reverse proxy (Caddy).
+services:
+  platform:
+    build:
+      context: /home/user/agicloud
+      dockerfile: apps/platform/Dockerfile
+    image: piattaforma (privata):local
+    container_name: piattaforma (privata)
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PLATFORM_BASE_URL=${PLATFORM_BASE_URL:-http://127.0.0.1:3110}
+    ports:
+      - 127.0.0.1:${PLATFORM_PORT_HOST:-3110}:3110
+    volumes:
+      - ./data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /home/node/.npm:size=64m,uid=1000,gid=1000
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256m
