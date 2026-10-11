@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { timingSafeEqual } from 'node:crypto';
 import { ID_RE, type Limits, type Runners } from './docker.js';
 
-const DEFAULT_LIMITS: Limits = { cpus: '0.5', memory: '512m', pids: 256 };
+const DEFAULT_LIMITS: Limits = { cpus: '1.0', memory: '1024m', pids: 512 };
 const CPUS_RE = /^\d+(\.\d+)?$/;
 const MEM_RE = /^\d+[mg]$/;
 
