@@ -5,6 +5,7 @@ import { useEffect, useId, useState, type FormEvent } from 'react';
 import { api, type PiiPdf, type PiiResult, type PiiTag } from './api';
 import { ProjectPicker } from './ProjectPicker';
 import { copyText } from './termText';
+import { useT } from './i18n';
 
 const MAP_KEY = 'agicloud_pii_map';
 const MAPPING_KEY = 'agicloud_pii_mapping_on';
@@ -21,6 +22,7 @@ function storedMap(): Record<string, string> {
 }
 
 export function PiiView() {
+  const t = useT();
   const id = useId();
   const [mode, setMode] = useState<'text' | 'file'>('text');
   const [text, setText] = useState('');
@@ -42,8 +44,8 @@ export function PiiView() {
     api
       .piiTags()
       .then(setTags)
-      .catch((err) => setMsg({ kind: 'err', text: `Motore PII non disponibile: ${err instanceof Error ? err.message : err}` }));
-  }, []);
+      .catch((err) => setMsg({ kind: 'err', text: t('pii.engineDown', { err: err instanceof Error ? err.message : String(err) }) }));
+  }, [t]);
 
   // Le immagini delle pagine sono blob locali: si liberano quando cambiano
   useEffect(() => () => pages.forEach((u) => URL.revokeObjectURL(u)), [pages]);
@@ -53,14 +55,14 @@ export function PiiView() {
   const run = async (e: FormEvent) => {
     e.preventDefault();
     if (mode === 'text' ? !text.trim() : !file) {
-      setMsg({ kind: 'warn', text: mode === 'text' ? 'Incolla prima un testo.' : 'Scegli prima un documento.' });
+      setMsg({ kind: 'warn', text: mode === 'text' ? t('pii.pasteFirst') : t('pii.chooseDocFirst') });
       return;
     }
     setMsg(null);
     setSaved(null);
     setPdf(null);
     setPages([]);
-    setBusy('Analisi in corso…');
+    setBusy(t('pii.analyzing'));
     try {
       const r = await api.piiAnalyze(mode === 'text' ? { text } : { file: file! }, excluded, mapping);
       setResult(r);
@@ -68,23 +70,23 @@ export function PiiView() {
       let note = '';
       let residual = false;
       if (isPdf) {
-        setBusy('Preparazione del PDF anonimizzato…');
+        setBusy(t('pii.preparingPdf'));
         const d = await api.piiPdfPreview(file!, excluded);
         setPdf(d);
         const urls: string[] = [];
         for (let i = 0; i < (d.n_pages || 1); i++) urls.push(URL.createObjectURL(await api.piiPage(d.doc_id, i)));
         setPages(urls);
         setView('pdf');
-        note = ` PDF: ${d.redactions} occorrenze rimosse su ${d.n_pages} ${d.n_pages === 1 ? 'pagina' : 'pagine'}.`;
+        note = ` ${t(d.n_pages === 1 ? 'pii.pdfNoteOne' : 'pii.pdfNoteOther', { n: d.redactions, p: d.n_pages })}`;
         if (d.residual) {
           residual = true;
-          note += ` Attenzione: ${d.residual} valori restano in chiaro.`;
+          note += ` ${t('pii.residual', { n: d.residual })}`;
         }
       } else setView('anon');
       setMsg(
         r.n_entities
-          ? { kind: residual ? 'warn' : 'ok', text: `${r.n_entities} dati personali trovati e sostituiti (${r.n_unique} distinti).${note}` }
-          : { kind: 'warn', text: `Nessun dato personale trovato.${note}` },
+          ? { kind: residual ? 'warn' : 'ok', text: t('pii.foundResult', { n: r.n_entities, u: r.n_unique, note }) }
+          : { kind: 'warn', text: t('pii.noneFound', { note }) },
       );
     } catch (err) {
       setMsg({ kind: 'err', text: err instanceof Error ? err.message : String(err) });
@@ -95,17 +97,17 @@ export function PiiView() {
 
   const save = async () => {
     if (!project.trim()) {
-      setMsg({ kind: 'warn', text: 'Scegli la cartella del progetto in cui salvare.' });
+      setMsg({ kind: 'warn', text: t('pii.chooseProject') });
       return;
     }
-    setBusy('Salvataggio…');
+    setBusy(t('pii.saving'));
     try {
       const name = mode === 'file' && file ? file.name : `testo-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}`;
       const r = await api.piiSave(
         pdf ? { project, name, exclude_tags: excluded, doc_id: pdf.doc_id } : { project, name, exclude_tags: excluded, text: result?.anonymized_text ?? '' },
       );
       setSaved(r);
-      setMsg({ kind: 'ok', text: `Salvato in ${r.path}: l'agente legge da li' la versione anonimizzata.` });
+      setMsg({ kind: 'ok', text: t('pii.savedIn', { path: r.path }) });
     } catch (err) {
       setMsg({ kind: 'err', text: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -125,56 +127,59 @@ export function PiiView() {
 
   const map = storedMap();
   const decoded = decode(decIn, map);
-  const tagName = (t: string) => tags.find((x) => x.tag === t)?.it ?? t;
+  const tagName = (tg: string) => tags.find((x) => x.tag === tg)?.it ?? tg;
+  const viewLabel = (v: View) =>
+    v === 'anon' ? t('pii.viewAnon') : v === 'marked' ? t('pii.viewMarked') : v === 'pdf' ? t('pii.viewPdf') : t('pii.viewFound', { n: result?.n_unique ?? 0 });
+  const saveHintParts = t('pii.saveHint', { dir: 'pii-clean/' }).split('pii-clean/');
 
   return (
     <section className="pii" aria-labelledby={`${id}-title`}>
       <header className="chat-header">
         <div className="chat-heading">
           <h1 id={`${id}-title`}>PII</h1>
-          <p className="chat-meta">Anonimizzazione in locale con Rizzo-PII: i documenti non escono dal server</p>
+          <p className="chat-meta">{t('pii.subtitle')}</p>
         </div>
       </header>
 
       <div className="pii-body">
         <form className="pii-card" onSubmit={(e) => void run(e)}>
           <fieldset className="pii-mode">
-            <legend>Cosa vuoi anonimizzare</legend>
+            <legend>{t('pii.whatToAnon')}</legend>
             <label className="choice">
               <input type="radio" name={`${id}-mode`} checked={mode === 'text'} onChange={() => setMode('text')} />
-              <span>Un testo</span>
+              <span>{t('pii.aText')}</span>
             </label>
             <label className="choice">
               <input type="radio" name={`${id}-mode`} checked={mode === 'file'} onChange={() => setMode('file')} />
-              <span>Un documento (PDF, TXT, MD)</span>
+              <span>{t('pii.aDoc')}</span>
             </label>
           </fieldset>
 
           {mode === 'text' ? (
             <div className="pii-field">
-              <label htmlFor={`${id}-text`}>Testo</label>
-              <textarea id={`${id}-text`} rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder="Incolla qui il testo con i dati personali" />
+              <label htmlFor={`${id}-text`}>{t('pii.textLabel')}</label>
+              <textarea id={`${id}-text`} rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder={t('pii.textPh')} />
             </div>
           ) : (
             <div className="pii-field">
-              <label htmlFor={`${id}-file`}>Documento</label>
+              <label htmlFor={`${id}-file`}>{t('pii.docLabel')}</label>
               <input id={`${id}-file`} type="file" accept={FILE_TYPES} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </div>
           )}
 
           <details className="pii-tags">
             <summary>
-              Categorie da lasciare in chiaro{excluded.length ? ` (${excluded.length} escluse)` : ''}
+              {t('pii.leaveClear')}{excluded.length ? ` ${t('pii.excludedSuffix', { n: excluded.length })}` : ''}
             </summary>
             <div className="pii-tag-grid">
-              {tags.map((t) => (
-                <label key={t.tag} className="pii-tag" title={`Esempio: ${t.example}`}>
+              {tags.map((tg) => (
+                <label key={tg.tag} className="pii-tag" title={t('pii.exampleTitle', { ex: tg.example })}>
                   <input
                     type="checkbox"
-                    checked={excluded.includes(t.tag)}
-                    onChange={(e) => setExcluded((x) => (e.target.checked ? [...x, t.tag] : x.filter((y) => y !== t.tag)))}
+                    checked={excluded.includes(tg.tag)}
+                    onChange={(e) => setExcluded((x) => (e.target.checked ? [...x, tg.tag] : x.filter((y) => y !== tg.tag)))}
                   />
-                  <span>{t.it}</span>
+                  <span>{tg.it}</span>
                 </label>
               ))}
             </div>
@@ -191,16 +196,16 @@ export function PiiView() {
               aria-describedby={`${id}-map-hint`}
             />
             <span className="choice-text">
-              <span>Dizionario reversibile</span>
+              <span>{t('pii.dictTitle')}</span>
               <span className="hint" id={`${id}-map-hint`}>
-                Ricorda segnaposto e valori originali solo in questo browser, per la decodifica. Spento: anonimizzazione definitiva.
+                {t('pii.dictHint')}
               </span>
             </span>
           </label>
 
           <div className="agent-actions">
             <button type="submit" className="btn primary" disabled={Boolean(busy)}>
-              {busy || 'Anonimizza'}
+              {busy || t('pii.anonimize')}
             </button>
           </div>
         </form>
@@ -211,11 +216,11 @@ export function PiiView() {
 
         {result && (
           <section className="pii-card" aria-labelledby={`${id}-res`}>
-            <h2 id={`${id}-res`}>Risultato</h2>
-            <div className="pii-views" role="group" aria-label="Vista del risultato">
+            <h2 id={`${id}-res`}>{t('pii.result')}</h2>
+            <div className="pii-views" role="group" aria-label={t('pii.viewsLabel')}>
               {(['anon', 'marked', 'entities', ...(pdf ? ['pdf'] : [])] as View[]).map((v) => (
                 <button key={v} type="button" className="btn small-btn" aria-pressed={view === v} onClick={() => setView(v)}>
-                  {{ anon: 'Testo anonimizzato', marked: 'Evidenziato', entities: `Dati trovati (${result.n_unique})`, pdf: 'PDF' }[v]}
+                  {viewLabel(v)}
                 </button>
               ))}
             </div>
@@ -223,8 +228,8 @@ export function PiiView() {
             {view === 'anon' && (
               <>
                 <pre className="pii-out">{result.anonymized_text}</pre>
-                <button type="button" className="btn small-btn" onClick={() => void copyText(result.anonymized_text).then((ok) => setMsg(ok ? { kind: 'ok', text: 'Testo anonimizzato copiato' } : { kind: 'err', text: 'Copia non riuscita' }))}>
-                  Copia
+                <button type="button" className="btn small-btn" onClick={() => void copyText(result.anonymized_text).then((ok) => setMsg(ok ? { kind: 'ok', text: t('pii.copiedOk') } : { kind: 'err', text: t('pii.copyFail') }))}>
+                  {t('pii.copy')}
                 </button>
               </>
             )}
@@ -244,12 +249,12 @@ export function PiiView() {
             )}
             {view === 'entities' && (
               <table className="pii-table">
-                <caption className="visually-hidden">Dati personali trovati</caption>
+                <caption className="visually-hidden">{t('pii.caption')}</caption>
                 <thead>
                   <tr>
-                    <th scope="col">Categoria</th>
-                    <th scope="col">Segnaposto</th>
-                    <th scope="col">Valore</th>
+                    <th scope="col">{t('pii.thCategory')}</th>
+                    <th scope="col">{t('pii.thPlaceholder')}</th>
+                    <th scope="col">{t('pii.thValue')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -268,11 +273,11 @@ export function PiiView() {
             {view === 'pdf' && pdf && (
               <>
                 <button type="button" className="btn small-btn primary" onClick={() => void downloadPdf()}>
-                  Scarica il PDF anonimizzato
+                  {t('pii.downloadPdf')}
                 </button>
                 <div className="pii-pages">
                   {pages.map((u, i) => (
-                    <img key={u} src={u} alt={`Pagina ${i + 1} anonimizzata`} />
+                    <img key={u} src={u} alt={t('pii.pageAlt', { n: i + 1 })} />
                   ))}
                 </div>
               </>
@@ -282,27 +287,27 @@ export function PiiView() {
 
         {result && (
           <section className="pii-card" aria-labelledby={`${id}-save`}>
-            <h2 id={`${id}-save`}>Salva per l'agente</h2>
-            <p className="hint">Va in <code>pii-clean/</code> nella cartella del progetto: chiedi all'agente di lavorare su quel file, non sull'originale.</p>
+            <h2 id={`${id}-save`}>{t('pii.saveForAgent')}</h2>
+            <p className="hint">{saveHintParts.length === 2 ? <>{saveHintParts[0]}<code>pii-clean/</code>{saveHintParts[1]}</> : t('pii.saveHint', { dir: 'pii-clean/' })}</p>
             <ProjectPicker active cwd={project} onChange={setProject} />
             <div className="agent-actions">
               <button type="button" className="btn primary" disabled={Boolean(busy)} onClick={() => void save()}>
-                Salva in pii-clean/
+                {t('pii.saveIn')}
               </button>
-              {saved && <a href={`#/files/${encodeURIComponent(saved.abs)}`}>Apri il file</a>}
+              {saved && <a href={`#/files/${encodeURIComponent(saved.abs)}`}>{t('pii.openFile')}</a>}
             </div>
           </section>
         )}
 
         <details className="pii-card pii-decode">
-          <summary>Decodifica: rimetti i valori originali</summary>
+          <summary>{t('pii.decodeTitle')}</summary>
           <div className="pii-field">
-            <label htmlFor={`${id}-dec`}>Testo con i segnaposto (es. la risposta dell'agente)</label>
+            <label htmlFor={`${id}-dec`}>{t('pii.decodeLabel')}</label>
             <textarea id={`${id}-dec`} rows={5} value={decIn} onChange={(e) => setDecIn(e.target.value)} />
           </div>
           {decIn.trim() && (
             <p className="pii-out" aria-live="polite">
-              {Object.keys(map).length ? decoded : 'Nessun dizionario salvato: anonimizza prima con il dizionario reversibile attivo.'}
+              {Object.keys(map).length ? decoded : t('pii.noDict')}
             </p>
           )}
           <button
@@ -311,10 +316,10 @@ export function PiiView() {
             onClick={() => {
               localStorage.removeItem(MAP_KEY);
               setDecIn((v) => v + '');
-              setMsg({ kind: 'ok', text: 'Dizionario cancellato da questo browser.' });
+              setMsg({ kind: 'ok', text: t('pii.dictCleared') });
             }}
           >
-            Cancella dizionario ({Object.keys(map).length} voci)
+            {t('pii.clearDict', { n: Object.keys(map).length })}
           </button>
         </details>
 
