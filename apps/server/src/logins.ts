@@ -4,8 +4,12 @@
 
 import { homedir } from 'node:os';
 import * as pty from 'node-pty';
+import { splitEnvPrefix } from './cmdenv.js';
 import { AGENT_ENV_BLOCK } from './settings.js';
 import { HttpError } from './errors.js';
+
+/** La VPS resta Linux: questo ramo serve solo per l'uso in locale su Windows */
+const WIN = process.platform === 'win32';
 
 interface GuidedSpec {
   command: string;
@@ -53,16 +57,27 @@ class GuidedLogin {
     private readonly onDone: (ok: boolean) => void,
   ) {
     this.status = { agentId, state: 'waiting', url: null, needsCode: spec.needsCode, askingCode: false, output: '', error: null };
-    const env = { ...process.env, TERM: 'xterm-256color', BROWSER: 'true' } as Record<string, string>;
+    // Su Windows cmd.exe non capisce un prefisso "VAR=valore" (es. "NO_OPEN_BROWSER=1 cursor-agent login")
+    const win32 = WIN ? splitEnvPrefix(spec.command) : null;
+    const env = { ...process.env, TERM: 'xterm-256color', BROWSER: 'true', ...win32?.env } as Record<string, string>;
     for (const name of AGENT_ENV_BLOCK[agentId] ?? []) delete env[name];
-    // Righe larghissime: il link esce su una riga sola. Il token di ~/.bashrc cambierebbe il login di claude
-    this.proc = pty.spawn('bash', ['-lc', `unset CLAUDE_CODE_OAUTH_TOKEN; ${spec.command}`], {
-      name: 'xterm-256color',
-      cols: 1000,
-      rows: 40,
-      cwd: homedir(),
-      env,
-    });
+    // Righe larghissime: il link esce su una riga sola. Un token ereditato dall'ambiente cambierebbe il login di claude
+    delete env.CLAUDE_CODE_OAUTH_TOKEN;
+    this.proc = WIN
+      ? pty.spawn(process.env.COMSPEC || 'cmd.exe', ['/d', '/c', win32!.command], {
+          name: 'xterm-256color',
+          cols: 1000,
+          rows: 40,
+          cwd: homedir(),
+          env,
+        })
+      : pty.spawn('bash', ['-lc', `unset CLAUDE_CODE_OAUTH_TOKEN; ${spec.command}`], {
+          name: 'xterm-256color',
+          cols: 1000,
+          rows: 40,
+          cwd: homedir(),
+          env,
+        });
     this.proc.onData((d) => this.onData(d));
     this.proc.onExit(({ exitCode }) => this.onExit(exitCode));
     this.timer = setTimeout(() => this.fail('Tempo scaduto: riprova'), TIMEOUT_MS);

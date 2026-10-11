@@ -9,8 +9,12 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { connect, type Socket } from 'node:net';
 import { basename, join } from 'node:path';
 import { config } from './config.js';
+import { splitEnvPrefix } from './cmdenv.js';
 import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
+
+/** La VPS resta Linux: questo ramo serve solo per l'uso in locale su Windows */
+const WIN = process.platform === 'win32';
 
 const MAX_TERMINALS = 10;
 /** Se nessuno si collega entro questo tempo la shell parte comunque, con misure standard */
@@ -64,7 +68,8 @@ export class Terminal {
   }
 
   private get socketPath() {
-    return join(SOCKET_DIR, `${this.meta.id}.sock`);
+    // Windows non ha socket Unix: una named pipe fa lo stesso lavoro, senza bisogno di una cartella
+    return WIN ? `\\\\.\\pipe\\agicloud-term-${this.meta.id}` : join(SOCKET_DIR, `${this.meta.id}.sock`);
   }
 
   summary() {
@@ -77,18 +82,33 @@ export class Terminal {
     if (this.started || this.exitCode !== null) return;
     this.started = true;
     if (this.fallback) clearTimeout(this.fallback);
-    const shell = process.env.SHELL || '/bin/bash';
+    const shell = process.env.SHELL || (WIN ? process.env.COMSPEC || 'cmd.exe' : '/bin/bash');
     // CLAUDE_CODE_OAUTH_TOKEN (da ~/.bashrc) farebbe usare a `claude` un token diverso dal login dell'account
+    // Su Windows cmd.exe non capisce "unset" ne' un prefisso "VAR=valore": il comando si divide a parte
+    // e la variabile si toglie direttamente dall'ambiente del processo (vedi piu' sotto).
+    const win32Command = WIN && this.command ? splitEnvPrefix(this.command) : null;
     const argv = this.command
-      ? [shell, '-l', '-c', `unset CLAUDE_CODE_OAUTH_TOKEN; ${this.command}`]
+      ? WIN
+        ? [shell, '/d', '/c', win32Command!.command]
+        : [shell, '-l', '-c', `unset CLAUDE_CODE_OAUTH_TOKEN; ${this.command}`]
       : basename(shell) === 'bash'
         ? [shell, '--rcfile', TERMINAL_RC, '-i']
-        : [shell, '-l'];
-    mkdirSync(SOCKET_DIR, { recursive: true, mode: 0o700 });
-    const child = spawn('setsid', ['-f', process.execPath, '--import', TSX, HOST_SCRIPT], {
-      cwd: this.meta.cwd,
-      stdio: ['pipe', 'ignore', 'ignore'],
-    });
+        : WIN
+          ? [shell]
+          : [shell, '-l'];
+    if (!WIN) mkdirSync(SOCKET_DIR, { recursive: true, mode: 0o700 });
+    const child = WIN
+      ? spawn(process.execPath, ['--import', TSX, HOST_SCRIPT], {
+          cwd: this.meta.cwd,
+          stdio: ['pipe', 'ignore', 'ignore'],
+          detached: true,
+          windowsHide: true,
+        })
+      : spawn('setsid', ['-f', process.execPath, '--import', TSX, HOST_SCRIPT], {
+          cwd: this.meta.cwd,
+          stdio: ['pipe', 'ignore', 'ignore'],
+        });
+    if (WIN) child.unref();
     child.on('error', () => this.markExited(1));
     child.stdin.end(
       JSON.stringify({
@@ -97,7 +117,8 @@ export class Terminal {
         cols: clampCols(cols),
         rows: clampRows(rows),
         argv,
-        env: this.extraEnv,
+        env: WIN ? { ...this.extraEnv, ...win32Command?.env } : this.extraEnv,
+        unsetEnv: this.command ? ['CLAUDE_CODE_OAUTH_TOKEN'] : undefined,
       }),
     );
     void this.connectHost();
@@ -223,7 +244,9 @@ export class TerminalStore {
       saved = [];
     }
     for (const meta of saved) {
-      if (existsSync(join(SOCKET_DIR, `${meta.id}.sock`))) this.terminals.set(meta.id, new Terminal(meta, true));
+      // Su Windows le named pipe non si vedono con existsSync: si prova il collegamento e basta
+      // (un custode gia' morto si scopre comunque al primo tentativo, in connectHost)
+      if (WIN || existsSync(join(SOCKET_DIR, `${meta.id}.sock`))) this.terminals.set(meta.id, new Terminal(meta, true));
     }
     this.save();
   }
@@ -269,7 +292,8 @@ export class TerminalStore {
 
 function tryConnect(path: string): Promise<Socket | null> {
   return new Promise((resolve) => {
-    if (!existsSync(path)) return resolve(null);
+    // Le named pipe di Windows non sono file veri: existsSync non le vede, si tenta e basta
+    if (!WIN && !existsSync(path)) return resolve(null);
     const sock = connect(path);
     sock.once('connect', () => resolve(sock));
     sock.once('error', () => resolve(null));

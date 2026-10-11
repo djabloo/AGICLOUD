@@ -21,6 +21,8 @@ interface HostConfig {
   rows: number;
   argv: string[];
   env: Record<string, string>;
+  /** Variabili da togliere dall'ambiente ereditato (es. un token che farebbe usare l'account sbagliato) */
+  unsetEnv?: string[];
 }
 
 /** Output tenuto per la riconnessione (caratteri) */
@@ -33,12 +35,15 @@ const clients = new Set<Socket>();
 let buffer = '';
 let exitCode: number | null = null;
 
+const shellEnv = { ...process.env, ...cfg.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' } as Record<string, string>;
+for (const name of cfg.unsetEnv ?? []) delete shellEnv[name];
+
 const shell = pty.spawn(cfg.argv[0]!, cfg.argv.slice(1), {
   name: 'xterm-256color',
   cwd: cfg.cwd,
   cols: cfg.cols,
   rows: cfg.rows,
-  env: { ...process.env, ...cfg.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' } as Record<string, string>,
+  env: shellEnv,
 });
 
 shell.onData((data) => {
@@ -70,7 +75,10 @@ const server = createServer((sock) => {
   sock.on('error', () => clients.delete(sock));
 });
 
-server.listen(cfg.socket, () => chmodSync(cfg.socket, 0o600));
+// Le named pipe di Windows non sono file: chmod non si applica (e non serve, non sono condivise)
+server.listen(cfg.socket, () => {
+  if (process.platform !== 'win32') chmodSync(cfg.socket, 0o600);
+});
 
 process.on('SIGTERM', shutdown);
 process.on('SIGHUP', () => {}); // la chiusura del gruppo del server non ci riguarda

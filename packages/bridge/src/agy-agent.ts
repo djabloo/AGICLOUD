@@ -19,7 +19,9 @@ import { dirname, join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import * as acp from '@agentclientprotocol/sdk';
 
-const AGY = process.env.AGY_BIN || '/home/tino/.local/bin/agy';
+// AGY_BIN non impostato: su Linux/VPS il binario e' nel PATH solo nelle shell di login, quindi
+// serve il percorso assoluto; su Windows l'installer lo mette nel PATH di sistema ed e' "agy.exe".
+const AGY = process.env.AGY_BIN || (process.platform === 'win32' ? 'agy.exe' : '/home/tino/.local/bin/agy');
 const STATE_FILE = join(homedir(), '.local', 'state', 'agicloud', 'agy-sessions.json');
 
 interface AgySession {
