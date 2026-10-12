@@ -78,6 +78,8 @@ export function VideoSection() {
   const [media, setMedia] = useState<string[]>([]);
   const [mediaBusy, setMediaBusy] = useState(false);
 
+  const [browserTrackId, setBrowserTrackId] = useState<string | null>(null);
+
   const refresh = async () => {
     try { setNames(await api.video.list()); } catch { /* plugin spento */ }
   };
@@ -171,7 +173,48 @@ export function VideoSection() {
     finally { setUploading(false); }
   };
 
-  const openBrowser = async () => {
+  const onDirectUpload = async (file: File | undefined, targetTrackId?: string) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const entries = await api.uploadFiles('video-projects', [file]);
+      const path = entries[0]?.path ?? `video-projects/${file.name}`;
+      const isAudio = file.type.startsWith('audio/') || /\.(mp3|wav|aac|ogg|flac|m4a)$/i.test(file.name);
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|avi|mkv)$/i.test(file.name);
+      const clipType: VideoClip['type'] = isAudio ? 'audio' : isVideo ? 'video' : 'image';
+      const targetType = isAudio ? 'audio' : 'video';
+
+      patch((p) => {
+        let tracks = [...p.tracks];
+        let tr = targetTrackId ? tracks.find((t) => t.id === targetTrackId) : tracks.find((t) => t.type === targetType);
+        if (!tr) {
+          tr = { id: uid(), type: targetType, name: '', clips: [] };
+          tracks.push(tr);
+        }
+        const end = Math.max(0, ...tr.clips.map((c) => c.start + c.duration));
+        const newClip: VideoClip = {
+          id: uid(),
+          type: clipType,
+          path,
+          start: end,
+          duration: isAudio ? 5 : 3,
+          fadeIn: 0.5,
+          fadeOut: 0.5,
+        };
+        setPlayhead(end);
+        return { ...p, tracks: tracks.map((t) => (t.id === tr!.id ? { ...t, clips: [...t.clips, newClip] } : t)) };
+      });
+
+      setMsg({ ok: true, text: t('video.uploaded', { f: file.name }) });
+    } catch (err) {
+      setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const openBrowser = async (trackId?: string) => {
+    setBrowserTrackId(trackId ?? null);
     setBrowserOpen(true);
     setMediaBusy(true);
     try {
@@ -182,7 +225,35 @@ export function VideoSection() {
   };
 
   const pickMedia = (path: string) => {
-    if (editing) setEditing({ ...editing, clip: { ...editing.clip, path } });
+    if (editing) {
+      setEditing({ ...editing, clip: { ...editing.clip, path } });
+    } else {
+      const isAudio = /\.(mp3|wav|aac|ogg|flac|m4a)$/i.test(path);
+      const isVideo = /\.(mp4|mov|webm|avi|mkv)$/i.test(path);
+      const clipType: VideoClip['type'] = isAudio ? 'audio' : isVideo ? 'video' : 'image';
+      const targetType = isAudio ? 'audio' : 'video';
+      patch((p) => {
+        let tracks = [...p.tracks];
+        let tr = browserTrackId ? tracks.find((t) => t.id === browserTrackId) : tracks.find((t) => t.type === targetType);
+        if (!tr) {
+          tr = { id: uid(), type: targetType, name: '', clips: [] };
+          tracks.push(tr);
+        }
+        const end = Math.max(0, ...tr.clips.map((c) => c.start + c.duration));
+        const newClip: VideoClip = {
+          id: uid(),
+          type: clipType,
+          path,
+          start: end,
+          duration: isAudio ? 5 : 3,
+          fadeIn: 0.5,
+          fadeOut: 0.5,
+        };
+        setPlayhead(end);
+        return { ...p, tracks: tracks.map((t) => (t.id === tr!.id ? { ...t, clips: [...t.clips, newClip] } : t)) };
+      });
+    }
+    setBrowserTrackId(null);
     setBrowserOpen(false);
   };
 
@@ -213,6 +284,11 @@ export function VideoSection() {
           </select>
           <button type="button" className="btn" onClick={() => { setProject(blankProject(t('video.newTitle'))); setCurrent(''); setOutput(null); }}>{t('video.new')}</button>
           <button type="button" className="btn" onClick={loadDemo} aria-label={t('video.demo')}>{t('video.demo')}</button>
+          <label className="btn primary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }} aria-label={t('video.upload')}>
+            {uploading ? t('video.uploading') : `+ ${t('video.upload')}`}
+            <input type="file" hidden accept="image/*,video/*,audio/*" onChange={(e) => void onDirectUpload(e.target.files?.[0])} />
+          </label>
+          <button type="button" className="btn" onClick={() => void openBrowser()}>{t('video.browse')}</button>
           <button type="button" className="btn" disabled={busy} onClick={() => void save()}>{t('video.save')}</button>
           <button type="button" className="btn primary" disabled={busy} onClick={() => void render()}>{busy ? t('video.rendering') : t('video.render')}</button>
         </div>
@@ -220,6 +296,20 @@ export function VideoSection() {
 
       <div className="pii-body">
         {msg && <p className={`pii-msg ${msg.ok ? '' : 'pii-msg-err'}`} role={msg.ok ? 'status' : 'alert'}>{msg.text}</p>}
+
+        {project.tracks.every((tr) => tr.clips.length === 0) && (
+          <div className="pii-card" style={{ textAlign: 'center', padding: '16px' }}>
+            <p className="hint" style={{ fontSize: '0.95rem', marginBottom: '12px' }}>{t('video.noClip', { s: '0.0' })}</p>
+            <div className="agent-actions" style={{ justifyContent: 'center' }}>
+              <label className="btn primary" style={{ cursor: 'pointer' }}>
+                {uploading ? t('video.uploading') : `+ ${t('video.upload')}`}
+                <input type="file" hidden accept="image/*,video/*,audio/*" onChange={(e) => void onDirectUpload(e.target.files?.[0])} />
+              </label>
+              <button type="button" className="btn" onClick={() => void openBrowser()}>{t('video.browse')}</button>
+              <button type="button" className="btn" onClick={loadDemo}>{t('video.demo')}</button>
+            </div>
+          </div>
+        )}
 
         <div className="pii-card">
           <label htmlFor={`${id}-title-input`}>{t('video.title')}</label>
@@ -259,7 +349,25 @@ export function VideoSection() {
             <div key={tr.id} className={`video-track video-track-${tr.type}`}>
               <div className="video-track-head">
                 <span>{tr.type === 'video' ? t('video.videoTrack') : t('video.audioTrack')}</span>
-                <button type="button" className="btn small-btn" onClick={() => addClip(tr)}>+ {t('video.addClip')}</button>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  <label className="btn small-btn primary" style={{ cursor: 'pointer', padding: '2px 6px', fontSize: '0.75rem' }} aria-label={t('video.upload')}>
+                    + {t('video.upload')}
+                    <input
+                      type="file"
+                      hidden
+                      accept={tr.type === 'video' ? 'image/*,video/*' : 'audio/*'}
+                      onChange={(e) => void onDirectUpload(e.target.files?.[0], tr.id)}
+                    />
+                  </label>
+                  {tr.type === 'video' && (
+                    <button type="button" className="btn small-btn" style={{ padding: '2px 6px', fontSize: '0.75rem' }} onClick={() => addClip(tr)}>
+                      + {t('video.text')}
+                    </button>
+                  )}
+                  <button type="button" className="btn small-btn" style={{ padding: '2px 6px', fontSize: '0.75rem' }} onClick={() => void openBrowser(tr.id)}>
+                    {t('video.browse')}
+                  </button>
+                </div>
               </div>
               <div className="video-lane" style={{ width: total * PX_PER_SEC }} onClick={(e) => {
                 const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
