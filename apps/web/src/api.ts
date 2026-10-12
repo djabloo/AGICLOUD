@@ -322,6 +322,17 @@ export interface VideoRenderResult {
   name: string;
 }
 
+export interface VideoMediaFile {
+  path: string;
+  name: string;
+  type: 'video' | 'image' | 'audio';
+  size: number;
+  duration?: number;
+  width?: number;
+  height?: number;
+  mtime?: number;
+}
+
 export interface ClaudeLimit {  status: 'allowed' | 'allowed_warning' | 'rejected';
   type: string | null;
   utilization: number | null;
@@ -431,6 +442,22 @@ export const api = {
     save: (name: string, project: VideoProject) => request<{ ok: boolean }>('PUT', `/video/projects/${encodeURIComponent(name)}`, project),
     render: (body: { project?: VideoProject; name?: string; out?: string }) =>
       request<VideoRenderResult>('POST', '/video/render', body),
+    media: () => request<VideoMediaFile[]>('GET', '/video/media'),
+    upload: async (files: File[]): Promise<VideoMediaFile[]> => {
+      const form = new FormData();
+      for (const f of files) form.append('files', f, f.name);
+      const res = await fetch('/api/video/upload', {
+        method: 'POST',
+        headers: memoryToken ? { authorization: `Bearer ${memoryToken}` } : {},
+        body: form,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new ApiError(res.status, data.error ?? `Errore ${res.status}`);
+      }
+      const data = await res.json();
+      return data.files;
+    },
   },
   limits: () => request<{ claude: ClaudeLimit | null }>('GET', '/limits'),
   handover: (threadId: string, agentId: string) => request<ThreadSummary>('POST', `/threads/${threadId}/handover`, { agentId }),

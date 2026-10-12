@@ -2,7 +2,7 @@
 // Rendering con MoviePy/ffmpeg (come scripts/video-check.py): libx264 + aac, temp_audiofile_path in cartella sicura.
 import { randomBytes } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, basename, resolve } from 'node:path';
 import type * as acp from '@agentclientprotocol/sdk';
 import type { Hono } from 'hono';
@@ -87,6 +87,93 @@ function checkTools(): Promise<void> {
   });
 }
 
+export const MEDIA_EXT = [
+  // Immagini
+  '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp', '.tiff', '.avif',
+  // Video
+  '.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.wmv', '.flv',
+  // Audio
+  '.mp3', '.wav', '.aac', '.m4a', '.ogg', '.flac', '.opus', '.wma',
+];
+
+export function isMedia(name: string): boolean {
+  const n = name.toLowerCase();
+  return MEDIA_EXT.some((e) => n.endsWith(e));
+}
+
+export function probeMedia(filePath: string): Promise<{ type: 'video' | 'audio' | 'image'; duration: number; width?: number; height?: number }> {
+  return new Promise((resolveP) => {
+    const ext = filePath.slice(filePath.lastIndexOf('.')).toLowerCase();
+    const isImg = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp', '.tiff', '.avif'].includes(ext);
+    const isAud = ['.mp3', '.wav', '.aac', '.m4a', '.ogg', '.flac', '.opus', '.wma'].includes(ext);
+    const isVid = ['.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.wmv', '.flv'].includes(ext);
+
+    execFile('ffprobe', ['-v', 'error', '-show_entries', 'format=duration:stream=codec_type,width,height', '-of', 'json', filePath], (err, stdout) => {
+      if (err || !stdout) {
+        return resolveP({
+          type: isAud ? 'audio' : isVid ? 'video' : 'image',
+          duration: isAud ? 5 : isVid ? 5 : 3,
+        });
+      }
+      try {
+        const info = JSON.parse(stdout);
+        const streams = Array.isArray(info.streams) ? info.streams : [];
+        const vStream = streams.find((s: any) => s.codec_type === 'video');
+        const aStream = streams.find((s: any) => s.codec_type === 'audio');
+        const dur = parseFloat(info.format?.duration) || (isImg ? 3 : 5);
+        if (vStream && !isImg) {
+          resolveP({
+            type: 'video',
+            duration: Math.round(dur * 10) / 10,
+            width: vStream.width,
+            height: vStream.height,
+          });
+        } else if (aStream || isAud) {
+          resolveP({
+            type: 'audio',
+            duration: Math.round(dur * 10) / 10,
+          });
+        } else {
+          resolveP({
+            type: 'image',
+            duration: 3,
+            width: vStream?.width,
+            height: vStream?.height,
+          });
+        }
+      } catch {
+        resolveP({
+          type: isAud ? 'audio' : isVid ? 'video' : 'image',
+          duration: isAud ? 5 : isVid ? 5 : 3,
+        });
+      }
+    });
+  });
+}
+
+export async function saveUploadedMedia(file: File) {
+  const dir = videoDir();
+  let name = basename(file.name).replace(/[^\w.\- ]+/g, '_');
+  let target = join(dir, name);
+  let count = 1;
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.')) : '';
+  const base = ext ? name.slice(0, -ext.length) : name;
+  while (existsSync(target)) {
+    name = `${base}_${count}${ext}`;
+    target = join(dir, name);
+    count++;
+  }
+  const buf = Buffer.from(await file.arrayBuffer());
+  writeFileSync(target, buf);
+  const probe = await probeMedia(target);
+  return {
+    path: `video-projects/${name}`,
+    name,
+    size: buf.length,
+    ...probe,
+  };
+}
+
 function runRender(project: VideoProject, outFile: string): Promise<string> {
   const dir = videoDir();
   const out = resolve(dir, basename(outFile.endsWith('.mp4') ? outFile : `${outFile}.mp4`));
@@ -95,25 +182,61 @@ function runRender(project: VideoProject, outFile: string): Promise<string> {
   const py = `import json, os
 from PIL import Image, ImageDraw, ImageFont
 from moviepy import AudioFileClip, CompositeAudioClip, CompositeVideoClip, ImageClip, VideoFileClip, vfx
-proj = json.load(open(${JSON.stringify(join(dir, '.proj.json'))}))
 p = ${JSON.stringify(project)}
+DIR = ${JSON.stringify(dir)}
 W, H, FPS = int(p.get('width') or 1280), int(p.get('height') or 720), float(p.get('fps') or 24)
 def font(sz):
     for f in ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"):
         if os.path.exists(f): return ImageFont.truetype(f, sz)
     return ImageFont.load_default()
 ti = [0]
+def resolve_path(p_in):
+    if not p_in: return ""
+    if os.path.isabs(p_in): return p_in
+    return os.path.abspath(p_in)
+
 def mkimg(clip, path):
-    if clip.get('type') == 'title':
+    c_type = clip.get('type')
+    dur = float(clip.get('duration') or 3)
+    if c_type == 'title':
         img = Image.new("RGB", (W, H), clip.get('color') or "#1e293b")
         d = ImageDraw.Draw(img)
-        d.text((60, H//2-40), str(clip.get('text') or ''), font=font(64), fill=(255,255,255))
+        txt = str(clip.get('text') or '')
+        d.text((60, H//2-40), txt, font=font(64), fill=(255,255,255))
         ti[0] += 1
-        path = os.path.join(${JSON.stringify(dir)}, f".title-{ti[0]}.png"); img.save(path)
-        return ImageClip(path).with_duration(float(clip['duration']))
-    if clip.get('type') == 'video':
-        return VideoFileClip(path).with_duration(float(clip['duration']))
-    return ImageClip(path).with_duration(float(clip['duration']))
+        p_out = os.path.join(DIR, f".title-{ti[0]}.png")
+        img.save(p_out)
+        return ImageClip(p_out).with_duration(dur)
+    real_p = resolve_path(path)
+    if c_type == 'video' and os.path.exists(real_p):
+        vc = VideoFileClip(real_p)
+        if vc.duration > dur:
+            vc = vc.subclipped(0, dur)
+        return vc.resized(new_size=(W, H)).with_duration(dur)
+    # Immagine (qualsiasi formato: JPG, PNG, WEBP, etc.) con adattamento e centratura
+    if os.path.exists(real_p):
+        try:
+            im = Image.open(real_p).convert("RGB")
+            im.thumbnail((W, H), Image.Resampling.LANCZOS)
+            canvas = Image.new("RGB", (W, H), (15, 23, 42))
+            x = (W - im.width) // 2
+            y = (H - im.height) // 2
+            canvas.paste(im, (x, y))
+            ti[0] += 1
+            p_fitted = os.path.join(DIR, f".img-{ti[0]}.png")
+            canvas.save(p_fitted)
+            return ImageClip(p_fitted).with_duration(dur)
+        except Exception as e:
+            print("Errore caricamento immagine:", e)
+    # Fallback se file non trovato
+    canvas = Image.new("RGB", (W, H), (30, 41, 59))
+    d = ImageDraw.Draw(canvas)
+    d.text((60, H//2-20), os.path.basename(path), font=font(40), fill=(200,200,200))
+    ti[0] += 1
+    p_fallback = os.path.join(DIR, f".err-{ti[0]}.png")
+    canvas.save(p_fallback)
+    return ImageClip(p_fallback).with_duration(dur)
+
 vclips, aclips = [], []
 for tr in p.get('tracks') or []:
     for c in tr.get('clips') or []:
@@ -122,8 +245,10 @@ for tr in p.get('tracks') or []:
         if c.get('fadeIn'): fx.append(vfx.FadeIn(float(c['fadeIn'])))
         if c.get('fadeOut'): fx.append(vfx.FadeOut(float(c['fadeOut'])))
         if (tr.get('type') or 'video') == 'audio' or c.get('type') == 'audio':
-            a = AudioFileClip(c.get('path')).with_duration(du).with_start(st)
-            aclips.append(a)
+            aud_p = resolve_path(c.get('path'))
+            if os.path.exists(aud_p):
+                a = AudioFileClip(aud_p).with_duration(du).with_start(st)
+                aclips.append(a)
         else:
             v = mkimg(c, c.get('path') or '').with_start(st)
             if fx: v = v.with_effects(fx)
@@ -131,12 +256,12 @@ for tr in p.get('tracks') or []:
 dur = float(p.get('duration') or 0) or max([(c.get('start') or 0)+(c.get('duration') or 0) for tr in p.get('tracks') or [] for c in tr.get('clips') or []] + [1])
 video = CompositeVideoClip(vclips, size=(W, H)).with_duration(dur) if vclips else None
 if video is None:
-    img = Image.new("RGB", (W, H), "#0f172a"); img.save(${JSON.stringify(join(dir, '.blank.png'))})
+    img = Image.new("RGB", (W, H), "#0f172a"); img.save(os.path.join(DIR, '.blank.png'))
     from moviepy import ImageClip as IC
-    video = IC(${JSON.stringify(join(dir, '.blank.png'))}).with_duration(dur)
+    video = IC(os.path.join(DIR, '.blank.png')).with_duration(dur)
 if aclips:
     video = video.with_audio(CompositeAudioClip(aclips).with_duration(dur))
-video.write_videofile(${JSON.stringify(out)}, fps=FPS, codec="libx264", audio_codec="aac", temp_audiofile_path=${JSON.stringify(dir)}, logger=None)
+video.write_videofile(${JSON.stringify(out)}, fps=FPS, codec="libx264", audio_codec="aac", temp_audiofile_path=DIR, logger=None)
 print("OK " + ${JSON.stringify(out)})
 `;
   writeFileSync(join(dir, '.proj.json'), '{}');
@@ -188,6 +313,36 @@ export function registerVideo(app: Hono<any>): void {
     if (!body) throw new HttpError(400, 'Progetto video non valido');
     saveProject(c.req.param('name'), body);
     return c.json({ ok: true });
+  });
+  app.get('/api/video/media', async (c) => {
+    const dir = videoDir();
+    const entries = readdirSync(dir).filter((f) => !f.startsWith('.') && !f.endsWith('.video.json') && isMedia(f));
+    const list = await Promise.all(
+      entries.map(async (name) => {
+        const full = join(dir, name);
+        const s = statSync(full);
+        const probe = await probeMedia(full);
+        return {
+          path: `video-projects/${name}`,
+          name,
+          size: s.size,
+          mtime: s.mtimeMs,
+          ...probe,
+        };
+      }),
+    );
+    return c.json(list);
+  });
+  app.post('/api/video/upload', async (c) => {
+    const form = await c.req.parseBody({ all: true });
+    const raw = form.files ?? form.file;
+    const files = (Array.isArray(raw) ? raw : [raw]).filter((f): f is File => f instanceof File);
+    if (!files.length) throw new HttpError(400, 'Nessun file');
+    const out = [];
+    for (const f of files) {
+      out.push(await saveUploadedMedia(f));
+    }
+    return c.json({ ok: true, files: out }, 201);
   });
   app.post('/api/video/render', async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { project?: VideoProject; name?: string; out?: string };
