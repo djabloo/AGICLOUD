@@ -13,13 +13,12 @@ import { PiiView } from './PiiView';
 import { BrowserSection } from './BrowserSection';
 import { VerdictView } from './VerdictView';
 import { CloudView } from './CloudView';
-import { FlowSection } from './FlowSection';
 import { SetupDone } from './Login';
 import { Icon, type IconName } from './icons';
 import { useT } from './i18n';
 
 type Auth = 'checking' | 'ok' | 'needed';
-type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'verdict' | 'cloud' | 'flow' | 'settings';
+type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'verdict' | 'cloud' | 'settings';
 
 interface Route {
   section: Section;
@@ -42,7 +41,6 @@ const SECTION_DEFS: SectionDef[] = [
   { id: 'browser', icon: 'globe', ready: true, plugin: 'browser' },
   { id: 'verdict', icon: 'scale', ready: true, plugin: 'verdict' },
   { id: 'cloud', icon: 'cloud', ready: true, plugin: 'cloud' },
-  { id: 'flow', icon: 'video', ready: true, plugin: 'flow' },
   { id: 'settings', icon: 'settings', ready: true },
 ];
 const SECTION_KEYS: Record<Section, string> = {
@@ -54,7 +52,6 @@ const SECTION_KEYS: Record<Section, string> = {
   browser: 'app.sezioneBrowser',
   verdict: 'app.sezioneVerdict',
   cloud: 'app.sezioneCloud',
-  flow: 'app.sezioneFlow',
   settings: 'app.sezioneImpostazioni',
 };
 type TFn = (key: string, params?: Record<string, string | number>) => string;
@@ -75,7 +72,6 @@ function routeFromHash(): Route {
   if (/^#\/pii\/?$/.test(location.hash)) return { section: 'pii', id: null };
   if (/^#\/verdict\/?$/.test(location.hash)) return { section: 'verdict', id: null };
   if (/^#\/cloud\/?$/.test(location.hash)) return { section: 'cloud', id: null };
-  if (/^#\/flow\/?$/.test(location.hash)) return { section: 'flow', id: null };
   // #/browser/popup = solo il browser, nella finestra a parte
   const browser = location.hash.match(/^#\/browser(\/popup)?\/?$/);
   if (browser) return { section: 'browser', id: browser[1] ? 'popup' : null };
@@ -92,7 +88,6 @@ function hashFor(r: Route): string {
   if (r.section === 'pii') return '#/pii';
   if (r.section === 'verdict') return '#/verdict';
   if (r.section === 'cloud') return '#/cloud';
-  if (r.section === 'flow') return '#/flow';
   if (r.section === 'browser') return r.id === 'popup' ? '#/browser/popup' : '#/browser';
   if (r.section === 'design') return r.id ? `#/design/t/${r.id}` : '#/design';
   return r.id ? `#/t/${r.id}` : '';
@@ -319,7 +314,6 @@ export function App() {
   const inBrowser = route.section === 'browser';
   const inVerdict = route.section === 'verdict';
   const inCloud = route.section === 'cloud';
-  const inFlow = route.section === 'flow';
   const activeThread =
     route.section === 'chat' || route.section === 'design' ? (threads.find((t) => t.id === route.id) ?? null) : null;
   // Le sessioni di design stanno nella sezione Design, le altre in Chat
@@ -450,14 +444,14 @@ export function App() {
           </>
         )}
 
-        {!inSettings && !inFiles && !inDesign && !inPii && !inBrowser && !inVerdict && !inCloud && !inFlow && (
+        {!inSettings && !inFiles && !inDesign && !inPii && !inBrowser && !inVerdict && !inCloud && (
           <button type="button" className="btn primary new-btn" onClick={openNew}>
             <Icon name="plus" />
             <span>{newLabel}</span>
           </button>
         )}
 
-        {inSettings || inFiles || inDesign || inPii || inBrowser || inVerdict || inCloud || inFlow ? null : inTerminals ? (
+        {inSettings || inFiles || inDesign || inPii || inBrowser || inVerdict || inCloud ? null : inTerminals ? (
           <>
             <h2 className="sidebar-title" id="list-title">
               {t('app.terminali')}
@@ -523,19 +517,6 @@ export function App() {
                 {t('app.pluginCloudTesto', { link: '\u0000' }).split('\u0000')[0]}
                 <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
                 {t('app.pluginCloudTesto', { link: '\u0000' }).split('\u0000')[1]}
-              </p>
-            </section>
-          )
-        ) : inFlow ? (
-          pluginOn('flow') ? (
-            <FlowSection />
-          ) : (
-            <section className="welcome" aria-labelledby="welcome-title">
-              <h1 id="welcome-title">{t('app.flowNonAttivo')}</h1>
-              <p>
-                {t('app.pluginFlowTesto', { link: '\u0000' }).split('\u0000')[0]}
-                <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
-                {t('app.pluginFlowTesto', { link: '\u0000' }).split('\u0000')[1]}
               </p>
             </section>
           )

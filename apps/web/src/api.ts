@@ -288,44 +288,6 @@ export interface VerdictResult {
   cost: number;
 }
 
-export interface FlowStatus {
-  /** Docker e immagine del motore presenti sul server */
-  docker: boolean;
-  linked: boolean;
-  account: string | null;
-  credits: number | null;
-  /** Sessione di accesso con Google aperta (indirizzo della sessione grafica) */
-  login: { url: string } | null;
-  /** Perche' l'ultimo accesso non si e' completato (testo di gflow), se e' fallito */
-  loginProblem: string | null;
-  running: number;
-}
-
-export interface FlowJob {
-  job: string;
-  kind: 'video' | 'image';
-  model: string;
-  aspect: string;
-  prompt: string;
-  status: 'running' | 'done' | 'error';
-  startedAt: number;
-  endedAt?: number;
-  error?: string;
-}
-
-export interface FlowModel {
-  id: string;
-  kind: 'video' | 'image';
-  label: string;
-}
-
-export interface FlowFile {
-  name: string;
-  kind: 'video' | 'image' | 'text';
-  size: number;
-  mtime: number;
-}
-
 export interface ClaudeLimit {  status: 'allowed' | 'allowed_warning' | 'rejected';
   type: string | null;
   utilization: number | null;
@@ -429,15 +391,6 @@ export const api = {
     request<{ path: string; abs: string; size: number }>('POST', '/pii/save', body),
   verdict: (body: { text: string; question: string; type: VerdictType; options?: string[]; mode: 'fast' | 'double'; explain: boolean }) =>
     request<VerdictResult>('POST', '/verdict/decide', body),
-  flowStatus: () => request<FlowStatus>('GET', '/flow/status'),
-  flowLogin: () => request<{ url: string }>('POST', '/flow/login'),
-  flowLoginDone: () => request<{ ok: boolean }>('POST', '/flow/login/done'),
-  flowLoginCancel: () => request<{ ok: boolean }>('DELETE', '/flow/login'),
-  flowCredits: () => request<{ credits: number | null }>('POST', '/flow/credits'),
-  flowModels: () => request<{ models: FlowModel[]; aspects: Record<'video' | 'image', string[]> }>('GET', '/flow/models'),
-  flowGallery: () => request<{ files: FlowFile[]; jobs: FlowJob[] }>('GET', '/flow/gallery'),
-  flowGenerate: (body: { prompt: string; kind: 'video' | 'image'; model: string; aspect: string }) =>
-    request<{ job: string; model: string; aspect: string }>('POST', '/flow/generate', body),
   limits: () => request<{ claude: ClaudeLimit | null }>('GET', '/limits'),
   handover: (threadId: string, agentId: string) => request<ThreadSummary>('POST', `/threads/${threadId}/handover`, { agentId }),
   setup: (setup: string) => request<{ token: string }>('POST', '/setup', { setup }),

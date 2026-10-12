@@ -3441,27 +3441,3 @@ legend {
 .lang-picker.compact { margin-top: 1.25rem; justify-content: flex-start; font-size: 0.95rem; }
 .lang-picker label { color: var(--muted, inherit); }
 .lang-picker select { font: inherit; padding: 0.3rem 0.5rem; }
-
-/* ── Plugin Flow: galleria delle creazioni ─────────────────────────────────── */
-.flow-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.flow-item {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-.flow-item video,
-.flow-item img {
-  width: 100%;
-  border-radius: var(--radius);
-  background: var(--surface-2);
-}
-.flow-item .hint {
-  overflow-wrap: anywhere;
-}
