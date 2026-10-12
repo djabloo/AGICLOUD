@@ -24,7 +24,7 @@ cloud-init status --wait >/dev/null 2>&1 || true
 log "Aggiornamenti di sistema"
 apt_retry update -q
 apt_retry upgrade -yq
-apt_retry install -yq curl ca-certificates git gnupg ufw unattended-upgrades build-essential python3 \
+apt_retry install -yq curl ca-certificates git gnupg ufw unattended-upgrades build-essential python3 python3-venv ffmpeg fonts-dejavu-core fonts-liberation \
   debian-keyring debian-archive-keyring apt-transport-https
 
 log "Node.js 22"
@@ -88,6 +88,12 @@ sudo -u agicloud -H bash -lc 'curl -fsSL https://claude.ai/install.sh | bash'
 sudo -u agicloud -H bash -lc 'curl -fsS https://cursor.com/install | bash'
 # Adattatore ACP di Claude Code: nella cache di npm, cosi' la prima chat non lo scarica
 sudo -u agicloud -H bash -lc 'npm cache add @agentclientprotocol/claude-agent-acp@0.86.0 >/dev/null'
+log "Strumenti video (MoviePy e Pillow, accanto a ffmpeg)"
+python3 -m venv /opt/video-tools
+/opt/video-tools/bin/pip install --no-cache-dir moviepy pillow
+# Prova rapida: i moduli si importano e ffmpeg risponde
+/opt/video-tools/bin/python -c "import moviepy, PIL; print('moviepy', moviepy.__version__)" && ffmpeg -version | head -1
+
 grep -q '.local/bin' /home/agicloud/.profile || echo 'export PATH="$HOME/.local/bin:$PATH"' >> /home/agicloud/.profile
 
 log "Docker e motore PII (versione alleggerita, caricata intera)"

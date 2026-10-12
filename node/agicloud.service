@@ -14,7 +14,8 @@ Environment=NODE_ENV=production
 Environment=DATA_DIR=/var/lib/agicloud
 Environment=WORKSPACES_ROOT=/home/agicloud/progetti
 Environment=PROJECT_ROOTS=/home/agicloud/progetti:/home/agicloud
-Environment=PATH=/home/agicloud/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=/home/agicloud/.local/bin:/opt/video-tools/bin:/usr/local/bin:/usr/bin:/bin
+Environment=IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
 ExecStart=/usr/bin/node --import tsx apps/server/src/index.ts
 Restart=always
 RestartSec=3
