@@ -431,6 +431,7 @@ export const api = {
     request<VerdictResult>('POST', '/verdict/decide', body),
   flowStatus: () => request<FlowStatus>('GET', '/flow/status'),
   flowLogin: () => request<{ url: string }>('POST', '/flow/login'),
+  flowLoginDone: () => request<{ ok: boolean }>('POST', '/flow/login/done'),
   flowLoginCancel: () => request<{ ok: boolean }>('DELETE', '/flow/login'),
   flowCredits: () => request<{ credits: number | null }>('POST', '/flow/credits'),
   flowModels: () => request<{ models: FlowModel[]; aspects: Record<'video' | 'image', string[]> }>('GET', '/flow/models'),

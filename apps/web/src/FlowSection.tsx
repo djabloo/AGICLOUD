@@ -71,6 +71,20 @@ export function FlowSection() {
     }
   };
 
+  const loginDone = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await api.flowLoginDone();
+      setMsg({ kind: 'ok', text: t('flow.verifica') });
+      await refresh();
+    } catch (err) {
+      setMsg({ kind: 'err', text: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const cancelLogin = async () => {
     await api.flowLoginCancel().catch(() => {});
     await refresh();
@@ -149,10 +163,14 @@ export function FlowSection() {
             {status.login ? (
               <>
                 <p role="status">{t('flow.accessoInCorso')}</p>
+                <p className="hint">{t('flow.finitoHint')}</p>
                 <div className="agent-actions">
-                  <a className="btn primary" href={status.login.url} target="_blank" rel="noopener noreferrer">
+                  <a className="btn" href={status.login.url} target="_blank" rel="noopener noreferrer">
                     {t('flow.riapri')}
                   </a>
+                  <button type="button" className="btn primary" disabled={busy} onClick={() => void loginDone()}>
+                    {t('flow.finito')}
+                  </button>
                   <button type="button" className="btn" onClick={() => void cancelLogin()}>
                     {t('flow.annulla')}
                   </button>

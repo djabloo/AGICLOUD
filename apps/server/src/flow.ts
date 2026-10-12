@@ -383,6 +383,14 @@ export function registerFlow(app: Hono<any>): void {
     if (!(await dockerReady())) throw new HttpError(409, 'Motore Flow non disponibile sul server (immagine Docker mancante)');
     return c.json(await startLogin());
   });
+  // L'utente ha finito (editor di Flow aperto): il container chiude Chromium in modo ordinato e fa verificare la sessione a gflow
+  app.post('/api/flow/login/done', async (c) => {
+    if (!(await loginRunning())) throw new HttpError(409, 'Nessun accesso in corso');
+    await run('docker', ['exec', LOGIN_CONTAINER, 'touch', '/data/gflow/login.done'], { timeout: 15_000 }).catch((err) => {
+      throw new HttpError(409, `Operazione non riuscita: ${err instanceof Error ? err.message.split('\n')[0] : err}`);
+    });
+    return c.json({ ok: true });
+  });
   app.delete('/api/flow/login', async (c) => {
     await stopLogin();
     return c.json({ ok: true });

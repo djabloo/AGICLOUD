@@ -108,6 +108,8 @@ export const ERRORS: ReadonlyArray<readonly [string, string, string, string, str
   ["Troppe generazioni in corso (max {1}): aspetta che finisca", "Too many generations in progress (max {1}): wait for one to finish", "Zu viele Generierungen laufen (max. {1}): Warte, bis eine fertig ist", "Probíhá příliš mnoho generování (max. {1}): počkej, až některé skončí", "Слишком много генераций выполняется (максимум {1}): дождитесь завершения"],
   ["C'e' una generazione in corso: aspetta che finisca prima di accedere", "A generation is in progress: wait for it to finish before signing in", "Es läuft eine Generierung: Warte, bis sie fertig ist, bevor du dich anmeldest", "Probíhá generování: počkej, až skončí, než se přihlásíš", "Выполняется генерация: дождитесь её завершения, прежде чем входить"],
   ["Accesso in corso: completalo o annullalo prima di generare", "Sign-in in progress: complete or cancel it before generating", "Anmeldung läuft: Schließe sie ab oder brich sie ab, bevor du generierst", "Probíhá přihlášení: dokonči ho nebo zruš, než začneš generovat", "Вход выполняется: завершите или отмените его, прежде чем создавать"],
+  ["Nessun accesso in corso", "No sign-in in progress", "Keine Anmeldung läuft", "Žádné přihlášení neprobíhá", "Вход не выполняется"],
+  ["Operazione non riuscita: {1}", "Operation failed: {1}", "Vorgang fehlgeschlagen: {1}", "Operace se nezdařila: {1}", "Не удалось выполнить операцию: {1}"],
 ];
 
 export const PLUGIN_TEXTS: ReadonlyArray<readonly [string, string, string, string, string]> = [
