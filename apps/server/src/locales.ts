@@ -100,6 +100,13 @@ export const ERRORS: ReadonlyArray<readonly [string, string, string, string, str
   ["Copia gia' chiusa", "Copy already closed", "Kopie bereits geschlossen", "Kopie je už uzavřena", "Копия уже закрыта"],
   ["Nessuna modifica da unire", "No changes to merge", "Keine Änderungen zum Übernehmen", "Žádné změny ke sloučení", "Нет изменений для объединения"],
   ["Unione non riuscita: {1}. Il progetto non e' stato toccato.", "Merge failed: {1}. The project was not touched.", "Zusammenführen fehlgeschlagen: {1}. Das Projekt wurde nicht verändert.", "Sloučení se nezdařilo: {1}. Projekt zůstal beze změny.", "Не удалось объединить: {1}. Проект не изменён."],
+  ["Progetto video non trovato", "Video project not found", "Videoprojekt nicht gefunden", "Videoprojekt nenalezen", "Видеопроект не найден"],
+  ["Progetto video non valido", "Invalid video project", "Ungültiges Videoprojekt", "Neplatný videoprojekt", "Недопустимый видеопроект"],
+  ["Percorso di uscita non valido", "Invalid output path", "Ungültiger Ausgabepfad", "Neplatná výstupní cesta", "Недопустимый путь вывода"],
+  ["Rendering non riuscito: {1}", "Rendering failed: {1}", "Rendern fehlgeschlagen: {1}", "Renderování se nezdařilo: {1}", "Не удалось отрендерить: {1}"],
+  ["ffmpeg e MoviePy pronti", "ffmpeg and MoviePy ready", "ffmpeg und MoviePy bereit", "ffmpeg a MoviePy připraveny", "ffmpeg и MoviePy готовы"],
+  ["ffmpeg non trovato sul server", "ffmpeg not found on the server", "ffmpeg auf dem Server nicht gefunden", "ffmpeg na serveru nenalezen", "ffmpeg не найден на сервере"],
+  ["MoviePy non trovato sul server (pip install moviepy)", "MoviePy not found on the server (pip install moviepy)", "MoviePy auf dem Server nicht gefunden (pip install moviepy)", "MoviePy na serveru nenalezen (pip install moviepy)", "MoviePy не найден на сервере (pip install moviepy)"],
 ];
 
 export const PLUGIN_TEXTS: ReadonlyArray<readonly [string, string, string, string, string]> = [
@@ -115,6 +122,7 @@ export const PLUGIN_TEXTS: ReadonlyArray<readonly [string, string, string, strin
   ["Motore Rizzo-PII di Rizzo AI Academy", "Rizzo-PII engine by Rizzo AI Academy", "Rizzo-PII-Engine von Rizzo AI Academy", "Engine Rizzo-PII od Rizzo AI Academy", "Движок Rizzo-PII от Rizzo AI Academy"],
   ["Agenti collegati con Playwright MCP (Apache 2.0)", "Agents connected through Playwright MCP (Apache 2.0)", "Agenten über Playwright MCP angebunden (Apache 2.0)", "Agenti připojení přes Playwright MCP (Apache 2.0)", "Агенты подключаются через Playwright MCP (Apache 2.0)"],
   ["Contenuti da Open Design (Apache 2.0)", "Content from Open Design (Apache 2.0)", "Inhalte von Open Design (Apache 2.0)", "Obsah z Open Design (Apache 2.0)", "Материалы из Open Design (Apache 2.0)"],
+  ["Monta video da una timeline visuale nel browser o da un progetto JSON: immagini, video, titoli e audio con dissolvenze, poi rendering in MP4 con MoviePy e ffmpeg. Gli agenti usano gli stessi progetti con gli strumenti video_list_projects, video_get_project, video_save_project e video_render_project.", "Edit videos from a visual timeline in the browser or from a JSON project: images, videos, titles and audio with fades, then MP4 rendering with MoviePy and ffmpeg. Agents use the same projects with the video_list_projects, video_get_project, video_save_project and video_render_project tools.", "Schneide Videos über eine visuelle Timeline im Browser oder aus einem JSON-Projekt: Bilder, Videos, Titel und Audio mit Überblendungen, dann MP4-Rendering mit MoviePy und ffmpeg. Agenten nutzen dieselben Projekte mit den Werkzeugen video_list_projects, video_get_project, video_save_project und video_render_project.", "Stříhej videa z vizuální časové osy v prohlížeči nebo z projektu JSON: obrázky, videa, titulky a zvuk s prolínáním, pak renderování do MP4 pomocí MoviePy a ffmpeg. Agenti používají tytéž projekty s nástroji video_list_projects, video_get_project, video_save_project a video_render_project.", "Монтируйте видео на визуальной шкале времени в браузере или из JSON-проекта: изображения, видео, титры и звук с переходами, затем рендеринг в MP4 с помощью MoviePy и ffmpeg. Агенты используют те же проекты с инструментами video_list_projects, video_get_project, video_save_project и video_render_project."],
 ];
 
 export const NOTICES: ReadonlyArray<readonly [string, string, string, string, string]> = [
