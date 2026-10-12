@@ -32,6 +32,7 @@ import { registerVerdict, verdictMcpServer, verdictPlugin } from './verdict.js';
 import { cloudPlugin, registerCloud } from './cloud.js';
 import { NodeImageBuilder, registerNodeImageBuild } from './node-image.js';
 import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser, registerBrowserStart } from './browser.js';
+import { registerVideo, videoMcpServer, videoPlugin } from './video.js';
 
 const settings = new Settings();
 const store = new ThreadStore(settings);
@@ -177,6 +178,7 @@ const plugins = new Plugins(
     browserPlugin,
     verdictPlugin(settings),
     cloudPlugin(settings),
+    videoPlugin,
   ],
   // Design era gia' in uso prima del sistema dei plugin: resta installato e attivo
   { design: { installed: true, enabled: true } },
@@ -191,6 +193,7 @@ store.extraMcpServers = async () => {
     servers.push(browserMcpServer());
   }
   if (plugins.isEnabled('verdict')) servers.push(verdictMcpServer());
+  if (plugins.isEnabled('video')) servers.push(videoMcpServer());
   return servers;
 };
 // Strumenti dei plugin che Claude usa senza chiedere (Verdict: solo una lettura che costa frazioni di centesimo)
@@ -203,6 +206,7 @@ registerBrowserStart(app);
 registerVerdict(app, settings);
 registerHandover(app, store, limits);
 registerCloud(app, settings);
+registerVideo(app);
 registerNodeImageBuild(app, settings, new NodeImageBuilder());
 
 // ── API ──────────────────────────────────────────────────────────────────────

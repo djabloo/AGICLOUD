@@ -288,6 +288,40 @@ export interface VerdictResult {
   cost: number;
 }
 
+export interface VideoClip {
+  id: string;
+  type: 'image' | 'video' | 'title' | 'audio';
+  path?: string;
+  text?: string;
+  color?: string;
+  start: number;
+  duration: number;
+  fadeIn?: number;
+  fadeOut?: number;
+}
+
+export interface VideoTrack {
+  id: string;
+  type: 'video' | 'audio';
+  name: string;
+  clips: VideoClip[];
+}
+
+export interface VideoProject {
+  version: string;
+  title: string;
+  width: number;
+  height: number;
+  fps: number;
+  duration: number;
+  tracks: VideoTrack[];
+}
+
+export interface VideoRenderResult {
+  file: string;
+  name: string;
+}
+
 export interface ClaudeLimit {  status: 'allowed' | 'allowed_warning' | 'rejected';
   type: string | null;
   utilization: number | null;
@@ -391,6 +425,13 @@ export const api = {
     request<{ path: string; abs: string; size: number }>('POST', '/pii/save', body),
   verdict: (body: { text: string; question: string; type: VerdictType; options?: string[]; mode: 'fast' | 'double'; explain: boolean }) =>
     request<VerdictResult>('POST', '/verdict/decide', body),
+  video: {
+    list: () => request<{ name: string; title: string }[]>('GET', '/video/projects'),
+    get: (name: string) => request<VideoProject>('GET', `/video/projects/${encodeURIComponent(name)}`),
+    save: (name: string, project: VideoProject) => request<{ ok: boolean }>('PUT', `/video/projects/${encodeURIComponent(name)}`, project),
+    render: (body: { project?: VideoProject; name?: string; out?: string }) =>
+      request<VideoRenderResult>('POST', '/video/render', body),
+  },
   limits: () => request<{ claude: ClaudeLimit | null }>('GET', '/limits'),
   handover: (threadId: string, agentId: string) => request<ThreadSummary>('POST', `/threads/${threadId}/handover`, { agentId }),
   setup: (setup: string) => request<{ token: string }>('POST', '/setup', { setup }),
