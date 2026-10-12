@@ -16,7 +16,51 @@ function blankProject(title: string): VideoProject {
   };
 }
 
+function demoProject(title: string, newTitle: string): VideoProject {
+  const vId = uid();
+  return {
+    version: '1.0', title: title || 'Demo', width: 1280, height: 720, fps: 24, duration: 9,
+    tracks: [
+      {
+        id: vId, type: 'video', name: '', clips: [
+          { id: uid(), type: 'title', text: newTitle || 'Demo', color: '#1e3a8a', start: 0, duration: 3, fadeIn: 0.5, fadeOut: 0.5 },
+          { id: uid(), type: 'title', text: 'Slide 2', color: '#065f46', start: 3, duration: 3, fadeIn: 0.5, fadeOut: 0.5 },
+          { id: uid(), type: 'title', text: 'Slide 3', color: '#7c2d12', start: 6, duration: 3, fadeIn: 0.5, fadeOut: 0.5 },
+        ],
+      },
+      { id: uid(), type: 'audio', name: '', clips: [] },
+    ],
+  };
+}
+
 const PX_PER_SEC = 60;
+const MEDIA_EXT = ['.png', '.jpg', '.jpeg', '.webp', '.mp4', '.mov', '.wav', '.mp3', '.aac'];
+
+function isMedia(name: string): boolean {
+  const n = name.toLowerCase();
+  return MEDIA_EXT.some((e) => n.endsWith(e));
+}
+
+function MediaUrl({ path, kind, alt }: { path: string; kind: 'image' | 'video'; alt: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    let live = true;
+    let obj = '';
+    setUrl(null);
+    setErr(false);
+    api.fileBlob(path).then(async (b) => {
+      if (!live) return;
+      obj = URL.createObjectURL(b);
+      if (live) setUrl(obj);
+    }).catch(() => { if (live) setErr(true); });
+    return () => { live = false; if (obj) URL.revokeObjectURL(obj); };
+  }, [path]);
+  if (err) return <span className="hint">{alt}: {path}</span>;
+  if (!url) return <span className="hint" role="status">…</span>;
+  if (kind === 'video') return <video src={url} controls style={{ maxWidth: '100%', maxHeight: '100%' }} aria-label={alt} />;
+  return <img src={url} alt={alt} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />;
+}
 
 export function VideoSection() {
   const t = useT();
@@ -29,6 +73,10 @@ export function VideoSection() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [output, setOutput] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ trackId: string; clip: VideoClip } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [browserOpen, setBrowserOpen] = useState(false);
+  const [media, setMedia] = useState<string[]>([]);
+  const [mediaBusy, setMediaBusy] = useState(false);
 
   const refresh = async () => {
     try { setNames(await api.video.list()); } catch { /* plugin spento */ }
@@ -111,6 +159,46 @@ export function VideoSection() {
 
   const clipAt = (track: VideoTrack) => track.clips.find((c) => playhead >= c.start && playhead < c.start + c.duration);
 
+  const onUpload = async (file: File | undefined) => {
+    if (!file || !editing) return;
+    setUploading(true);
+    try {
+      const entries = await api.uploadFiles('video-projects', [file]);
+      const name = entries[0]?.path ?? `video-projects/${file.name}`;
+      setEditing({ ...editing, clip: { ...editing.clip, path: name } });
+      setMsg({ ok: true, text: t('video.uploaded', { f: name }) });
+    } catch (err) { setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) }); }
+    finally { setUploading(false); }
+  };
+
+  const openBrowser = async () => {
+    setBrowserOpen(true);
+    setMediaBusy(true);
+    try {
+      const l = await api.listFiles('video-projects');
+      setMedia(l.entries.filter((e) => e.type === 'file' && isMedia(e.name)).map((e) => e.path));
+    } catch { setMedia([]); }
+    finally { setMediaBusy(false); }
+  };
+
+  const pickMedia = (path: string) => {
+    if (editing) setEditing({ ...editing, clip: { ...editing.clip, path } });
+    setBrowserOpen(false);
+  };
+
+  const loadDemo = () => {
+    setProject(demoProject(t('video.demoTitle'), t('video.newTitle')));
+    setCurrent('');
+    setOutput(null);
+    setPlayhead(0);
+    setMsg({ ok: true, text: t('video.demoLoaded') });
+  };
+
+  const activeClip = (() => {
+    const v = project.tracks.find((tr) => tr.type === 'video' && clipAt(tr));
+    return v ? clipAt(v) ?? null : null;
+  })();
+
   return (
     <section className="video" aria-labelledby={`${id}-title`}>
       <header className="chat-header">
@@ -124,6 +212,7 @@ export function VideoSection() {
             {names.map((n) => <option key={n.name} value={n.name}>{n.title}</option>)}
           </select>
           <button type="button" className="btn" onClick={() => { setProject(blankProject(t('video.newTitle'))); setCurrent(''); setOutput(null); }}>{t('video.new')}</button>
+          <button type="button" className="btn" onClick={loadDemo} aria-label={t('video.demo')}>{t('video.demo')}</button>
           <button type="button" className="btn" disabled={busy} onClick={() => void save()}>{t('video.save')}</button>
           <button type="button" className="btn primary" disabled={busy} onClick={() => void render()}>{busy ? t('video.rendering') : t('video.render')}</button>
         </div>
@@ -146,15 +235,16 @@ export function VideoSection() {
         <div className="pii-card" aria-label={t('video.preview')}>
           <div className="video-preview" style={{ aspectRatio: `${project.width}/${project.height}` }}>
             {(() => {
-              const v = project.tracks.find((tr) => tr.type === 'video' && clipAt(tr));
-              const c = v && clipAt(v);
+              const c = activeClip;
               if (!c) return <span className="hint">{t('video.noClip', { s: playhead.toFixed(1) })}</span>;
-              if (c.type === 'title') return <span className="video-title" style={{ background: c.color }}>{c.text}</span>;
+              if (c.type === 'title') return <span className="video-title" style={{ background: c.color ?? '#1e293b' }}>{c.text}</span>;
+              if (c.type === 'image' && c.path) return <MediaUrl path={c.path} kind="image" alt={t('video.previewImageAlt')} />;
+              if (c.type === 'video' && c.path) return <MediaUrl path={c.path} kind="video" alt={t('video.previewVideo')} />;
               return <span className="hint">{c.type}: {c.path || '—'} ({c.start.toFixed(1)}s → {(c.start + c.duration).toFixed(1)}s)</span>;
             })()}
           </div>
           <label>{t('video.playhead')}: {playhead.toFixed(1)}s
-            <input type="range" min={0} max={total} step={0.1} value={playhead} onChange={(e) => setPlayhead(Number(e.target.value))} style={{ width: '100%' }} />
+            <input type="range" min={0} max={total} step={0.1} value={playhead} aria-label={t('video.playhead')} onChange={(e) => setPlayhead(Number(e.target.value))} style={{ width: '100%' }} />
           </label>
         </div>
 
@@ -198,7 +288,7 @@ export function VideoSection() {
         </div>
 
         {editing && (
-          <div className="pii-card" role="dialog" aria-label={t('video.editClip')}>
+          <div className="pii-card" role="dialog" aria-modal="true" aria-label={t('video.editClip')}>
             <h2 className="mini-title">{t('video.editClip')}</h2>
             <div className="secret-row">
               <label>{t('video.clipType')}
@@ -213,9 +303,18 @@ export function VideoSection() {
               <label>{t('video.clipDuration')} <input type="number" step={0.1} min={0.1} value={editing.clip.duration} onChange={(e) => setEditing({ ...editing, clip: { ...editing.clip, duration: Number(e.target.value) } })} /></label>
             </div>
             {(editing.clip.type === 'image' || editing.clip.type === 'video' || editing.clip.type === 'audio') && (
-              <label>{t('video.path')}
-                <input value={editing.clip.path ?? ''} placeholder="/percorso/file" onChange={(e) => setEditing({ ...editing, clip: { ...editing.clip, path: e.target.value } })} />
-              </label>
+              <>
+                <label>{t('video.path')}
+                  <input value={editing.clip.path ?? ''} placeholder={t('video.pathPlaceholder')} aria-label={t('video.path')} onChange={(e) => setEditing({ ...editing, clip: { ...editing.clip, path: e.target.value } })} />
+                </label>
+                <div className="agent-actions">
+                  <label className="btn small-btn" aria-label={t('video.upload')}>
+                    {uploading ? t('video.uploading') : t('video.upload')}
+                    <input type="file" hidden accept="image/*,video/*,audio/*" onChange={(e) => void onUpload(e.target.files?.[0])} />
+                  </label>
+                  <button type="button" className="btn small-btn" onClick={() => void openBrowser()}>{t('video.browse')}</button>
+                </div>
+              </>
             )}
             {editing.clip.type === 'title' && (
               <div className="secret-row">
@@ -231,6 +330,24 @@ export function VideoSection() {
               <button type="button" className="btn primary" onClick={saveClip}>{t('video.ok')}</button>
               <button type="button" className="btn" onClick={() => setEditing(null)}>{t('video.cancel')}</button>
               <button type="button" className="btn" onClick={() => { delClip(editing.trackId, editing.clip.id); setEditing(null); }}>{t('video.delete')}</button>
+            </div>
+          </div>
+        )}
+
+        {browserOpen && (
+          <div className="pii-card" role="dialog" aria-modal="true" aria-label={t('video.mediaTitle')}>
+            <h2 className="mini-title">{t('video.mediaTitle')}</h2>
+            {mediaBusy && <p className="hint" role="status">…</p>}
+            {!mediaBusy && media.length === 0 && <p className="hint">{t('video.mediaEmpty')}</p>}
+            <ul>
+              {media.map((m) => (
+                <li key={m}>
+                  <button type="button" className="btn small-btn" onClick={() => pickMedia(m)} aria-label={`${t('video.mediaChoose')}: ${m}`}>{m.split('/').pop()}</button>
+                </li>
+              ))}
+            </ul>
+            <div className="agent-actions">
+              <button type="button" className="btn" onClick={() => setBrowserOpen(false)}>{t('video.mediaClose')}</button>
             </div>
           </div>
         )}
