@@ -14,6 +14,7 @@ export default {
   riapri: 'Riapri la finestra di accesso',
   annulla: 'Annulla',
   popupBloccato: "Il browser ha bloccato la finestra: usa il pulsante \"Riapri la finestra di accesso\".",
+  accessoFallito: "L'ultimo accesso non si e' completato: {motivo}",
   collegatoOk: 'Account collegato: ora puoi generare.',
   generaTitolo: 'Generazione rapida',
   tipo: 'Cosa generare',

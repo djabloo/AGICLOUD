@@ -14,6 +14,7 @@ export default {
   riapri: "Znovu otevřít přihlašovací okno",
   annulla: "Zrušit",
   popupBloccato: "Prohlížeč okno zablokoval: použij tlačítko „Znovu otevřít přihlašovací okno“.",
+  accessoFallito: "Poslední přihlášení se nedokončilo: {motivo}",
   collegatoOk: "Účet je připojen: nyní můžeš generovat.",
   generaTitolo: "Rychlé generování",
   tipo: "Co generovat",

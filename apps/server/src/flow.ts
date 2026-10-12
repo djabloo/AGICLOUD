@@ -219,6 +219,19 @@ export function flowUpgrade(isEnabled: () => boolean): UpgradeHandler {
   };
 }
 
+/** Ultime righe utili del log dell'ultimo accesso (se non e' andato a buon fine): spiegano perche' resta "non collegato" */
+function lastLoginProblem(): string | null {
+  try {
+    const f = join(DATA, 'login.log');
+    if (Date.now() - statSync(f).mtimeMs > 60 * 60_000) return null;
+    const lines = readFileSync(f, 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('{"'));
+    const i = lines.findLastIndex((l) => /^(Browser closed|Authentication credential missing|Flow sign-in not detected|Error)/i.test(l));
+    return i < 0 ? null : lines.slice(i, i + 4).join(' ').slice(0, 400);
+  } catch {
+    return null;
+  }
+}
+
 // ── Lavori di generazione ───────────────────────────────────────────────────
 const running = new Set<string>();
 const jobFile = (job: string) => join(OUTPUT, `${job}.job.json`);
@@ -351,12 +364,14 @@ export function flowMcpServer(): acp.McpServer {
 export function registerFlow(app: Hono<any>): void {
   app.get('/api/flow/status', async (c) => {
     const account = linkedAccount();
+    const loginOn = login && (await loginRunning()) ? { url: loginUrl(login.key) } : null;
     return c.json({
       docker: await dockerReady(),
       linked: Boolean(account),
       account: account?.email ?? null,
       credits: credits.n,
-      login: login && (await loginRunning()) ? { url: loginUrl(login.key) } : null,
+      login: loginOn,
+      loginProblem: !account && !loginOn ? lastLoginProblem() : null,
       running: running.size,
     });
   });

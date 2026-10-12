@@ -14,6 +14,7 @@ export default {
   riapri: "Reopen the sign-in window",
   annulla: "Cancel",
   popupBloccato: "The browser blocked the window: use the \"Reopen the sign-in window\" button.",
+  accessoFallito: "The last sign-in did not complete: {motivo}",
   collegatoOk: "Account connected: you can generate now.",
   generaTitolo: "Quick generation",
   tipo: "What to generate",

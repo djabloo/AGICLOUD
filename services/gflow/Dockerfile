@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends xvfb xauth x11v
  && mv /usr/bin/chromium /usr/bin/chromium.real \
  && printf '#!/bin/sh\nif [ -n "$GFLOW_LOGIN_WINDOW" ]; then exec /usr/bin/chromium.real --no-sandbox --disable-dev-shm-usage --disable-gpu "$@" --window-position=0,0 --window-size=${GFLOW_LOGIN_SIZE:-1280,780}; fi\nexec /usr/bin/chromium.real --no-sandbox --disable-dev-shm-usage --disable-gpu "$@"\n' > /usr/bin/chromium \
  && chmod +x /usr/bin/chromium
+# gflow cerca Google Chrome in /opt/google/chrome (Chrome per Linux ARM non esiste): ci si mette Chromium, cosi' usa la strategia "chrome" e scrive il marcatore del profilo
+RUN mkdir -p /opt/google/chrome && ln -s /usr/bin/chromium /opt/google/chrome/chrome
 ARG GFLOW_VERSION=0.83.2
 RUN pip install --no-cache-dir gflow-cli==${GFLOW_VERSION}
 # Sessione e profili in /data/gflow (volume): login e cookie restano dopo ogni esecuzione

@@ -14,6 +14,7 @@ export default {
   riapri: "Anmeldefenster erneut öffnen",
   annulla: "Abbrechen",
   popupBloccato: "Der Browser hat das Fenster blockiert: Nutze die Schaltfläche „Anmeldefenster erneut öffnen“.",
+  accessoFallito: "Die letzte Anmeldung wurde nicht abgeschlossen: {motivo}",
   collegatoOk: "Konto verbunden: Du kannst jetzt generieren.",
   generaTitolo: "Schnelle Generierung",
   tipo: "Was erzeugt werden soll",

@@ -296,6 +296,8 @@ export interface FlowStatus {
   credits: number | null;
   /** Sessione di accesso con Google aperta (indirizzo della sessione grafica) */
   login: { url: string } | null;
+  /** Perche' l'ultimo accesso non si e' completato (testo di gflow), se e' fallito */
+  loginProblem: string | null;
   running: number;
 }
 

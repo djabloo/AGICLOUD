@@ -159,11 +159,18 @@ export function FlowSection() {
                 </div>
               </>
             ) : (
-              <div className="agent-actions">
-                <button type="button" className="btn primary" disabled={busy} onClick={() => void login()}>
-                  {t('flow.accedi')}
-                </button>
-              </div>
+              <>
+                {status.loginProblem && (
+                  <p className="pii-msg pii-msg-err" role="alert">
+                    {t('flow.accessoFallito', { motivo: status.loginProblem })}
+                  </p>
+                )}
+                <div className="agent-actions">
+                  <button type="button" className="btn primary" disabled={busy} onClick={() => void login()}>
+                    {t('flow.accedi')}
+                  </button>
+                </div>
+              </>
             )}
           </section>
         )}
