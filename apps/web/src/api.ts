@@ -333,6 +333,63 @@ export interface VideoMediaFile {
   mtime?: number;
 }
 
+export interface NotebookMeta {
+  id: string;
+  title: string;
+  createdAt: string;
+  conversationId: string | null;
+}
+
+export interface NotebookSource {
+  name: string;
+  size: number;
+  mtime: number;
+}
+
+export interface NotebookStudioItem {
+  name: string;
+  kind: string;
+  size: number;
+  mtime: number;
+}
+
+export interface NotebookChatMessage {
+  role: 'q' | 'a';
+  text: string;
+  ts: number;
+}
+
+export interface NotebookSettings {
+  provider: 'edge' | 'elevenlabs';
+  providerChosen: boolean;
+  elevenlabs: {
+    hasKey: boolean;
+    keySource: 'settings' | 'vault' | 'env' | null;
+    keyHint: string;
+    model: string;
+    models: string[];
+    voiceA: string;
+    voiceB: string;
+    voiceAName: string;
+    voiceBName: string;
+  };
+}
+
+export interface NotebookVoice {
+  id: string;
+  name: string;
+  category: string;
+  labels: Record<string, string>;
+  preview: string;
+}
+
+export interface NotebookQuota {
+  used: number;
+  limit: number;
+  tier: string;
+  resetAt: number;
+}
+
 export interface ClaudeLimit {  status: 'allowed' | 'allowed_warning' | 'rejected';
   type: string | null;
   utilization: number | null;
@@ -436,6 +493,56 @@ export const api = {
     request<{ path: string; abs: string; size: number }>('POST', '/pii/save', body),
   verdict: (body: { text: string; question: string; type: VerdictType; options?: string[]; mode: 'fast' | 'double'; explain: boolean }) =>
     request<VerdictResult>('POST', '/verdict/decide', body),
+  notebook: {
+    health: () => request<{ available: boolean; detail: string; version: string | null }>('GET', '/notebook/health'),
+    settings: () => request<NotebookSettings>('GET', '/notebook/settings'),
+    saveSettings: (body: {
+      provider?: 'edge' | 'elevenlabs';
+      elevenlabsKey?: string;
+      model?: string;
+      voiceA?: string;
+      voiceB?: string;
+      voiceAName?: string;
+      voiceBName?: string;
+    }) => request<NotebookSettings>('POST', '/notebook/settings', body),
+    voices: () => request<{ voices: NotebookVoice[]; quota: NotebookQuota | null }>('GET', '/notebook/elevenlabs/voices'),
+    list: (wspath: string) => request<NotebookMeta[]>('GET', `/notebook/notebooks?wspath=${encodeURIComponent(wspath)}`),
+    create: (wspath: string, title: string) => request<NotebookMeta>('POST', '/notebook/notebooks', { wspath, title }),
+    remove: (id: string, wspath: string) =>
+      request<{ success: boolean }>('DELETE', `/notebook/notebooks/${encodeURIComponent(id)}?wspath=${encodeURIComponent(wspath)}`),
+    sources: (id: string, wspath: string) =>
+      request<NotebookSource[]>('GET', `/notebook/notebooks/${encodeURIComponent(id)}/sources?wspath=${encodeURIComponent(wspath)}`),
+    addSource: (id: string, body: { wspath: string; url?: string; text?: string; title?: string; fileName?: string; fileData?: string }) =>
+      request<{ name: string }>('POST', `/notebook/notebooks/${encodeURIComponent(id)}/sources`, body),
+    sourceContent: (id: string, name: string, wspath: string) =>
+      request<{ name: string; content: string }>(
+        'GET',
+        `/notebook/notebooks/${encodeURIComponent(id)}/sources/${encodeURIComponent(name)}/content?wspath=${encodeURIComponent(wspath)}`,
+      ),
+    deleteSource: (id: string, name: string, wspath: string) =>
+      request<{ success: boolean }>(
+        'DELETE',
+        `/notebook/notebooks/${encodeURIComponent(id)}/sources/${encodeURIComponent(name)}?wspath=${encodeURIComponent(wspath)}`,
+      ),
+    chat: (id: string, wspath: string) =>
+      request<NotebookChatMessage[]>('GET', `/notebook/notebooks/${encodeURIComponent(id)}/chat?wspath=${encodeURIComponent(wspath)}`),
+    query: (id: string, wspath: string, question: string) =>
+      request<{ answer: string }>('POST', `/notebook/notebooks/${encodeURIComponent(id)}/query`, { wspath, question }),
+    studio: (id: string, wspath: string) =>
+      request<NotebookStudioItem[]>('GET', `/notebook/notebooks/${encodeURIComponent(id)}/studio?wspath=${encodeURIComponent(wspath)}`),
+    createStudio: (id: string, wspath: string, kind: string, provider?: string) =>
+      request<{ name: string; provider?: string }>('POST', `/notebook/notebooks/${encodeURIComponent(id)}/studio`, { wspath, kind, provider }),
+    artifactContent: (id: string, name: string, wspath: string) =>
+      request<{ name: string; content: string }>(
+        'GET',
+        `/notebook/notebooks/${encodeURIComponent(id)}/studio/${encodeURIComponent(name)}/content?wspath=${encodeURIComponent(wspath)}`,
+      ),
+    deleteArtifact: (id: string, name: string, wspath: string) =>
+      request<{ success: boolean }>(
+        'DELETE',
+        `/notebook/notebooks/${encodeURIComponent(id)}/studio/${encodeURIComponent(name)}?wspath=${encodeURIComponent(wspath)}`,
+      ),
+  },
   video: {
     list: () => request<{ name: string; title: string }[]>('GET', '/video/projects'),
     get: (name: string) => request<VideoProject>('GET', `/video/projects/${encodeURIComponent(name)}`),

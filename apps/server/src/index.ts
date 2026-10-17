@@ -33,6 +33,7 @@ import { cloudPlugin, registerCloud } from './cloud.js';
 import { NodeImageBuilder, registerNodeImageBuild } from './node-image.js';
 import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser, registerBrowserStart } from './browser.js';
 import { registerVideo, videoMcpServer, videoPlugin } from './video.js';
+import { notebookPlugin, registerNotebook } from './notebook.js';
 
 const settings = new Settings();
 const store = new ThreadStore(settings);
@@ -179,6 +180,7 @@ const plugins = new Plugins(
     verdictPlugin(settings),
     cloudPlugin(settings),
     videoPlugin,
+    notebookPlugin(settings),
   ],
   // Design era gia' in uso prima del sistema dei plugin: resta installato e attivo
   { design: { installed: true, enabled: true } },
@@ -207,6 +209,7 @@ registerVerdict(app, settings);
 registerHandover(app, store, limits);
 registerCloud(app, settings);
 registerVideo(app);
+registerNotebook(app, settings);
 registerNodeImageBuild(app, settings, new NodeImageBuilder());
 
 // ── API ──────────────────────────────────────────────────────────────────────

@@ -14,12 +14,13 @@ import { BrowserSection } from './BrowserSection';
 import { VerdictView } from './VerdictView';
 import { CloudView } from './CloudView';
 import { VideoSection } from './VideoSection';
+import { NotebookSection } from './NotebookSection';
 import { SetupDone } from './Login';
 import { Icon, type IconName } from './icons';
 import { useT } from './i18n';
 
 type Auth = 'checking' | 'ok' | 'needed';
-type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'verdict' | 'cloud' | 'video' | 'settings';
+type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'verdict' | 'cloud' | 'video' | 'notebook' | 'settings';
 
 interface Route {
   section: Section;
@@ -43,6 +44,7 @@ const SECTION_DEFS: SectionDef[] = [
   { id: 'verdict', icon: 'scale', ready: true, plugin: 'verdict' },
   { id: 'cloud', icon: 'cloud', ready: true, plugin: 'cloud' },
   { id: 'video', icon: 'video', ready: true, plugin: 'video' },
+  { id: 'notebook', icon: 'notebook', ready: true, plugin: 'notebook' },
   { id: 'settings', icon: 'settings', ready: true },
 ];
 const SECTION_KEYS: Record<Section, string> = {
@@ -55,6 +57,7 @@ const SECTION_KEYS: Record<Section, string> = {
   verdict: 'app.sezioneVerdict',
   cloud: 'app.sezioneCloud',
   video: 'app.sezioneVideo',
+  notebook: 'app.sezioneNotebook',
   settings: 'app.sezioneImpostazioni',
 };
 type TFn = (key: string, params?: Record<string, string | number>) => string;
@@ -76,6 +79,7 @@ function routeFromHash(): Route {
   if (/^#\/verdict\/?$/.test(location.hash)) return { section: 'verdict', id: null };
   if (/^#\/cloud\/?$/.test(location.hash)) return { section: 'cloud', id: null };
   if (/^#\/video\/?$/.test(location.hash)) return { section: 'video', id: null };
+  if (/^#\/notebook\/?$/.test(location.hash)) return { section: 'notebook', id: null };
   // #/browser/popup = solo il browser, nella finestra a parte
   const browser = location.hash.match(/^#\/browser(\/popup)?\/?$/);
   if (browser) return { section: 'browser', id: browser[1] ? 'popup' : null };
@@ -93,6 +97,7 @@ function hashFor(r: Route): string {
   if (r.section === 'verdict') return '#/verdict';
   if (r.section === 'cloud') return '#/cloud';
   if (r.section === 'video') return '#/video';
+  if (r.section === 'notebook') return '#/notebook';
   if (r.section === 'browser') return r.id === 'popup' ? '#/browser/popup' : '#/browser';
   if (r.section === 'design') return r.id ? `#/design/t/${r.id}` : '#/design';
   return r.id ? `#/t/${r.id}` : '';
@@ -320,6 +325,7 @@ export function App() {
   const inVerdict = route.section === 'verdict';
   const inCloud = route.section === 'cloud';
   const inVideo = route.section === 'video';
+  const inNotebook = route.section === 'notebook';
   const activeThread =
     route.section === 'chat' || route.section === 'design' ? (threads.find((t) => t.id === route.id) ?? null) : null;
   // Le sessioni di design stanno nella sezione Design, le altre in Chat
@@ -450,14 +456,14 @@ export function App() {
           </>
         )}
 
-        {!inSettings && !inFiles && !inDesign && !inPii && !inBrowser && !inVerdict && !inCloud && !inVideo && (
+        {!inSettings && !inFiles && !inDesign && !inPii && !inBrowser && !inVerdict && !inCloud && !inVideo && !inNotebook && (
           <button type="button" className="btn primary new-btn" onClick={openNew}>
             <Icon name="plus" />
             <span>{newLabel}</span>
           </button>
         )}
 
-        {inSettings || inFiles || inDesign || inPii || inBrowser || inVerdict || inCloud || inVideo ? null : inTerminals ? (
+        {inSettings || inFiles || inDesign || inPii || inBrowser || inVerdict || inCloud || inVideo || inNotebook ? null : inTerminals ? (
           <>
             <h2 className="sidebar-title" id="list-title">
               {t('app.terminali')}
@@ -521,6 +527,19 @@ export function App() {
                 {t('app.pluginVideoTesto', { link: '\u0000' }).split('\u0000')[0]}
                 <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
                 {t('app.pluginVideoTesto', { link: '\u0000' }).split('\u0000')[1]}
+              </p>
+            </section>
+          )
+        ) : inNotebook ? (
+          pluginOn('notebook') ? (
+            <NotebookSection />
+          ) : (
+            <section className="welcome" aria-labelledby="welcome-title">
+              <h1 id="welcome-title">{t('app.notebookNonAttivo')}</h1>
+              <p>
+                {t('app.pluginNotebookTesto', { link: '\u0000' }).split('\u0000')[0]}
+                <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
+                {t('app.pluginNotebookTesto', { link: '\u0000' }).split('\u0000')[1]}
               </p>
             </section>
           )

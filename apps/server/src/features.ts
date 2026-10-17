@@ -17,6 +17,7 @@ const SECTION_PREFIXES: [string, string][] = [
   ['/api/cloud', 'cloud'],
   ['/api/video', 'video'],
   ['/video-api', 'video'],
+  ['/api/notebook', 'notebook'],
 ];
 
 /** Legge AGICLOUD_FEATURES una volta: null = tutto consentito */
