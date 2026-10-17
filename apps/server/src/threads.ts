@@ -675,7 +675,8 @@ export class ThreadStore {
   }
 
   recentProjects(): string[] {
-    return [...new Set(this.list().map((t) => t.cwd))].slice(0, 12);
+    // i worktree dei sottoagenti spariscono dopo l'unione: niente tracce di cartelle che non esistono piu'
+    return [...new Set(this.list().map((t) => t.cwd))].filter((p) => existsSync(p)).slice(0, 12);
   }
 
   get(id: string): Thread {

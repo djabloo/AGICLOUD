@@ -54,45 +54,6 @@ function formatTime(sec: number): string {
   return `${m.toString().padStart(2, '0')}:${s.padStart(4, '0')}`;
 }
 
-function MediaUrl({ path, kind, alt }: { path: string; kind: 'image' | 'video' | 'audio'; alt: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [err, setErr] = useState(false);
-
-  useEffect(() => {
-    let live = true;
-    let obj = '';
-    setUrl(null);
-    setErr(false);
-    api.fileBlob(path).then((b) => {
-      if (!live) return;
-      obj = URL.createObjectURL(b);
-      if (live) setUrl(obj);
-    }).catch(() => {
-      if (live) setErr(true);
-    });
-    return () => {
-      live = false;
-      if (obj) URL.revokeObjectURL(obj);
-    };
-  }, [path]);
-
-  if (err) return <span className="hint">{alt}: {path.split('/').pop()}</span>;
-  if (!url) return <span className="hint" role="status">Caricamento…</span>;
-  if (kind === 'video') {
-    return <video src={url} controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} aria-label={alt} />;
-  }
-  if (kind === 'audio') {
-    return (
-      <div style={{ textAlign: 'center', padding: '16px' }}>
-        <span style={{ fontSize: '2.5rem' }}>🎵</span>
-        <p className="hint">{path.split('/').pop()}</p>
-        <audio src={url} controls style={{ marginTop: '8px' }} />
-      </div>
-    );
-  }
-  return <img src={url} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
-}
-
 export function VideoSection() {
   const t = useT();
   const id = useId();
@@ -101,6 +62,7 @@ export function VideoSection() {
   const [project, setProject] = useState<VideoProject>(() => blankProject(t('video.newTitle')));
   const [playhead, setPlayhead] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [muted, setMuted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [output, setOutput] = useState<string | null>(null);
@@ -110,6 +72,8 @@ export function VideoSection() {
   const [mediaBusy, setMediaBusy] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const previewAudioRef = useRef<HTMLAudioElement>(null);
 
   const refreshProjects = async () => {
     try { setNames(await api.video.list()); } catch { /* plugin spento */ }
@@ -137,9 +101,58 @@ export function VideoSection() {
     return Math.max(project.duration, end, 5);
   }, [project]);
 
-  // Live playhead playback ticker
+  const clipAt = (track: VideoTrack) =>
+    track.clips.find((c) => playhead >= c.start && playhead < c.start + c.duration);
+
+  const activeVClip = useMemo(() => {
+    const v = project.tracks.find((tr) => tr.type === 'video' && clipAt(tr));
+    return v ? clipAt(v) ?? null : null;
+  }, [project, playhead]);
+
+  const activeAClip = useMemo(() => {
+    const a = project.tracks.find((tr) => tr.type === 'audio' && clipAt(tr));
+    return a ? clipAt(a) ?? null : null;
+  }, [project, playhead]);
+
+  // Synchronize active video currentTime when seeking or scrubbing
   useEffect(() => {
-    if (!isPlaying) return;
+    if (activeVClip?.type === 'video' && previewVideoRef.current && activeVClip.path) {
+      const targetTime = Math.max(0, playhead - activeVClip.start);
+      if (Math.abs(previewVideoRef.current.currentTime - targetTime) > 0.4) {
+        previewVideoRef.current.currentTime = targetTime;
+      }
+    }
+  }, [playhead, activeVClip]);
+
+  // Synchronize active audio currentTime when seeking or scrubbing
+  useEffect(() => {
+    if (activeAClip && previewAudioRef.current && activeAClip.path) {
+      const targetTime = Math.max(0, playhead - activeAClip.start);
+      if (Math.abs(previewAudioRef.current.currentTime - targetTime) > 0.4) {
+        previewAudioRef.current.currentTime = targetTime;
+      }
+    }
+  }, [playhead, activeAClip]);
+
+  // Live playhead playback ticker and media synchronization
+  useEffect(() => {
+    if (!isPlaying) {
+      if (previewVideoRef.current && !previewVideoRef.current.paused) {
+        previewVideoRef.current.pause();
+      }
+      if (previewAudioRef.current && !previewAudioRef.current.paused) {
+        previewAudioRef.current.pause();
+      }
+      return;
+    }
+
+    if (previewVideoRef.current) {
+      previewVideoRef.current.play().catch(() => {});
+    }
+    if (previewAudioRef.current) {
+      previewAudioRef.current.play().catch(() => {});
+    }
+
     const interval = setInterval(() => {
       setPlayhead((p) => {
         if (p >= total) {
@@ -149,8 +162,9 @@ export function VideoSection() {
         return Math.min(total, Math.round((p + 0.1) * 10) / 10);
       });
     }, 100);
+
     return () => clearInterval(interval);
-  }, [isPlaying, total]);
+  }, [isPlaying, total, activeVClip?.id, activeAClip?.id]);
 
   const load = async (name: string) => {
     setBusy(true);
@@ -170,8 +184,11 @@ export function VideoSection() {
   const save = async () => {
     setBusy(true);
     try {
+      const maxClip = Math.max(0, ...project.tracks.flatMap((tr) => tr.clips.map((c) => c.start + c.duration)));
+      const toSave = { ...project, duration: Math.max(project.duration, maxClip) };
       const name = current || `${project.title.replace(/[^\w\-. ]+/g, '_') || 'video'}.video.json`;
-      await api.video.save(name, project);
+      await api.video.save(name, toSave);
+      setProject(toSave);
       setCurrent(name);
       setMsg({ ok: true, text: t('video.saved') });
       await refreshProjects();
@@ -187,8 +204,10 @@ export function VideoSection() {
     setIsPlaying(false);
     setMsg(null);
     try {
-      const r = await api.video.render(current ? { name: current, project } : { project });
-      setOutput(r.name);
+      const maxClip = Math.max(0, ...project.tracks.flatMap((tr) => tr.clips.map((c) => c.start + c.duration)));
+      const projToRender = { ...project, duration: Math.max(project.duration, maxClip) };
+      const r = await api.video.render(current ? { name: current, project: projToRender } : { project: projToRender });
+      setOutput(r.path || r.file || r.name);
       setMsg({ ok: true, text: t('video.rendered', { f: r.name }) });
     } catch (err) {
       setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) });
@@ -266,6 +285,7 @@ export function VideoSection() {
       setPlayhead(end);
       return {
         ...p,
+        duration: Math.max(p.duration, end + dur),
         tracks: tracks.map((t) => (t.id === tr!.id ? { ...t, clips: [...t.clips, newClip] } : t)),
       };
     });
@@ -319,14 +339,6 @@ export function VideoSection() {
     }));
     if (editing?.clip.id === clipId) setEditing(null);
   };
-
-  const clipAt = (track: VideoTrack) =>
-    track.clips.find((c) => playhead >= c.start && playhead < c.start + c.duration);
-
-  const activeClip = (() => {
-    const v = project.tracks.find((tr) => tr.type === 'video' && clipAt(tr));
-    return v ? clipAt(v) ?? null : null;
-  })();
 
   const loadDemo = () => {
     setProject(demoProject(t('video.demoTitle')));
@@ -405,74 +417,124 @@ export function VideoSection() {
 
         {/* 2. Cinema Preview Player */}
         <div className="pii-card" aria-label={t('video.preview')}>
-          <div className="video-preview" style={{ aspectRatio: `${project.width}/${project.height}`, maxHeight: '420px', margin: '0 auto' }}>
-            {output ? (
-              <video
-                src={`/api/files/raw?path=${encodeURIComponent(output)}`}
-                controls
-                autoPlay
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
-            ) : (() => {
-              const c = activeClip;
-              if (!c) {
-                return (
+          {output ? (
+            <div style={{ position: 'relative' }}>
+              <div className="video-preview" style={{ aspectRatio: `${project.width}/${project.height}`, maxHeight: '440px', margin: '0 auto' }}>
+                <video
+                  src={api.video.mediaUrl(output)}
+                  controls
+                  autoPlay
+                  playsInline
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              </div>
+              <div style={{ marginTop: '10px', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                <button type="button" className="btn small-btn" onClick={() => setOutput(null)}>
+                  ✏ Torna all'anteprima timeline
+                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span className="hint">Video renderizzato pronto!</span>
+                  <a className="btn small-btn primary" href={api.video.mediaUrl(output) + '&download=1'} download>
+                    📥 {t('video.download')}
+                  </a>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div
+                className="video-preview"
+                style={{
+                  aspectRatio: `${project.width}/${project.height}`,
+                  maxHeight: '420px',
+                  margin: '0 auto',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  background: '#090d16',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {activeAClip?.path && (
+                  <audio
+                    ref={previewAudioRef}
+                    key={`audio-${activeAClip.id}`}
+                    src={api.video.mediaUrl(activeAClip.path)}
+                    muted={muted}
+                  />
+                )}
+                {!activeVClip ? (
                   <div style={{ textAlign: 'center', padding: '24px' }}>
                     <span style={{ fontSize: '2rem', display: 'block', marginBottom: '8px' }}>🎬</span>
                     <span className="hint">{t('video.noClip', { s: playhead.toFixed(1) })}</span>
                   </div>
-                );
-              }
-              if (c.type === 'title') {
-                return (
-                  <span className="video-title" style={{ background: c.color ?? '#1e293b' }}>
-                    {c.text}
+                ) : activeVClip.type === 'title' ? (
+                  <span className="video-title" style={{ background: activeVClip.color ?? '#1e293b' }}>
+                    {activeVClip.text}
                   </span>
-                );
-              }
-              if ((c.type === 'image' || c.type === 'video') && c.path) {
-                return <MediaUrl path={c.path} kind={c.type} alt={c.type} />;
-              }
-              return <span className="hint">{c.type}: {c.path || '—'}</span>;
-            })()}
-          </div>
+                ) : activeVClip.type === 'image' && activeVClip.path ? (
+                  <img
+                    key={`img-${activeVClip.id}`}
+                    src={api.video.mediaUrl(activeVClip.path)}
+                    alt={activeVClip.path}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                ) : activeVClip.type === 'video' && activeVClip.path ? (
+                  <video
+                    ref={previewVideoRef}
+                    key={`vid-${activeVClip.id}`}
+                    src={api.video.mediaUrl(activeVClip.path)}
+                    playsInline
+                    muted={muted}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <span className="hint">{activeVClip.type}: {activeVClip.path || '—'}</span>
+                )}
+              </div>
 
-          {/* Transport Controls */}
-          <div className="video-transport">
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button type="button" className="btn small-btn" onClick={() => setPlayhead(0)} title="Torna all'inizio">⏮</button>
-              <button
-                type="button"
-                className={`btn small-btn ${isPlaying ? 'primary' : ''}`}
-                onClick={() => setIsPlaying(!isPlaying)}
-                style={{ minWidth: '70px', fontWeight: 600 }}
-              >
-                {isPlaying ? '⏸ Pausa' : '▶ Play'}
-              </button>
-              <button type="button" className="btn small-btn" onClick={() => setPlayhead(total)} title="Vai alla fine">⏭</button>
-            </div>
-            <div className="video-timecode">
-              {formatTime(playhead)} <span style={{ opacity: 0.6 }}>/ {formatTime(total)}</span>
-            </div>
-            {output && (
-              <a className="btn small-btn primary" href={`/api/files/raw?path=${encodeURIComponent(output)}`} download>
-                📥 {t('video.download')}
-              </a>
-            )}
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={total}
-            step={0.1}
-            value={playhead}
-            aria-label={t('video.playhead')}
-            onChange={(e) => {
-              setIsPlaying(false);
-              setPlayhead(Number(e.target.value));
-            }}
-            style={{ width: '100%', marginTop: '8px' }}
-          />
+              {/* Transport Controls */}
+              <div className="video-transport">
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button type="button" className="btn small-btn" onClick={() => { setIsPlaying(false); setPlayhead(0); }} title="Torna all'inizio">⏮</button>
+                  <button
+                    type="button"
+                    className={`btn small-btn ${isPlaying ? 'primary' : ''}`}
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    style={{ minWidth: '80px', fontWeight: 600 }}
+                  >
+                    {isPlaying ? '⏸ Pausa' : '▶ Play'}
+                  </button>
+                  <button type="button" className="btn small-btn" onClick={() => { setIsPlaying(false); setPlayhead(total); }} title="Vai alla fine">⏭</button>
+                  <button
+                    type="button"
+                    className="btn small-btn"
+                    onClick={() => setMuted(!muted)}
+                    title={muted ? 'Riattiva audio' : 'Muta audio'}
+                  >
+                    {muted ? '🔇 Muto' : '🔊 Audio'}
+                  </button>
+                </div>
+                <div className="video-timecode">
+                  {formatTime(playhead)} <span style={{ opacity: 0.6 }}>/ {formatTime(total)}</span>
+                </div>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={total}
+                step={0.1}
+                value={playhead}
+                aria-label={t('video.playhead')}
+                onChange={(e) => {
+                  setIsPlaying(false);
+                  setPlayhead(Number(e.target.value));
+                }}
+                style={{ width: '100%', marginTop: '8px' }}
+              />
+            </>
+          )}
         </div>
 
         {/* 3. Media Library / Dropzone */}
@@ -514,15 +576,28 @@ export function VideoSection() {
                   <div className="video-media-thumb">
                     {m.type === 'audio' ? (
                       <span style={{ fontSize: '1.8rem' }}>🎵</span>
+                    ) : m.type === 'image' ? (
+                      <img
+                        src={api.video.mediaUrl(m.path)}
+                        alt={m.name}
+                        loading="lazy"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
                     ) : (
-                      <MediaUrl path={m.path} kind={m.type} alt={m.name} />
+                      <video
+                        src={api.video.mediaUrl(m.path)}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
                     )}
                   </div>
                   <div className="video-media-name" title={m.name}>{m.name}</div>
                   <div className="video-media-meta">
-                    {m.type === 'video' && `Video · ${m.duration ? m.duration + 's' : ''}`}
+                    {m.type === 'video' && `Video · ${m.duration ? m.duration + 's' : ''}${m.width ? ` · ${m.width}x${m.height}` : ''}`}
                     {m.type === 'audio' && `Audio · ${m.duration ? m.duration + 's' : ''}`}
-                    {m.type === 'image' && 'Immagine'}
+                    {m.type === 'image' && `Immagine${m.width ? ` · ${m.width}x${m.height}` : ''}`}
                   </div>
                   <button
                     type="button"

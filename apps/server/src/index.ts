@@ -140,7 +140,8 @@ app.post('/api/setup', async (c) => {
 
 app.use('/api/*', async (c, next) => {
   const header = c.req.header('authorization') ?? '';
-  const access = checkAccess(clientIp(c), header.startsWith('Bearer ') ? header.slice(7) : '');
+  const token = header.startsWith('Bearer ') ? header.slice(7) : (c.req.query('token') ?? '');
+  const access = checkAccess(clientIp(c), token);
   if (access === 'blocked') return c.json({ error: 'Troppi tentativi: riprova tra qualche minuto' }, 429);
   if (access !== 'ok') return c.json({ error: 'Accesso negato' }, 401);
   return next();
@@ -409,15 +410,33 @@ app.get('/api/files/list', (c) => c.json(listDir(c.req.query('path') ?? '')));
 
 app.get('/api/files/read', (c) => c.json(readText(c.req.query('path') ?? '')));
 
-// Contenuto grezzo (anteprime di immagini/PDF/video e download). Il browser lo chiede con fetch + token.
+// Contenuto grezzo (anteprime di immagini/PDF/video e download). Il browser lo chiede con fetch + token o con query param token.
 app.get('/api/files/raw', (c) => {
   const f = rawFile(c.req.query('path') ?? '');
   const name = encodeURIComponent(f.path.split('/').pop() ?? 'file');
   c.header('Content-Type', f.mime);
-  c.header('Content-Length', String(f.size));
+  c.header('Accept-Ranges', 'bytes');
   c.header('Content-Disposition', `${c.req.query('download') ? 'attachment' : 'inline'}; filename*=UTF-8''${name}`);
   // Un HTML aperto direttamente non deve poter eseguire script con i nostri permessi
   c.header('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox");
+
+  const range = c.req.header('range');
+  if (range && range.startsWith('bytes=')) {
+    const parts = range.slice(6).split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : f.size - 1;
+    if (isNaN(start) || start >= f.size || end < start) {
+      c.header('Content-Range', `bytes */${f.size}`);
+      return c.body(null, 416);
+    }
+    const chunksize = end - start + 1;
+    c.header('Content-Range', `bytes ${start}-${end}/${f.size}`);
+    c.header('Content-Length', String(chunksize));
+    c.status(206);
+    return c.body(Readable.toWeb(createReadStream(f.path, { start, end })) as ReadableStream);
+  }
+
+  c.header('Content-Length', String(f.size));
   return c.body(Readable.toWeb(createReadStream(f.path)) as ReadableStream);
 });
 

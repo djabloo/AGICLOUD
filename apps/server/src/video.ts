@@ -179,11 +179,13 @@ function runRender(project: VideoProject, outFile: string): Promise<string> {
   const out = resolve(dir, basename(outFile.endsWith('.mp4') ? outFile : `${outFile}.mp4`));
   if (!out.startsWith(resolve(dir))) throw new HttpError(400, 'Percorso di uscita non valido');
   const script = join(dir, `.render-${randomBytes(6).toString('hex')}.py`);
+  const roots = JSON.stringify(config.projectRoots);
   const py = `import json, os
 from PIL import Image, ImageDraw, ImageFont
 from moviepy import AudioFileClip, CompositeAudioClip, CompositeVideoClip, ImageClip, VideoFileClip, vfx
 p = ${JSON.stringify(project)}
 DIR = ${JSON.stringify(dir)}
+ROOTS = ${roots}
 W, H, FPS = int(p.get('width') or 1280), int(p.get('height') or 720), float(p.get('fps') or 24)
 def font(sz):
     for f in ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"):
@@ -192,8 +194,18 @@ def font(sz):
 ti = [0]
 def resolve_path(p_in):
     if not p_in: return ""
-    if os.path.isabs(p_in): return p_in
-    return os.path.abspath(p_in)
+    if os.path.exists(p_in): return os.path.abspath(p_in)
+    b = os.path.basename(p_in)
+    cand = os.path.join(DIR, b)
+    if os.path.exists(cand): return cand
+    cand2 = os.path.join(DIR, p_in)
+    if os.path.exists(cand2): return cand2
+    for pr in ROOTS:
+        cand3 = os.path.join(pr, p_in)
+        if os.path.exists(cand3): return cand3
+        cand4 = os.path.join(pr, b)
+        if os.path.exists(cand4): return cand4
+    return p_in
 
 def mkimg(clip, path):
     c_type = clip.get('type')
@@ -212,16 +224,22 @@ def mkimg(clip, path):
         vc = VideoFileClip(real_p)
         if vc.duration > dur:
             vc = vc.subclipped(0, dur)
-        return vc.resized(new_size=(W, H)).with_duration(dur)
-    # Immagine (qualsiasi formato: JPG, PNG, WEBP, etc.) con adattamento e centratura
+        scale = min(W / max(1, vc.w), H / max(1, vc.h))
+        nw, nh = int(vc.w * scale), int(vc.h * scale)
+        nw -= nw % 2
+        nh -= nh % 2
+        vc_scaled = vc.resized(new_size=(nw, nh)).with_position(((W - nw) // 2, (H - nh) // 2))
+        return CompositeVideoClip([vc_scaled], size=(W, H)).with_duration(dur)
+    # Immagine (JPG, PNG, WEBP, GIF, etc.) con adattamento e centratura
     if os.path.exists(real_p):
         try:
-            im = Image.open(real_p).convert("RGB")
+            im = Image.open(real_p)
+            im = im.convert("RGBA")
             im.thumbnail((W, H), Image.Resampling.LANCZOS)
             canvas = Image.new("RGB", (W, H), (15, 23, 42))
             x = (W - im.width) // 2
             y = (H - im.height) // 2
-            canvas.paste(im, (x, y))
+            canvas.paste(im, (x, y), im)
             ti[0] += 1
             p_fitted = os.path.join(DIR, f".img-{ti[0]}.png")
             canvas.save(p_fitted)
@@ -253,14 +271,24 @@ for tr in p.get('tracks') or []:
             v = mkimg(c, c.get('path') or '').with_start(st)
             if fx: v = v.with_effects(fx)
             vclips.append(v)
-dur = float(p.get('duration') or 0) or max([(c.get('start') or 0)+(c.get('duration') or 0) for tr in p.get('tracks') or [] for c in tr.get('clips') or []] + [1])
+
+max_clip_end = max([(c.get('start') or 0) + (c.get('duration') or 0) for tr in p.get('tracks') or [] for c in tr.get('clips') or []] + [0])
+dur = max(float(p.get('duration') or 0), max_clip_end, 1.0)
 video = CompositeVideoClip(vclips, size=(W, H)).with_duration(dur) if vclips else None
 if video is None:
     img = Image.new("RGB", (W, H), "#0f172a"); img.save(os.path.join(DIR, '.blank.png'))
     from moviepy import ImageClip as IC
     video = IC(os.path.join(DIR, '.blank.png')).with_duration(dur)
+
+all_audio = []
+if video.audio:
+    all_audio.append(video.audio)
 if aclips:
-    video = video.with_audio(CompositeAudioClip(aclips).with_duration(dur))
+    all_audio.extend(aclips)
+
+if all_audio:
+    video = video.with_audio(CompositeAudioClip(all_audio).with_duration(dur))
+
 video.write_videofile(${JSON.stringify(out)}, fps=FPS, codec="libx264", audio_codec="aac", temp_audiofile_path=DIR, logger=None)
 print("OK " + ${JSON.stringify(out)})
 `;
@@ -353,7 +381,7 @@ export function registerVideo(app: Hono<any>): void {
     const out = await runRender(project, body.out || `${base}.mp4`).catch((err) => {
       throw new HttpError(409, err instanceof Error ? err.message : String(err));
     });
-    return c.json({ file: out, name: basename(out) });
+    return c.json({ file: out, name: basename(out), path: `video-projects/${basename(out)}` });
   });
   // API interna per gli strumenti MCP degli agenti
   const guard = (c: { req: { header: (n: string) => string | undefined } }) => {

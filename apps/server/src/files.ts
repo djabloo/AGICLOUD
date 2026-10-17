@@ -33,10 +33,30 @@ function inRoots(p: string): boolean {
 
 /** Percorso reale di qualcosa che esiste, dentro le radici */
 export function resolveExisting(path: string): string {
-  let real: string;
+  let real: string | null = null;
   try {
     real = realpathSync(path);
   } catch {
+    if (!path.startsWith('/')) {
+      for (const root of config.projectRoots) {
+        try {
+          const candidate = realpathSync(join(root, path));
+          if (inRoots(candidate)) {
+            real = candidate;
+            break;
+          }
+        } catch { /* continua */ }
+        try {
+          const candidate2 = realpathSync(join(root, 'video-projects', path));
+          if (inRoots(candidate2)) {
+            real = candidate2;
+            break;
+          }
+        } catch { /* continua */ }
+      }
+    }
+  }
+  if (!real) {
     throw new HttpError(404, `Non trovato: ${path}`);
   }
   if (!inRoots(real)) throw new HttpError(400, `Fuori dalle cartelle consentite: ${real}`);

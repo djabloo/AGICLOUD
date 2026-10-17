@@ -320,6 +320,7 @@ export interface VideoProject {
 export interface VideoRenderResult {
   file: string;
   name: string;
+  path?: string;
 }
 
 export interface VideoMediaFile {
@@ -458,6 +459,8 @@ export const api = {
       const data = await res.json();
       return data.files;
     },
+    mediaUrl: (path: string): string =>
+      `/api/files/raw?path=${encodeURIComponent(path)}${memoryToken ? `&token=${encodeURIComponent(memoryToken)}` : ''}`,
   },
   limits: () => request<{ claude: ClaudeLimit | null }>('GET', '/limits'),
   handover: (threadId: string, agentId: string) => request<ThreadSummary>('POST', `/threads/${threadId}/handover`, { agentId }),
