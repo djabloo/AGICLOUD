@@ -22,7 +22,7 @@ import { config } from './config.js';
 import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
 import { AGY_BIN, type Settings } from './settings.js';
-import { excludeFromGit } from './uploads.js';
+import { excludeFromGit, readAttachment, resolveAttachment } from './uploads.js';
 import type { PluginSpec } from './plugins.js';
 
 const NOTEBOOK_DIRNAME = '.agy-notebook';
@@ -640,7 +640,7 @@ export function registerNotebook(app: Hono<any>, settings: Settings): void {
     return c.json(list);
   });
 
-  // POST /notebooks/:id/sources { wspath, url } | { wspath, text, title } | { wspath, fileName, fileData }
+  // POST /notebooks/:id/sources { wspath, url } | { wspath, text, title } | { wspath, fileName, fileData } | { wspath, piiFile }
   app.post(`${base}/notebooks/:id/sources`, async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     const project = projectOf(body.wspath);
@@ -656,6 +656,13 @@ export function registerNotebook(app: Hono<any>, settings: Settings): void {
       if (typeof body.text === 'string' && body.text) {
         const name = safeFileName(body.title || 'nota', 'nota') + '-' + randomBytes(3).toString('hex') + '.txt';
         await writeFile(join(sourcesDir, name), body.text, 'utf8');
+        return c.json({ name });
+      }
+      if (typeof body.piiFile === 'string' && body.piiFile) {
+        const cleanName = basename(body.piiFile);
+        const { abs } = resolveAttachment(project, join('pii-clean', cleanName));
+        const name = randomBytes(3).toString('hex') + '-' + safeFileName(cleanName);
+        await writeFile(join(sourcesDir, name), readAttachment(abs));
         return c.json({ name });
       }
       if (typeof body.fileName === 'string' && typeof body.fileData === 'string' && body.fileData) {

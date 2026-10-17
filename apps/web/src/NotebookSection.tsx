@@ -8,6 +8,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
   api,
   ApiError,
+  apiFetch,
+  type FileEntry,
   type NotebookChatMessage,
   type NotebookMeta,
   type NotebookSettings,
@@ -16,7 +18,8 @@ import {
   type NotebookVoice,
 } from './api';
 import { Markdown } from './markdown';
-import { useT } from './i18n';
+import { Icon } from './icons';
+import { fmtDateTime, fmtNumber, useT } from './i18n';
 
 const PROJECT_KEY = 'agicloud_notebook_project';
 
@@ -708,22 +711,108 @@ export function NotebookSection() {
     }
   };
 
-  const addSourceFile = async (file: File | null | undefined) => {
-    if (!file) return;
+  const [attachMenu, setAttachMenu] = useState(false);
+  const [browserOn, setBrowserOn] = useState(false);
+  const [piiOpen, setPiiOpen] = useState(false);
+  const attachBtnRef = useRef<HTMLButtonElement>(null);
+  const canCapture = typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getDisplayMedia);
+
+  useEffect(() => {
+    if (attachMenu) api.plugins().then((ps) => setBrowserOn(ps.some((p) => p.id === 'browser' && p.enabled))).catch(() => {});
+  }, [attachMenu]);
+
+  useEffect(() => {
+    if (!attachMenu) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.attach-wrap')) setAttachMenu(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [attachMenu]);
+
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+
+  const addSourceFiles = async (list: FileList | File[] | null | undefined) => {
+    const picked = list ? [...list] : [];
+    if (!picked.length || !ws || !activeId) return;
     setAdding('file');
+    setMsg({ kind: '', text: '' });
     try {
-      const b64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
-      await addSourceCommon({ fileName: file.name, fileData: b64 });
+      for (const file of picked) {
+        const b64 = await blobToBase64(file);
+        await api.notebook.addSource(activeId, { wspath: ws, fileName: file.name || 'file', fileData: b64 });
+      }
+      setMsg({ kind: 'ok', text: t('notebook.fonteAggiunta') });
+      await loadSources();
     } catch (e) {
       setMsg({ kind: 'err', text: errText(e) });
     } finally {
       setAdding(null);
       if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const addPiiSources = async (picked: FileEntry[]) => {
+    if (!picked.length || !ws || !activeId) return;
+    setAdding('file');
+    setMsg({ kind: '', text: '' });
+    try {
+      for (const f of picked) {
+        try {
+          await api.notebook.addSource(activeId, { wspath: ws, piiFile: f.name });
+        } catch {
+          const blob = await api.fileBlob(`${ws}/pii-clean/${f.name}`);
+          const b64 = await blobToBase64(blob);
+          await api.notebook.addSource(activeId, { wspath: ws, fileName: f.name, fileData: b64 });
+        }
+      }
+      setMsg({ kind: 'ok', text: t('notebook.fonteAggiunta') });
+      await loadSources();
+    } catch (e) {
+      setMsg({ kind: 'err', text: errText(e) });
+    } finally {
+      setAdding(null);
+    }
+  };
+
+  const stamp = () => new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
+
+  const captureScreen = async () => {
+    setAttachMenu(false);
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.muted = true;
+      await video.play();
+      await new Promise((r) => setTimeout(r, 400));
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d')!.drawImage(video, 0, 0);
+      stream.getTracks().forEach((tr) => tr.stop());
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/png'));
+      if (!blob) throw new Error(t('chat.immagineVuota'));
+      await addSourceFiles([new File([blob], `screenshot-${stamp()}.png`, { type: 'image/png' })]);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'NotAllowedError') return;
+      setMsg({ kind: 'err', text: t('chat.screenshotFallito', { errore: err instanceof Error ? err.message : String(err) }) });
+    }
+  };
+
+  const captureBrowser = async () => {
+    setAttachMenu(false);
+    try {
+      const blob = await (await apiFetch('/browser/screenshot')).blob();
+      await addSourceFiles([new File([blob], `browser-${stamp()}.png`, { type: 'image/png' })]);
+    } catch (err) {
+      setMsg({ kind: 'err', text: t('chat.screenshotBrowserFallito', { errore: err instanceof Error ? err.message : String(err) }) });
     }
   };
 
@@ -943,7 +1032,14 @@ export function NotebookSection() {
             </div>
 
             {tab === 'sources' && (
-              <div className="agynb-pane on">
+              <div
+                className="agynb-pane on"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files.length) void addSourceFiles(e.dataTransfer.files);
+                }}
+              >
                 <div className="agynb-card">
                   <div className="agynb-row" style={{ marginBottom: 8 }}>
                     <input
@@ -964,12 +1060,76 @@ export function NotebookSection() {
                     <input
                       type="file"
                       ref={fileRef}
+                      multiple
                       hidden
-                      accept=".pdf,.txt,.md,.docx,.csv"
-                      onChange={(e) => void addSourceFile(e.target.files && e.target.files[0])}
+                      onChange={(e) => {
+                        if (e.target.files) void addSourceFiles(e.target.files);
+                        e.target.value = '';
+                      }}
                     />
+                    <div className="attach-wrap" style={{ position: 'relative' }}>
+                      <button
+                        ref={attachBtnRef}
+                        type="button"
+                        className="agynb-btn"
+                        disabled={adding !== null}
+                        aria-expanded={attachMenu}
+                        aria-controls={`${id}-attach-menu`}
+                        onClick={() => setAttachMenu((v) => !v)}
+                      >
+                        {adding === 'file' ? <Spinner /> : <Icon name="clip" />} {t('chat.allegaFile')}
+                      </button>
+                      {attachMenu && (
+                        <div
+                          id={`${id}-attach-menu`}
+                          className="thread-menu attach-menu"
+                          role="group"
+                          aria-label={t('chat.allega')}
+                          style={{ top: 'calc(100% + 4px)', bottom: 'auto', left: 0 }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                              setAttachMenu(false);
+                              attachBtnRef.current?.focus();
+                            }
+                          }}
+                        >
+                          <button
+                            type="button"
+                            autoFocus
+                            onClick={() => {
+                              setAttachMenu(false);
+                              fileRef.current?.click();
+                            }}
+                          >
+                            {t('chat.dalDispositivo')}
+                          </button>
+                          {canCapture && (
+                            <button type="button" onClick={() => void captureScreen()}>
+                              {t('chat.catturaSchermo')}
+                            </button>
+                          )}
+                          {browserOn && (
+                            <button type="button" onClick={() => void captureBrowser()}>
+                              {t('chat.screenshotCondiviso')}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAttachMenu(false);
+                              setPiiOpen(true);
+                            }}
+                          >
+                            {t('chat.documentiAnonimizzati')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <button type="button" className="agynb-btn" disabled={adding !== null} onClick={() => fileRef.current?.click()}>
                       {adding === 'file' ? <Spinner /> : <NbIcon name="upload" />} {t('notebook.caricaFile')}
+                    </button>
+                    <button type="button" className="agynb-btn" disabled={adding !== null || !ws} onClick={() => setPiiOpen(true)}>
+                      <Icon name="shield" /> {t('chat.documentiAnonimizzati')}
                     </button>
                   </div>
                   <textarea
@@ -978,6 +1138,12 @@ export function NotebookSection() {
                     placeholder={t('notebook.testoPlaceholder')}
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
+                    onPaste={(e) => {
+                      if (e.clipboardData.files.length) {
+                        e.preventDefault();
+                        void addSourceFiles(e.clipboardData.files);
+                      }
+                    }}
                   />
                   <div className="agynb-row">
                     <input
@@ -1179,6 +1345,109 @@ export function NotebookSection() {
           onSaved={(s) => setSettings(s)}
         />
       )}
+
+      {ws && (
+        <NotebookPiiPicker
+          open={piiOpen}
+          cwd={ws}
+          onClose={() => {
+            setPiiOpen(false);
+            attachBtnRef.current?.focus();
+          }}
+          onPick={(files) => void addPiiSources(files)}
+        />
+      )}
     </div>
   );
 }
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function NotebookPiiPicker({
+  open,
+  cwd,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  cwd: string;
+  onClose: () => void;
+  onPick: (files: FileEntry[]) => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const ref = useRef<HTMLDialogElement>(null);
+  const [list, setList] = useState<FileEntry[] | null>(null);
+  const [chosen, setChosen] = useState<string[]>([]);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) {
+      d.showModal();
+      setChosen([]);
+      setList(null);
+      api
+        .listFiles(`${cwd}/pii-clean`)
+        .then((r) => setList(r.entries.filter((e) => e.type === 'file').sort((a, b) => b.mtime - a.mtime)))
+        .catch(() => setList([]));
+    }
+    if (!open && d.open) d.close();
+  }, [open, cwd]);
+
+  return (
+    <dialog ref={ref} className="dialog" aria-labelledby={`${id}-t`} onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onPick((list ?? []).filter((f) => chosen.includes(f.name)));
+          onClose();
+        }}
+      >
+        <h2 id={`${id}-t`}>{t('chat.documentiTitolo')}</h2>
+        <p className="hint">
+          {t('chat.daCodice')} <code>pii-clean/</code> {t('chat.documentiSpiegazione')}
+        </p>
+        {list === null ? (
+          <p className="hint">{t('chat.caricamentoTrePunti')}</p>
+        ) : list.length === 0 ? (
+          <p>
+            {t('chat.nessunDocumento')} <a href="#/pii">PII</a> {t('chat.eSalva', { cwd })}
+          </p>
+        ) : (
+          <fieldset className="pii-pick">
+            <legend className="visually-hidden">{t('chat.scegliDocumenti')}</legend>
+            {list.map((f) => (
+              <label key={f.name} className="choice">
+                <input
+                  type="checkbox"
+                  checked={chosen.includes(f.name)}
+                  onChange={(e) => setChosen((c) => (e.target.checked ? [...c, f.name] : c.filter((x) => x !== f.name)))}
+                />
+                <span className="choice-text">
+                  <span>{f.name}</span>
+                  <span className="hint">
+                    {formatSize(f.size)} · {fmtDateTime(f.mtime, { dateStyle: 'short', timeStyle: 'short' })}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+        <div className="dialog-actions">
+          <button type="button" className="btn" onClick={onClose}>
+            {t('chat.annulla')}
+          </button>
+          <button type="submit" className="btn primary" disabled={!chosen.length}>
+            {chosen.length ? t('chat.allegaConteggio', { n: `(${fmtNumber(chosen.length)})` }) : t('chat.allegaSenzaConteggio')}
+          </button>
+        </div>
+      </form>
+    </dialog>
+  );
+}
+

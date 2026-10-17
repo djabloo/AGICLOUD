@@ -513,7 +513,7 @@ export const api = {
       request<{ success: boolean }>('DELETE', `/notebook/notebooks/${encodeURIComponent(id)}?wspath=${encodeURIComponent(wspath)}`),
     sources: (id: string, wspath: string) =>
       request<NotebookSource[]>('GET', `/notebook/notebooks/${encodeURIComponent(id)}/sources?wspath=${encodeURIComponent(wspath)}`),
-    addSource: (id: string, body: { wspath: string; url?: string; text?: string; title?: string; fileName?: string; fileData?: string }) =>
+    addSource: (id: string, body: { wspath: string; url?: string; text?: string; title?: string; fileName?: string; fileData?: string; piiFile?: string }) =>
       request<{ name: string }>('POST', `/notebook/notebooks/${encodeURIComponent(id)}/sources`, body),
     sourceContent: (id: string, name: string, wspath: string) =>
       request<{ name: string; content: string }>(
