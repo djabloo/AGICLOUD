@@ -185,7 +185,7 @@ export class Thread {
       return acpSessionId ? `claude --resume ${acpSessionId}` : 'claude';
     }
     if (agentId === 'opencode') {
-      return acpSessionId ? `opencode attach ${acpSessionId}` : 'opencode';
+      return acpSessionId ? `opencode -s ${acpSessionId}` : 'opencode';
     }
     if (agentId === 'cursor') {
       return 'cursor-agent';
