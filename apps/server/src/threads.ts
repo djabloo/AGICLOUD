@@ -28,6 +28,7 @@ import type { Notice } from './push.js';
 import type { WorktreeInfo } from './worktrees.js';
 import type { LeadManager } from './lead.js';
 import type { Limits } from './handover.js';
+import { user } from './user.js';
 
 export { HttpError } from './errors.js';
 
@@ -808,9 +809,9 @@ const LIMIT_AGENTS = new Set(['claude', 'demo']);
 
 /** Istruzioni per l'agente di una chat del Browser (aggiunte al primo messaggio, non mostrate in chat) */
 const BROWSER_PROMPT =
-  '[Browser · AgiCloud] Questa chat sta accanto al browser condiviso: l'utente vede in diretta lo stesso Chromium che tu usi con gli ' +
+  `[Browser · AgiCloud] Questa chat sta accanto al browser condiviso: ${user.Name} vede in diretta lo stesso Chromium che tu usi con gli ` +
   'strumenti browser_* (Playwright: browser_navigate, browser_snapshot, browser_click, browser_type, browser_tabs...). ' +
-  'Lavorate insieme sulle stesse schede: prima di agire guarda la scheda attiva (browser_snapshot), non chiudere le schede di l'utente ' +
+  'Lavorate insieme sulle stesse schede: prima di agire guarda la scheda attiva (browser_snapshot), non chiudere le schede ' + user.di + ' ' +
   'senza chiedere, e per moduli, acquisti, invii o account chiedi conferma prima del clic finale. Se gli strumenti browser_* ' +
   'non ci sono, dillo: il plugin Browser va attivato e la conversazione riaperta.';
 

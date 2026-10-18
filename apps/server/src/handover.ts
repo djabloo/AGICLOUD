@@ -16,6 +16,7 @@ import { config } from './config.js';
 import { HttpError } from './errors.js';
 import type { Thread, ThreadStore } from './threads.js';
 import { worktreeChanges } from './worktrees.js';
+import { user } from './user.js';
 
 export interface LimitState {
   status: 'allowed' | 'allowed_warning' | 'rejected';
@@ -148,10 +149,10 @@ export async function buildDossier(thread: Thread, store: ThreadStore, since = 0
   return [
     `Progetto: ${thread.meta.cwd}`,
     `Conversazione: "${thread.meta.title}" (${getAgent(thread.meta.agentId).label})`,
-    firstUser ? `\nRichiesta iniziale di l'utente:\n${clip(firstUser.text, 1500)}` : '',
+    firstUser ? `\nRichiesta iniziale ${user.di}:\n${clip(firstUser.text, 1500)}` : '',
     plan?.length ? `\nPiano:\n${plan.map((p) => `- [${p.status}] ${p.content}`).join('\n')}` : '',
     kidLines.length ? `\nThread affidati (ora seguiti da te):\n${kidLines.join('\n')}` : '',
-    `\nUltimi messaggi (dal piu' vecchio):\n${recent.map((m) => `### ${m.auto ? 'AgiCloud' : m.role === 'user' ? 'l'utente' : 'Agente'}\n${clip(m.text, 1500)}`).join('\n\n')}`,
+    `\nUltimi messaggi (dal piu' vecchio):\n${recent.map((m) => `### ${m.auto ? 'AgiCloud' : m.role === 'user' ? user.Name : 'Agente'}\n${clip(m.text, 1500)}`).join('\n\n')}`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -179,7 +180,7 @@ export async function handover(store: ThreadStore, from: Thread, agentId: string
     origin.saveMeta();
     origin.enqueue(
       `[Passaggio di consegne di AgiCloud] Bentornato: mentre eri fermo per il limite, ${getAgent(from.meta.agentId).label} ha portato avanti il lavoro. ` +
-        `Ecco cosa e' successo nel frattempo:\n\n${dossier}\n\n---\nRiprendi da qui: riassumi a l'utente in poche righe cosa e' cambiato e proponi il prossimo passo.`,
+        `Ecco cosa e' successo nel frattempo:\n\n${dossier}\n\n---\nRiprendi da qui: riassumi ${user.a} in poche righe cosa e' cambiato e proponi il prossimo passo.`,
       true,
     );
     return origin;
@@ -208,8 +209,8 @@ export async function handover(store: ThreadStore, from: Thread, agentId: string
   to.saveMeta();
   to.enqueue(
     `[Passaggio di consegne di AgiCloud] Prendi in mano questo lavoro: era seguito da ${getAgent(from.meta.agentId).label}, ` +
-      `che si e' fermato (limite dell'abbonamento o scelta di l'utente). Non rifare quello che e' gia' fatto.\n\n${dossier}\n\n---\n` +
-      'Per prima cosa riassumi a l'utente in 3-5 righe dove siamo e proponi il prossimo passo; poi aspetta la sua risposta.',
+      `che si e' fermato (limite dell'abbonamento o scelta ${user.di}). Non rifare quello che e' gia' fatto.\n\n${dossier}\n\n---\n` +
+      `Per prima cosa riassumi ${user.a} in 3-5 righe dove siamo e proponi il prossimo passo; poi aspetta la risposta.`,
     true,
   );
   return to;

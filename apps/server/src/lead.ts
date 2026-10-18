@@ -13,6 +13,7 @@ import { HttpError } from './errors.js';
 import type { Settings } from './settings.js';
 import type { RunOutcome, Thread, ThreadStore } from './threads.js';
 import { createWorktree, discardWorktree, mergeWorktree, repoRoot, worktreeChanges } from './worktrees.js';
+import { user } from './user.js';
 
 const MCP_SCRIPT = new URL('./lead-mcp.ts', import.meta.url).pathname;
 const TSX = import.meta.resolve('tsx');
@@ -83,8 +84,8 @@ export class LeadManager {
     const esito = outcome.error ? `con un errore: ${outcome.error.split('\n')[0]}` : 'il suo turno';
     lead.enqueue(
       `[Messaggio automatico di AgiCloud] Il thread "${thread.meta.title}" (${label}, id ${thread.id}) ha finito ${esito}.\n` +
-        `Leggi il risultato con lo strumento leggi_thread, poi riassumi a l'utente in poche righe cosa e' stato fatto e proponi i passi successivi ` +
-        `(per esempio unire le modifiche: lo fa l'utente dal thread). Non unire nulla tu.`,
+        `Leggi il risultato con lo strumento leggi_thread, poi riassumi ${user.a} in poche righe cosa e' stato fatto e proponi i passi successivi ` +
+        `(per esempio unire le modifiche: lo fa ${user.name} dal thread). Non unire nulla tu.`,
       true,
     );
   }
@@ -95,10 +96,10 @@ export class LeadManager {
     if (!d || d.leadId !== leadId) throw new HttpError(404, 'Proposta non trovata: forse e\' scaduta o il server e\' stato riavviato');
     if (d.state !== 'pending') throw new HttpError(409, 'Proposta gia\' decisa');
     const lead = this.store.get(leadId);
-    const nota = note.trim() ? ` Nota di l'utente: ${note.trim().slice(0, 2000)}` : '';
+    const nota = note.trim() ? ` Nota ${user.di}: ${note.trim().slice(0, 2000)}` : '';
     if (!approve) {
       d.state = 'rejected';
-      d.text = `l'utente ha rifiutato la delega "${d.title}".${nota}`;
+      d.text = `${user.Name} ha rifiutato la delega "${d.title}".${nota}`;
       lead.record('delegation_update', { id: d.id, state: d.state, note: note.trim() || undefined });
       return {};
     }
@@ -120,10 +121,10 @@ export class LeadManager {
       throw err;
     }
     const where = wt
-      ? `Lavori in una copia separata del progetto (ramo ${wt.info.branch}): fai tutte le modifiche qui, non serve fare commit. Le modifiche entreranno nel progetto solo se l'utente le unisce.`
+      ? `Lavori in una copia separata del progetto (ramo ${wt.info.branch}): fai tutte le modifiche qui, non serve fare commit. Le modifiche entreranno nel progetto solo se ${user.name} le unisce.`
       : 'Lavori direttamente nella cartella del progetto.';
     child.enqueue(
-      `${d.task}${note.trim() ? `\n\nNota di l'utente: ${note.trim()}` : ''}\n\n---\nCompito affidato dal capo (conversazione "${lead.meta.title}") tramite AgiCloud. ${where}\n` +
+      `${d.task}${note.trim() ? `\n\nNota ${user.di}: ${note.trim()}` : ''}\n\n---\nCompito affidato dal capo (conversazione "${lead.meta.title}") tramite AgiCloud. ${where}\n` +
         'Regole del server: AgiCloud e altri servizi sono in produzione su questa macchina. Non fermare, riavviare o modificare servizi ' +
         '(PM2, Docker, Caddy) e non usare le porte gia\' occupate (3095 e\' AgiCloud): per le prove usa una porta libera sopra 3100 ' +
         'e una cartella dati in /tmp, e chiudi alla fine i processi che hai avviato.\n' +
@@ -132,7 +133,7 @@ export class LeadManager {
     d.state = 'approved';
     d.childId = child.id;
     d.text =
-      `l'utente ha approvato. Thread avviato: id ${child.id}, agente ${agentLabel(d.agentId)}, ` +
+      `${user.Name} ha approvato. Thread avviato: id ${child.id}, agente ${agentLabel(d.agentId)}, ` +
       (wt ? `copia separata sul ramo ${wt.info.branch}.` : 'nella cartella del progetto (non e\' un repo git con commit: nessuna copia separata).') +
       ` Riceverai un messaggio automatico quando finisce.${nota}`;
     lead.record('delegation_update', { id: d.id, state: d.state, childId: child.id, note: note.trim() || undefined });
@@ -194,7 +195,7 @@ export class LeadManager {
       if (!title || !task) throw new HttpError(400, 'Servono titolo e compito');
       if (task.length > MAX_TASK) throw new HttpError(400, `Compito troppo lungo (max ${MAX_TASK} caratteri): riassumi e indica i file da leggere`);
       if ([...this.delegations.values()].some((d) => d.leadId === lead.id && d.state === 'pending' && !this.expire(d))) {
-        throw new HttpError(409, 'C\'e\' gia\' una proposta in attesa di l'utente: aspetta la sua risposta');
+        throw new HttpError(409, 'C\'e\' gia\' una proposta di delega in attesa di risposta: aspetta la decisione');
       }
       const open = this.store.children(lead.id).filter((t) => t.childState() === 'running' || t.childState() === 'waiting').length;
       if (open >= MAX_OPEN_CHILDREN) throw new HttpError(409, `Troppi thread al lavoro (${open}): aspetta che qualcuno finisca`);
@@ -268,7 +269,7 @@ export class LeadManager {
   private expire(d: Delegation): boolean {
     if (d.state === 'pending' && Date.now() - d.createdAt > DELEGATION_TTL_MS) {
       d.state = 'expired';
-      d.text = 'l'utente non ha risposto alla proposta entro 30 minuti: chiedigli in chat se vuole procedere.';
+      d.text = `${user.Name} non ha risposto alla proposta entro 30 minuti: chiedigli in chat se vuole procedere.`;
       this.store.find(d.leadId)?.record('delegation_update', { id: d.id, state: d.state });
     }
     return d.state === 'expired';
@@ -279,16 +280,16 @@ export class LeadManager {
     const agents = (await this.settings.agents()).filter((a) => a.chat && a.installed && chatAgents().includes(a.id));
     const git = await repoRoot(lead.meta.cwd);
     return [
-      'Sei il "capo" di questo progetto in AgiCloud: l'utente (che spesso usa il telefono) parla con te, e tu puoi affidare compiti ad altri agenti con lo strumento delega.',
+      `Sei il "capo" di questo progetto in AgiCloud: ${user.name} (che spesso usa il telefono) parla con te, e tu puoi affidare compiti ad altri agenti con lo strumento delega.`,
       'Regole:',
-      '- Ogni delega la approva l'utente: proponila con un motivo chiaro. Se rifiuta, continua da solo o chiedigli come preferisce.',
+      `- Ogni delega la approva ${user.name}: proponila con un motivo chiaro. Se rifiuta, continua da solo o chiedigli come preferisce.`,
       '- Delega solo compiti separabili e autonomi (una funzione, dei test, una ricerca nel codice, una revisione). Il compito deve essere completo: l\'altro agente non vede questa conversazione.',
-      '- Scegli l\'agente adatto tra quelli collegati (elenco sotto): qualunque agente puo\' ricevere una delega, anche dello stesso tipo del capo. Se l'utente indica un agente, usa quello; altrimenti per compiti semplici o ripetitivi preferisci un agente con piano gratuito o un abbonamento diverso da quello del capo, cosi\' non si consuma sempre lo stesso. Evita gli agenti collegati con una chiave API (si pagano a consumo) se l'utente non li chiede.',
+      `- Scegli l\'agente adatto tra quelli collegati (elenco sotto): qualunque agente puo\' ricevere una delega, anche dello stesso tipo del capo. Se ${user.name} indica un agente, usa quello; altrimenti per compiti semplici o ripetitivi preferisci un agente con piano gratuito o un abbonamento diverso da quello del capo, cosi\' non si consuma sempre lo stesso. Evita gli agenti collegati con una chiave API (si pagano a consumo) se ${user.name} non li chiede.`,
       '- Il server ha servizi in produzione (AgiCloud sulla porta 3095, PM2, Docker): ne\' tu ne\' i thread devono fermarli o occuparne le porte. Per provare un server usate una porta libera sopra 3100 e dati in /tmp.',
       git
-        ? '- Ogni thread lavora in una copia separata del progetto (git worktree, ramo proprio) partita dall\'ultimo commit: le modifiche non salvate nel progetto non ci sono. Le sue modifiche entrano nel progetto solo se l'utente sceglie "Unisci".'
+        ? `- Ogni thread lavora in una copia separata del progetto (git worktree, ramo proprio) partita dall\'ultimo commit: le modifiche non salvate nel progetto non ci sono. Le sue modifiche entrano nel progetto solo se ${user.name} sceglie "Unisci".`
         : '- Il progetto non e\' un repo git: i thread lavorano nella stessa cartella. Evita di affidare compiti che toccano gli stessi file in contemporanea.',
-      '- Quando un thread finisce ricevi un messaggio automatico di AgiCloud: leggi il risultato con leggi_thread, riassumi a l'utente in poche righe e proponi i passi successivi. Non unire tu le modifiche.',
+      `- Quando un thread finisce ricevi un messaggio automatico di AgiCloud: leggi il risultato con leggi_thread, riassumi ${user.a} in poche righe e proponi i passi successivi. Non unire tu le modifiche.`,
       '- Puoi correggere o guidare un thread con scrivi_thread, e vedere tutti i thread con stato_thread.',
       '',
       `Progetto: ${lead.meta.cwd}${git ? ` (repo git in ${git})` : ''}`,
@@ -298,7 +299,7 @@ export class LeadManager {
   }
 }
 
-const STATE_TEXT = { running: 'in corso', waiting: 'aspetta l'utente (permesso)', done: 'finito', error: 'errore', idle: 'fermo' } as const;
+const STATE_TEXT = { running: 'in corso', waiting: `aspetta ${user.name} (permesso)`, done: 'finito', error: 'errore', idle: 'fermo' } as const;
 const WT_TEXT = { open: 'aperta', merged: 'unita nel progetto', discarded: 'scartata' } as const;
 
 function chatAgents(): string[] {

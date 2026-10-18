@@ -57,6 +57,8 @@ export const config = {
   features,
   /** Elenco per l'interfaccia (GET /api/session): null = tutto */
   featuresList: features ? [...features] : null,
+  /** Nome della persona che usa AgiCloud, come lo leggono gli agenti (es. "l'utente"). Vuoto = "l'utente" */
+  userName: (env.AGICLOUD_USER_NAME || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 60),
   /** Dati dei plugin esterni (plugin-data/<id>) e plugin scaricati da link (plugins/<slug>) */
   dataDir,
   /**

@@ -4,6 +4,7 @@
 // Protocollo MCP minimo scritto a mano: initialize, tools/list, tools/call, ping.
 
 import { createInterface } from 'node:readline';
+import { user } from './user.js';
 
 const BASE = process.env.AGICLOUD_LEAD_URL ?? '';
 const TOKEN = process.env.AGICLOUD_LEAD_TOKEN ?? '';
@@ -12,7 +13,7 @@ const TOOLS = [
   {
     name: 'delega',
     description:
-      'Propone a l'utente di affidare un compito a un altro agente, in un thread separato. l'utente deve approvare: lo strumento aspetta la sua risposta. ' +
+      `Propone ${user.a} di affidare un compito a un altro agente, in un thread separato. ${user.Name} deve approvare: lo strumento aspetta la risposta. ` +
       'Se approva, il thread parte subito in una copia separata del progetto (git worktree) e tu ricevi l\'id; quando il thread finisce AgiCloud ti avvisa con un messaggio. ' +
       'Il compito deve essere autonomo e completo: l\'altro agente NON vede questa conversazione.',
     inputSchema: {
@@ -21,14 +22,14 @@ const TOOLS = [
         agente: { type: 'string', description: 'Id dell\'agente (vedi le istruzioni del server: elenco agenti disponibili)' },
         titolo: { type: 'string', description: 'Titolo breve del thread (max 80 caratteri)' },
         compito: { type: 'string', description: 'Istruzioni complete per l\'agente: obiettivo, file coinvolti, vincoli, come verificare, cosa riportare alla fine' },
-        motivo: { type: 'string', description: 'Una frase per l'utente: perche\' conviene affidarlo e perche\' a quell\'agente' },
+        motivo: { type: 'string', description: `Una frase per ${user.name}: perche' conviene affidarlo e perche' a quell'agente` },
       },
       required: ['agente', 'titolo', 'compito'],
     },
   },
   {
     name: 'stato_thread',
-    description: 'Elenco dei thread che hai affidato, con stato (in corso, aspetta l'utente, finito, errore) e modifiche ai file.',
+    description: `Elenco dei thread che hai affidato, con stato (in corso, aspetta ${user.name}, finito, errore) e modifiche ai file.`,
     inputSchema: { type: 'object', properties: {} },
   },
   {

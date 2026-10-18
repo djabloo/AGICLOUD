@@ -2,6 +2,7 @@
 // Inoltra ad AgiCloud (/verdict-api/decide, token proprio del plugin) e restituisce risposta e probabilita'.
 
 import { createInterface } from 'node:readline';
+import { user } from './user.js';
 
 const URL_ = process.env.AGICLOUD_VERDICT_URL ?? '';
 const TOKEN = process.env.AGICLOUD_VERDICT_TOKEN ?? '';
@@ -11,7 +12,7 @@ const TOOL = {
   description:
     'Decisione veloce ed economica su un testo, con la probabilita\' di ogni opzione (un modello piccolo, meno di un secondo). ' +
     'Utile per classificare, smistare, filtrare o controllare: es. "questo ticket e\' urgente?", "a quale agente lo affido?". ' +
-    'Se la risposta e\' segnata come incerta, non fidarti: approfondisci o chiedi a l'utente.',
+    `Se la risposta e' segnata come incerta, non fidarti: approfondisci o chiedi ${user.a}.`,
   inputSchema: {
     type: 'object',
     properties: {
