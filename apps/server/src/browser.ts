@@ -82,6 +82,9 @@ export function ensureBrowser(): Promise<void> {
         '--no-first-run',
         '--no-default-browser-check',
         '--disable-gpu',
+        // Nel container dell'ambiente (sola lettura, senza permessi) il sandbox di Chromium non parte:
+        // l'isolamento lo da' il container; /dev/shm e' piccola, la memoria condivisa va su file
+        ...(process.env.BROWSER_IN_CONTAINER ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
         '--lang=it-IT',
         START_URL,
       ],

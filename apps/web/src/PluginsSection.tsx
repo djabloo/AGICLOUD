@@ -9,6 +9,8 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
   const [busy, setBusy] = useState<string | null>(null);
   const [linkUrl, setLinkUrl] = useState('');
   const [error, setError] = useState('');
+  // Errore di un'azione su un plugin: si mostra nella sua scheda, accanto al pulsante premuto
+  const [cardError, setCardError] = useState<{ id: string; msg: string } | null>(null);
   const t = useT();
   const [announce, setAnnounce] = useState('');
 
@@ -20,6 +22,7 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
     if (kind === 'uninstall' && !confirm(t('plugin.confermaDisinstalla', { nome: p.name }))) return;
     setBusy(p.id);
     setError('');
+    setCardError(null);
     try {
       const next =
         kind === 'install'
@@ -38,7 +41,7 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
         }[kind],
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setCardError({ id: p.id, msg: err instanceof Error ? err.message : String(err) });
     } finally {
       setBusy(null);
     }
@@ -146,6 +149,11 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
                     </>
                   )}
                 </div>
+                {cardError?.id === p.id && (
+                  <p className="form-error" role="alert">
+                    {cardError.msg}
+                  </p>
+                )}
                 {p.credits && (
                   <p className="hint">
                     <a href={p.credits.url} target="_blank" rel="noopener noreferrer">

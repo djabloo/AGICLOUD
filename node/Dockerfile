@@ -16,8 +16,9 @@ RUN npm run build -w @agicloud/web
 
 FROM node:22-bookworm-slim
 ARG UID=1001
+# Chromium per il plugin Browser (lo pilotano anche gli agenti con Playwright MCP)
 # Strumenti per foto e video che gli agenti usano da shell: ffmpeg, caratteri, Pillow e MoviePy (in un ambiente a parte, /opt/video-tools)
-RUN apt-get update && apt-get install -y --no-install-recommends bash git curl ca-certificates openssh-client python3 python3-venv procps ffmpeg fonts-dejavu-core fonts-liberation && rm -rf /var/lib/apt/lists/* \
+RUN apt-get update && apt-get install -y --no-install-recommends bash git curl ca-certificates openssh-client python3 python3-venv procps ffmpeg fonts-dejavu-core fonts-liberation chromium && rm -rf /var/lib/apt/lists/* \
  && python3 -m venv /opt/video-tools && /opt/video-tools/bin/pip install --no-cache-dir moviepy pillow \
  && npm install -g --no-audit --no-fund @anthropic-ai/claude-code opencode-ai @openai/codex \
  && (userdel -r node 2>/dev/null; useradd -m -d /data/home -u ${UID} -s /bin/bash agicloud)
@@ -26,7 +27,7 @@ COPY --from=build /opt/agicloud /opt/agicloud
 # Tutto quello che l'utente scrive sta in /data (unico volume; il resto del filesystem e' in sola lettura)
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3095 TRUST_PROXY=1 DATA_DIR=/data/state HOME=/data/home \
     WORKSPACES_ROOT=/data/progetti PROJECT_ROOTS=/data/progetti:/data/home PATH=/data/home/.local/bin:/opt/video-tools/bin:/usr/local/bin:/usr/bin:/bin \
-    IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg TMPDIR=/data/tmp
+    IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg TMPDIR=/data/tmp BROWSER_BIN=/usr/bin/chromium BROWSER_IN_CONTAINER=1
 USER agicloud
 EXPOSE 3095
 CMD ["sh", "-c", "mkdir -p /data/state /data/progetti /data/home /data/tmp && exec node --import tsx apps/server/src/index.ts"]
