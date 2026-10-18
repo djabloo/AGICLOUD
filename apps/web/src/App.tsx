@@ -15,13 +15,13 @@ import { VerdictView } from './VerdictView';
 import { CloudView } from './CloudView';
 import { VideoSection } from './VideoSection';
 import { NotebookSection } from './NotebookSection';
-import { AccessibilitySection } from './AccessibilitySection';
+import { PluginFrame } from './PluginFrame';
 import { SetupDone } from './Login';
-import { Icon, type IconName } from './icons';
+import { Icon, isIconName, type IconName } from './icons';
 import { useT } from './i18n';
 
 type Auth = 'checking' | 'ok' | 'needed';
-type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'verdict' | 'cloud' | 'video' | 'notebook' | 'accessibility' | 'settings';
+type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'verdict' | 'cloud' | 'video' | 'notebook' | 'plugin' | 'settings';
 
 interface Route {
   section: Section;
@@ -30,7 +30,7 @@ interface Route {
 
 /** plugin: la sezione compare solo se il plugin e' installato e attivo */
 interface SectionDef {
-  id: Section;
+  id: Exclude<Section, 'plugin'>;
   icon: IconName;
   ready: boolean;
   plugin?: string;
@@ -46,10 +46,9 @@ const SECTION_DEFS: SectionDef[] = [
   { id: 'cloud', icon: 'cloud', ready: true, plugin: 'cloud' },
   { id: 'video', icon: 'video', ready: true, plugin: 'video' },
   { id: 'notebook', icon: 'notebook', ready: true, plugin: 'notebook' },
-  { id: 'accessibility', icon: 'accessibility', ready: true, plugin: 'accessibility' },
   { id: 'settings', icon: 'settings', ready: true },
 ];
-const SECTION_KEYS: Record<Section, string> = {
+const SECTION_KEYS: Record<Exclude<Section, 'plugin'>, string> = {
   chat: 'app.sezioneChat',
   terminal: 'app.sezioneTerminale',
   files: 'app.sezioneFile',
@@ -60,7 +59,6 @@ const SECTION_KEYS: Record<Section, string> = {
   cloud: 'app.sezioneCloud',
   video: 'app.sezioneVideo',
   notebook: 'app.sezioneNotebook',
-  accessibility: 'app.sezioneAccessibility',
   settings: 'app.sezioneImpostazioni',
 };
 type TFn = (key: string, params?: Record<string, string | number>) => string;
@@ -83,7 +81,8 @@ function routeFromHash(): Route {
   if (/^#\/cloud\/?$/.test(location.hash)) return { section: 'cloud', id: null };
   if (/^#\/video\/?$/.test(location.hash)) return { section: 'video', id: null };
   if (/^#\/notebook\/?$/.test(location.hash)) return { section: 'notebook', id: null };
-  if (/^#\/accessibility\/?$/.test(location.hash)) return { section: 'accessibility', id: null };
+  const plugin = location.hash.match(/^#\/p\/([a-z0-9_-]+)\/?$/);
+  if (plugin) return { section: 'plugin', id: plugin[1]! };
   // #/browser/popup = solo il browser, nella finestra a parte
   const browser = location.hash.match(/^#\/browser(\/popup)?\/?$/);
   if (browser) return { section: 'browser', id: browser[1] ? 'popup' : null };
@@ -102,7 +101,7 @@ function hashFor(r: Route): string {
   if (r.section === 'cloud') return '#/cloud';
   if (r.section === 'video') return '#/video';
   if (r.section === 'notebook') return '#/notebook';
-  if (r.section === 'accessibility') return '#/accessibility';
+  if (r.section === 'plugin') return `#/p/${r.id}`;
   if (r.section === 'browser') return r.id === 'popup' ? '#/browser/popup' : '#/browser';
   if (r.section === 'design') return r.id ? `#/design/t/${r.id}` : '#/design';
   return r.id ? `#/t/${r.id}` : '';
@@ -117,7 +116,7 @@ export function App() {
   const pluginOn = (id: string) => plugins.some((p) => p.id === id && p.enabled);
   /** Sezioni consentite dal piano (null = tutto); impostazioni sempre visibili */
   const [features, setFeatures] = useState<string[] | null>(null);
-  const allowed = (id: Section) => id === 'settings' || id === 'chat' || features === null || features.includes(id);
+  const allowed = (id: Section) => id === 'settings' || id === 'chat' || id === 'plugin' || features === null || features.includes(id);
   const pluginAllowed = (id: string) => features === null || features.includes(id);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [terminals, setTerminals] = useState<TerminalSummary[]>([]);
@@ -331,7 +330,10 @@ export function App() {
   const inCloud = route.section === 'cloud';
   const inVideo = route.section === 'video';
   const inNotebook = route.section === 'notebook';
-  const inAccessibility = route.section === 'accessibility';
+  const inPlugin = route.section === 'plugin';
+  /** Plugin esterni con una loro schermata: sezione nel menu, dopo quelle di AgiCloud */
+  const pluginSections = plugins.filter((p) => p.enabled && p.section?.ui && pluginAllowed(p.id));
+  const activePlugin = inPlugin ? (pluginSections.find((p) => p.id === route.id) ?? null) : null;
   const activeThread =
     route.section === 'chat' || route.section === 'design' ? (threads.find((t) => t.id === route.id) ?? null) : null;
   // Le sessioni di design stanno nella sezione Design, le altre in Chat
@@ -417,7 +419,35 @@ export function App() {
 
         <nav aria-label={t('app.navSezioni')}>
           <ul className="sections">
-            {SECTIONS.filter((s) => (!s.plugin || pluginOn(s.plugin)) && allowed(s.id)).map((s) => (
+            {SECTIONS.filter((s) => s.id !== 'settings' && (!s.plugin || pluginOn(s.plugin)) && allowed(s.id)).map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  className="section-btn"
+                  aria-current={s.id === route.section ? 'page' : undefined}
+                  aria-disabled={!s.ready || undefined}
+                  onClick={() => s.ready && go({ section: s.id, id: null })}
+                >
+                  <Icon name={s.icon} />
+                  <span>{s.label}</span>
+                  {!s.ready && <span className="soon">{t('app.inArrivo')}</span>}
+                </button>
+              </li>
+            ))}
+            {pluginSections.map((p) => (
+              <li key={`p-${p.id}`}>
+                <button
+                  type="button"
+                  className="section-btn"
+                  aria-current={inPlugin && route.id === p.id ? 'page' : undefined}
+                  onClick={() => go({ section: 'plugin', id: p.id })}
+                >
+                  <Icon name={isIconName(p.section!.icon) ? p.section!.icon : 'tool'} />
+                  <span>{p.section!.label}</span>
+                </button>
+              </li>
+            ))}
+            {SECTIONS.filter((s) => s.id === 'settings').map((s) => (
               <li key={s.id}>
                 <button
                   type="button"
@@ -462,14 +492,14 @@ export function App() {
           </>
         )}
 
-        {!inSettings && !inFiles && !inDesign && !inPii && !inBrowser && !inVerdict && !inCloud && !inVideo && !inNotebook && !inAccessibility && (
+        {!inSettings && !inFiles && !inDesign && !inPii && !inBrowser && !inVerdict && !inCloud && !inVideo && !inNotebook && !inPlugin && (
           <button type="button" className="btn primary new-btn" onClick={openNew}>
             <Icon name="plus" />
             <span>{newLabel}</span>
           </button>
         )}
 
-        {inSettings || inFiles || inDesign || inPii || inBrowser || inVerdict || inCloud || inVideo || inNotebook || inAccessibility ? null : inTerminals ? (
+        {inSettings || inFiles || inDesign || inPii || inBrowser || inVerdict || inCloud || inVideo || inNotebook || inPlugin ? null : inTerminals ? (
           <>
             <h2 className="sidebar-title" id="list-title">
               {t('app.terminali')}
@@ -549,18 +579,16 @@ export function App() {
               </p>
             </section>
           )
-        ) : inAccessibility ? (
-          pluginOn('accessibility') ? (
-            <AccessibilitySection
-              agents={agents}
-              browserEnabled={pluginOn('browser')}
-              onThreadCreated={() => void refresh()}
-            />
+        ) : inPlugin ? (
+          activePlugin ? (
+            <PluginFrame key={activePlugin.id} plugin={activePlugin} onNavigate={(hash) => (location.hash = hash)} onThreadsChanged={() => void refresh()} />
           ) : (
             <section className="welcome" aria-labelledby="welcome-title">
-              <h1 id="welcome-title">{t('app.sezioneAccessibility')}</h1>
+              <h1 id="welcome-title">{t('app.pluginNonAttivo')}</h1>
               <p>
+                {t('app.pluginNonAttivoTesto', { link: '\u0000' }).split('\u0000')[0]}
                 <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
+                {t('app.pluginNonAttivoTesto', { link: '\u0000' }).split('\u0000')[1]}
               </p>
             </section>
           )

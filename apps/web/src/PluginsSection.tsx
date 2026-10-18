@@ -85,7 +85,7 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
             type="text"
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
-            placeholder="agicloud://plugin/accessibility"
+            placeholder="https://github.com/…/plugin.git"
             style={{ flex: '1 1 260px' }}
           />
           <button type="submit" className="btn small-btn primary" disabled={busy !== null || !linkUrl.trim()}>

@@ -17,7 +17,7 @@ export default {
   installatoEAttivo: "{nome} installed and on",
   disinstallato: "{nome} uninstalled",
   installaDaLinkTitolo: "Install private plugin from link",
-  installaDaLinkDesc: "Enter the plugin link (e.g. agicloud://plugin/accessibility or Git URL). It will not appear in the default catalog.",
+  installaDaLinkDesc: "Git address (https://… or git@…) or a folder on the server with a manifest.json. The plugin code runs with the same permissions as AgiCloud: install only plugins you trust. Installing again from the same link updates it.",
   installaDaLinkBtn: "Install from link",
   installatoDaLink: "Plugin installed successfully from link",
   attivato: "{nome} enabled",

@@ -57,6 +57,13 @@ export const config = {
   features,
   /** Elenco per l'interfaccia (GET /api/session): null = tutto */
   featuresList: features ? [...features] : null,
+  /** Dati dei plugin esterni (plugin-data/<id>) e plugin scaricati da link (plugins/<slug>) */
+  dataDir,
+  /**
+   * Catalogo di plugin esterni gia' presenti sulla macchina (separate da ":"): ogni sottocartella con
+   * un manifest.json compare in Impostazioni → Plugin, pronta da installare. La piattaforma ci monta i suoi.
+   */
+  pluginsDirs: (env.AGICLOUD_PLUGINS_DIR || '').split(':').filter(Boolean).map((p) => resolve(p)),
 };
 
 // Il token non deve finire nell'ambiente di agenti e terminali

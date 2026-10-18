@@ -15,10 +15,13 @@ export interface PluginInfo {
   name: string;
   version: string;
   description: string;
-  section: { id: string; label: string } | null;
+  /** ui/icon solo per i plugin esterni: la loro schermata (stessa origine) e l'icona del menu */
+  section: { id: string; label: string; icon?: string | null; ui?: string } | null;
   credits: { text: string; url: string } | null;
   requires: string | null;
   source: string;
+  /** Plugin esterni: dal catalogo della macchina o installato da link */
+  origin?: 'catalog' | 'link' | null;
   installed: boolean;
   enabled: boolean;
   health: { ok: boolean; detail: string } | null;
@@ -618,19 +621,6 @@ export const api = {
     }) => request<any>('POST', '/mcp', body),
     setEnabled: (name: string, enabled: boolean) => request<any>('POST', `/mcp/${encodeURIComponent(name)}/enabled`, { enabled }),
     remove: (name: string) => request<any>('DELETE', `/mcp/${encodeURIComponent(name)}`),
-  },
-  accessibility: {
-    audit: (body: { url: string; mode: 'full' | 'wcag-pro' | 'wcag-standard' | 'cogaguard'; companyName?: string }) =>
-      request<{ wcag: any; cogaguard: any; report: any }>('POST', '/accessibility/audit', body),
-    vision: (body: { image_url?: string; image_base64?: string; context?: string }) =>
-      request<any>('POST', '/accessibility/vision', body),
-    simplify: (body: { text: string }) => request<any>('POST', '/accessibility/simplify', body),
-    pdfToMd: (body: { pdf_base64: string; fileName?: string; pageCount?: number }) =>
-      request<any>('POST', '/accessibility/pdf-to-md', body),
-    reports: () => request<{ reports: any[] }>('GET', '/accessibility/reports'),
-    skill: () => request<{ skill: string }>('GET', '/accessibility/skill'),
-    reportUrl: (id: string, format: 'pdf' | 'html' | 'md', download = false): string =>
-      `/api/accessibility/reports/${encodeURIComponent(id)}/${format}?${download ? 'download=1&' : ''}${memoryToken ? `token=${encodeURIComponent(memoryToken)}` : ''}`,
   },
   browserScreenshot: async (): Promise<Blob> => (await apiFetch('/browser/screenshot')).blob(),
   designCatalog: () => request<DesignCatalog>('GET', '/design/catalog'),

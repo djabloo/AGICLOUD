@@ -35,7 +35,6 @@ import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser, registe
 import { registerVideo, videoMcpServer, videoPlugin } from './video.js';
 import { notebookPlugin, registerNotebook } from './notebook.js';
 import { McpStore, registerMcp } from './mcp.js';
-import { accessibilityMcpServer, registerAccessibility } from './accessibility.js';
 
 const settings = new Settings();
 const store = new ThreadStore(settings);
@@ -201,15 +200,12 @@ store.extraMcpServers = async () => {
   }
   if (plugins.isEnabled('verdict')) servers.push(verdictMcpServer());
   if (plugins.isEnabled('video')) servers.push(videoMcpServer());
-  if (plugins.isEnabled('accessibility')) servers.push(accessibilityMcpServer());
+  servers.push(...plugins.mcpServers());
   servers.push(...mcpStore.toAcpServers());
   return servers;
 };
-// Strumenti dei plugin che Claude usa senza chiedere (Verdict e Accessibilita')
-store.extraAllowedTools = () => [
-  ...(plugins.isEnabled('verdict') ? ['mcp__verdict'] : []),
-  ...(plugins.isEnabled('accessibility') ? ['mcp__accessibility'] : []),
-];
+// Strumenti dei plugin che Claude usa senza chiedere (Verdict e i plugin esterni con mcp.autoAllow)
+store.extraAllowedTools = () => [...(plugins.isEnabled('verdict') ? ['mcp__verdict'] : []), ...plugins.allowedTools()];
 
 // Plugin Design: catalogo (/api/design, col token) e anteprime (/preview, col token dell'anteprima)
 registerDesign(app);
@@ -220,7 +216,6 @@ registerHandover(app, store, limits);
 registerCloud(app, settings);
 registerVideo(app);
 registerNotebook(app, settings);
-registerAccessibility(app);
 registerMcp(app, mcpStore, plugins);
 registerNodeImageBuild(app, settings, new NodeImageBuilder());
 

@@ -138,9 +138,7 @@ export function registerMcp(app: Hono<any>, store: McpStore, plugins: Plugins): 
       { name: 'browser', label: 'Browser condiviso (Playwright MCP)', enabled: plugins.isEnabled('browser') },
       { name: 'verdict', label: 'Verdict (verdetto rapido)', enabled: plugins.isEnabled('verdict') },
       { name: 'video', label: 'Video Editor (MoviePy / FFmpeg)', enabled: plugins.isEnabled('video') },
-      ...(plugins.isEnabled('accessibility')
-        ? [{ name: 'accessibility', label: 'Accessibilità 360° (WCAG + CogaGuard + Report PDF/HTML/MD)', enabled: true }]
-        : []),
+      ...plugins.mcpInfo(),
     ],
     custom: store.listCustom(),
   });

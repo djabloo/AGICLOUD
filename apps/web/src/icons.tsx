@@ -29,6 +29,9 @@ const paths = {
 
 export type IconName = keyof typeof paths;
 
+/** Per le icone scelte dai plugin esterni nel loro manifest */
+export const isIconName = (v: unknown): v is IconName => typeof v === 'string' && Object.hasOwn(paths, v);
+
 export function Icon({ name }: { name: IconName }) {
   return (
     <svg className="icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">

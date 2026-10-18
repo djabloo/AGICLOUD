@@ -17,7 +17,7 @@ export default {
   installatoEAttivo: "{nome} je nainstalován a zapnut",
   disinstallato: "{nome} byl odinstalován",
   installaDaLinkTitolo: "Nainstalovat soukromý plugin z odkazu",
-  installaDaLinkDesc: "Zadej odkaz na plugin (např. agicloud://plugin/accessibility nebo Git URL). V základním katalogu se nezobrazí.",
+  installaDaLinkDesc: "Adresa Git (https://… nebo git@…) nebo složka na serveru se souborem manifest.json. Kód pluginu běží se stejnými oprávněními jako AgiCloud: instaluj jen pluginy, kterým důvěřuješ. Opětovná instalace ze stejného odkazu ho aktualizuje.",
   installaDaLinkBtn: "Nainstalovat z odkazu",
   installatoDaLink: "Plugin úspěšně nainstalován z odkazu",
   attivato: "{nome} byl zapnut",

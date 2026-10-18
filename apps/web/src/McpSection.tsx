@@ -197,13 +197,6 @@ export function McpSection() {
           <button
             type="button"
             className="btn small-btn"
-            onClick={() => applyTemplate('accessibility', 'stdio', 'node', '/home/user/agicloud-plugin-accessibility/mcp-server.mjs')}
-          >
-            + Accessibilità (WCAG & CogaGuard)
-          </button>
-          <button
-            type="button"
-            className="btn small-btn"
             onClick={() => applyTemplate('filesystem', 'stdio', 'npx', '-y @modelcontextprotocol/server-filesystem /home/user')}
           >
             + Filesystem
@@ -211,7 +204,7 @@ export function McpSection() {
           <button
             type="button"
             className="btn small-btn"
-            onClick={() => applyTemplate('fetch', 'stdio', 'npx', '-y @modelcontextprotocol/server-fetch')}
+            onClick={() => applyTemplate('fetch', 'stdio', 'uvx', 'mcp-server-fetch')}
           >
             + Fetch
           </button>
@@ -220,7 +213,7 @@ export function McpSection() {
         <div style={{ display: 'grid', gap: 10 }}>
           <label>
             <span className="field-label">{t('mcp.nomeLabel')}</span>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="es. accessibility" required />
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="github" required />
           </label>
           <label>
             <span className="field-label">{t('mcp.tipoLabel')}</span>
