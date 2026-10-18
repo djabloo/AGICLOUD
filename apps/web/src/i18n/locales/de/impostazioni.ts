@@ -5,6 +5,8 @@ export default {
   nonInstallato: "Nicht installiert",
   voceAgenti: "Agenten",
   voceAgentiDesc: "Anmeldung, Status und Standardwerte",
+  voceMcp: "MCP-Server",
+  voceMcpDesc: "Integrierte und benutzerdefinierte MCP-Server für Agenten",
   voceChiavi: "Schlüssel",
   voceChiaviDesc: "Schlüsselbund für Prozesse und Terminals",
   voceNotifiche: "Benachrichtigungen und App",

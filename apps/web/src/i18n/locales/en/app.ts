@@ -9,6 +9,7 @@ export default {
   sezioneVerdict: "Verdict",
   sezioneVideo: "Video",
   sezioneNotebook: "Notebook",
+  sezioneAccessibility: "Accessibility",
   sezioneCloud: "Cloud",
   sezioneImpostazioni: "Settings",
   erroreTokenNonValido: "Invalid token",

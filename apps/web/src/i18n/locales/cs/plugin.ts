@@ -16,6 +16,10 @@ export default {
   confermaDisinstalla: "Odinstalovat {nome}? Jeho sekce zmizí; kdykoli ho můžeš nainstalovat znovu.",
   installatoEAttivo: "{nome} je nainstalován a zapnut",
   disinstallato: "{nome} byl odinstalován",
+  installaDaLinkTitolo: "Nainstalovat soukromý plugin z odkazu",
+  installaDaLinkDesc: "Zadej odkaz na plugin (např. agicloud://plugin/accessibility nebo Git URL). V základním katalogu se nezobrazí.",
+  installaDaLinkBtn: "Nainstalovat z odkazu",
+  installatoDaLink: "Plugin úspěšně nainstalován z odkazu",
   attivato: "{nome} byl zapnut",
   disattivato: "{nome} byl vypnut",
 } satisfies Record<string, string | Record<string, string>>;

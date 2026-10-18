@@ -5,6 +5,8 @@ export default {
   nonInstallato: 'Non installato',
   voceAgenti: 'Agenti',
   voceAgentiDesc: 'Login, stato e scelte predefinite',
+  voceMcp: 'Server MCP',
+  voceMcpDesc: 'Server MCP integrati e personalizzati per gli agenti',
   voceChiavi: 'Chiavi',
   voceChiaviDesc: 'Portachiavi per processi e terminali',
   voceNotifiche: 'Notifiche e app',

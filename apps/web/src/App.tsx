@@ -15,12 +15,13 @@ import { VerdictView } from './VerdictView';
 import { CloudView } from './CloudView';
 import { VideoSection } from './VideoSection';
 import { NotebookSection } from './NotebookSection';
+import { AccessibilitySection } from './AccessibilitySection';
 import { SetupDone } from './Login';
 import { Icon, type IconName } from './icons';
 import { useT } from './i18n';
 
 type Auth = 'checking' | 'ok' | 'needed';
-type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'verdict' | 'cloud' | 'video' | 'notebook' | 'settings';
+type Section = 'chat' | 'terminal' | 'files' | 'design' | 'pii' | 'browser' | 'verdict' | 'cloud' | 'video' | 'notebook' | 'accessibility' | 'settings';
 
 interface Route {
   section: Section;
@@ -45,6 +46,7 @@ const SECTION_DEFS: SectionDef[] = [
   { id: 'cloud', icon: 'cloud', ready: true, plugin: 'cloud' },
   { id: 'video', icon: 'video', ready: true, plugin: 'video' },
   { id: 'notebook', icon: 'notebook', ready: true, plugin: 'notebook' },
+  { id: 'accessibility', icon: 'accessibility', ready: true, plugin: 'accessibility' },
   { id: 'settings', icon: 'settings', ready: true },
 ];
 const SECTION_KEYS: Record<Section, string> = {
@@ -58,6 +60,7 @@ const SECTION_KEYS: Record<Section, string> = {
   cloud: 'app.sezioneCloud',
   video: 'app.sezioneVideo',
   notebook: 'app.sezioneNotebook',
+  accessibility: 'app.sezioneAccessibility',
   settings: 'app.sezioneImpostazioni',
 };
 type TFn = (key: string, params?: Record<string, string | number>) => string;
@@ -80,6 +83,7 @@ function routeFromHash(): Route {
   if (/^#\/cloud\/?$/.test(location.hash)) return { section: 'cloud', id: null };
   if (/^#\/video\/?$/.test(location.hash)) return { section: 'video', id: null };
   if (/^#\/notebook\/?$/.test(location.hash)) return { section: 'notebook', id: null };
+  if (/^#\/accessibility\/?$/.test(location.hash)) return { section: 'accessibility', id: null };
   // #/browser/popup = solo il browser, nella finestra a parte
   const browser = location.hash.match(/^#\/browser(\/popup)?\/?$/);
   if (browser) return { section: 'browser', id: browser[1] ? 'popup' : null };
@@ -98,6 +102,7 @@ function hashFor(r: Route): string {
   if (r.section === 'cloud') return '#/cloud';
   if (r.section === 'video') return '#/video';
   if (r.section === 'notebook') return '#/notebook';
+  if (r.section === 'accessibility') return '#/accessibility';
   if (r.section === 'browser') return r.id === 'popup' ? '#/browser/popup' : '#/browser';
   if (r.section === 'design') return r.id ? `#/design/t/${r.id}` : '#/design';
   return r.id ? `#/t/${r.id}` : '';
@@ -326,6 +331,7 @@ export function App() {
   const inCloud = route.section === 'cloud';
   const inVideo = route.section === 'video';
   const inNotebook = route.section === 'notebook';
+  const inAccessibility = route.section === 'accessibility';
   const activeThread =
     route.section === 'chat' || route.section === 'design' ? (threads.find((t) => t.id === route.id) ?? null) : null;
   // Le sessioni di design stanno nella sezione Design, le altre in Chat
@@ -456,14 +462,14 @@ export function App() {
           </>
         )}
 
-        {!inSettings && !inFiles && !inDesign && !inPii && !inBrowser && !inVerdict && !inCloud && !inVideo && !inNotebook && (
+        {!inSettings && !inFiles && !inDesign && !inPii && !inBrowser && !inVerdict && !inCloud && !inVideo && !inNotebook && !inAccessibility && (
           <button type="button" className="btn primary new-btn" onClick={openNew}>
             <Icon name="plus" />
             <span>{newLabel}</span>
           </button>
         )}
 
-        {inSettings || inFiles || inDesign || inPii || inBrowser || inVerdict || inCloud || inVideo || inNotebook ? null : inTerminals ? (
+        {inSettings || inFiles || inDesign || inPii || inBrowser || inVerdict || inCloud || inVideo || inNotebook || inAccessibility ? null : inTerminals ? (
           <>
             <h2 className="sidebar-title" id="list-title">
               {t('app.terminali')}
@@ -540,6 +546,21 @@ export function App() {
                 {t('app.pluginNotebookTesto', { link: '\u0000' }).split('\u0000')[0]}
                 <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
                 {t('app.pluginNotebookTesto', { link: '\u0000' }).split('\u0000')[1]}
+              </p>
+            </section>
+          )
+        ) : inAccessibility ? (
+          pluginOn('accessibility') ? (
+            <AccessibilitySection
+              agents={agents}
+              browserEnabled={pluginOn('browser')}
+              onThreadCreated={() => void refresh()}
+            />
+          ) : (
+            <section className="welcome" aria-labelledby="welcome-title">
+              <h1 id="welcome-title">{t('app.sezioneAccessibility')}</h1>
+              <p>
+                <a href="#/settings/plugin">{t('app.linkImpostazioniPlugin')}</a>
               </p>
             </section>
           )

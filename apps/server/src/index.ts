@@ -34,6 +34,8 @@ import { NodeImageBuilder, registerNodeImageBuild } from './node-image.js';
 import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser, registerBrowserStart } from './browser.js';
 import { registerVideo, videoMcpServer, videoPlugin } from './video.js';
 import { notebookPlugin, registerNotebook } from './notebook.js';
+import { McpStore, registerMcp } from './mcp.js';
+import { accessibilityMcpServer, registerAccessibility } from './accessibility.js';
 
 const settings = new Settings();
 const store = new ThreadStore(settings);
@@ -188,6 +190,8 @@ const plugins = new Plugins(
 );
 plugins.register(app);
 
+const mcpStore = new McpStore();
+
 // Browser condiviso: a plugin attivo ogni agente riceve gli strumenti Playwright sullo stesso Chromium
 store.extraMcpServers = async () => {
   const servers = [];
@@ -197,10 +201,15 @@ store.extraMcpServers = async () => {
   }
   if (plugins.isEnabled('verdict')) servers.push(verdictMcpServer());
   if (plugins.isEnabled('video')) servers.push(videoMcpServer());
+  if (plugins.isEnabled('accessibility')) servers.push(accessibilityMcpServer());
+  servers.push(...mcpStore.toAcpServers());
   return servers;
 };
-// Strumenti dei plugin che Claude usa senza chiedere (Verdict: solo una lettura che costa frazioni di centesimo)
-store.extraAllowedTools = () => (plugins.isEnabled('verdict') ? ['mcp__verdict'] : []);
+// Strumenti dei plugin che Claude usa senza chiedere (Verdict e Accessibilita')
+store.extraAllowedTools = () => [
+  ...(plugins.isEnabled('verdict') ? ['mcp__verdict'] : []),
+  ...(plugins.isEnabled('accessibility') ? ['mcp__accessibility'] : []),
+];
 
 // Plugin Design: catalogo (/api/design, col token) e anteprime (/preview, col token dell'anteprima)
 registerDesign(app);
@@ -211,6 +220,8 @@ registerHandover(app, store, limits);
 registerCloud(app, settings);
 registerVideo(app);
 registerNotebook(app, settings);
+registerAccessibility(app);
+registerMcp(app, mcpStore, plugins);
 registerNodeImageBuild(app, settings, new NodeImageBuilder());
 
 // ── API ──────────────────────────────────────────────────────────────────────

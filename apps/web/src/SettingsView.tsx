@@ -8,6 +8,7 @@ import { AgentLogin } from './AgentLogin';
 import { SearchSelect } from './SearchSelect';
 import { LanguagePicker } from './i18n/LanguagePicker';
 import { PluginsSection } from './PluginsSection';
+import { McpSection } from './McpSection';
 import { getTheme, setTheme, type ThemeChoice } from './theme';
 import { useT } from './i18n';
 
@@ -19,11 +20,12 @@ function getLoginText(t: ReturnType<typeof useT>): Record<AgentStatus['login']['
   };
 }
 
-type PageId = 'agenti' | 'plugin' | 'chiavi' | 'notifiche' | 'aspetto' | 'generale' | 'accesso';
+type PageId = 'agenti' | 'mcp' | 'plugin' | 'chiavi' | 'notifiche' | 'aspetto' | 'generale' | 'accesso';
 
 function getPages(t: ReturnType<typeof useT>): { id: PageId; label: string; desc: string }[] {
   return [
     { id: 'agenti', label: t('impostazioni.voceAgenti'), desc: t('impostazioni.voceAgentiDesc') },
+    { id: 'mcp', label: t('impostazioni.voceMcp'), desc: t('impostazioni.voceMcpDesc') },
     { id: 'chiavi', label: t('impostazioni.voceChiavi'), desc: t('impostazioni.voceChiaviDesc') },
     { id: 'notifiche', label: t('impostazioni.voceNotifiche'), desc: t('impostazioni.voceNotificheDesc') },
     { id: 'plugin', label: t('impostazioni.vocePlugin'), desc: t('impostazioni.vocePluginDesc') },
@@ -145,6 +147,8 @@ export function SettingsView({
               )}
             </section>
           )}
+
+          {shown.id === 'mcp' && <McpSection />}
 
           {shown.id === 'chiavi' && <VaultSection />}
 

@@ -10,6 +10,7 @@ export default {
   sezioneVideo: "Video",
   sezioneNotebook: "Notebook",
   sezioneCloud: "Cloud",
+  sezioneAccessibility: "Přístupnost",
   sezioneImpostazioni: "Nastavení",
   erroreTokenNonValido: "Neplatný token",
   erroreServer: "Server je nedostupný",

@@ -1,11 +1,10 @@
 // Plugin: funzioni facoltative di AgiCloud (Design, PII, Browser, ...) che si installano,
-// si attivano/disattivano e si disinstallano dalle Impostazioni.
-// Oggi il codice dei plugin e' nella repo ("builtin") e installare = preparare quello che serve
-// (es. controllare il motore di PII). In versione SaaS il catalogo indichera' da dove scaricarli:
-// il resto (stato, interruttore, route bloccate quando spento) resta uguale.
+// si attivano/disattivano e si disinstallano dalle Impostazioni, piu' plugin privati esterni
+// installabili da link (senza bottone fisso nel catalogo predefinito).
 
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 import type { Hono } from 'hono';
 import { config } from './config.js';
 import { HttpError } from './errors.js';
@@ -25,8 +24,8 @@ export interface PluginSpec {
   requires?: string;
   /** Prefissi delle route del plugin: bloccate (404) quando e' spento */
   routes: string[];
-  /** Da dove arriva il codice: oggi nella repo; in SaaS dal catalogo */
-  source: 'builtin';
+  /** Da dove arriva il codice: builtin nella repo oppure external installato da link */
+  source: 'builtin' | 'external';
   /** Preparazione all'installazione (es. controllare o scaricare un motore). Errore = installazione fallita */
   install?: () => Promise<void>;
   /** Pulizia alla disinstallazione */
@@ -41,11 +40,56 @@ interface PluginState {
   installedAt?: number;
 }
 
+interface ExternalPluginEntry {
+  id: string;
+  dir: string;
+  url: string;
+}
+
 const STATE_FILE = join(config.threadsDir, '..', 'plugins.json');
+const EXTERNAL_FILE = join(config.threadsDir, '..', 'external-plugins.json');
+const EXTERNAL_DIR = join(config.threadsDir, '..', 'plugins');
+
+const KNOWN_LINK_ALIASES: Record<string, string> = {
+  'agicloud://plugin/accessibility': '/home/user/agicloud-plugin-accessibility',
+  'https://accessibility-wcag.com/plugin/accessibility': '/home/user/agicloud-plugin-accessibility',
+  'https://cogaguard.com/plugin/accessibility': '/home/user/agicloud-plugin-accessibility',
+};
+
+function specFromManifest(dir: string): PluginSpec {
+  const manifestPath = join(dir, 'manifest.json');
+  if (!existsSync(manifestPath)) throw new HttpError(400, 'Link plugin non valido: manifest.json non trovato');
+  let raw: Record<string, any>;
+  try {
+    raw = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  } catch {
+    throw new HttpError(400, 'Link plugin non valido: manifest.json malformato');
+  }
+  const id = String(raw.id || raw.name || basename(dir)).trim();
+  if (!id || !/^[a-z0-9_-]+$/i.test(id)) throw new HttpError(400, 'Link plugin non valido: id mancante');
+  return {
+    id,
+    name: String(raw.name || raw.displayName || id),
+    version: String(raw.version || '1.0.0'),
+    description: String(raw.description || ''),
+    section:
+      raw.section && typeof raw.section.id === 'string' && typeof raw.section.label === 'string'
+        ? { id: raw.section.id, label: raw.section.label }
+        : undefined,
+    credits:
+      raw.credits && typeof raw.credits.text === 'string' && typeof raw.credits.url === 'string'
+        ? { text: raw.credits.text, url: raw.credits.url }
+        : undefined,
+    requires: typeof raw.requires === 'string' ? raw.requires : undefined,
+    routes: Array.isArray(raw.routes) ? raw.routes.filter((r: unknown) => typeof r === 'string') : [`/api/${id}`],
+    source: 'external',
+  };
+}
 
 export class Plugins {
   private readonly specs = new Map<string, PluginSpec>();
   private state: Record<string, PluginState> = {};
+  private external: Record<string, ExternalPluginEntry> = {};
 
   constructor(specs: PluginSpec[], defaults: Record<string, PluginState> = {}) {
     for (const s of specs) this.specs.set(s.id, s);
@@ -53,6 +97,23 @@ export class Plugins {
       this.state = existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, 'utf8')) : {};
     } catch {
       this.state = {};
+    }
+    try {
+      this.external = existsSync(EXTERNAL_FILE) ? JSON.parse(readFileSync(EXTERNAL_FILE, 'utf8')) : {};
+    } catch {
+      this.external = {};
+    }
+    for (const [id, entry] of Object.entries(this.external)) {
+      try {
+        if (existsSync(entry.dir)) {
+          const spec = specFromManifest(entry.dir);
+          this.specs.set(spec.id, spec);
+        } else {
+          delete this.external[id];
+        }
+      } catch {
+        delete this.external[id];
+      }
     }
     // Plugin gia' in uso prima che esistesse questo elenco (es. Design): restano attivi
     for (const [id, st] of Object.entries(defaults)) this.state[id] ??= st;
@@ -110,10 +171,55 @@ export class Plugins {
     this.save();
   }
 
+  /** Installa un plugin privato esterno a partire da un link (alias agicloud://, percorso VPS o URL Git) */
+  async installFromLink(rawUrl: string): Promise<void> {
+    const url = rawUrl.trim();
+    if (!url) throw new HttpError(400, 'Inserisci il link del plugin');
+    let targetDir = KNOWN_LINK_ALIASES[url] ?? '';
+    if (!targetDir) {
+      if (url.startsWith('file://')) targetDir = resolve(url.slice('file://'.length));
+      else if (url.startsWith('/')) targetDir = resolve(url);
+      else if (/^https?:\/\/|^git@/i.test(url)) {
+        mkdirSync(EXTERNAL_DIR, { recursive: true });
+        const slug =
+          url
+            .replace(/\.git$/i, '')
+            .split('/')
+            .pop()
+            ?.replace(/[^a-zA-Z0-9_-]/g, '-') || `plugin-${Date.now()}`;
+        const cloneDir = join(EXTERNAL_DIR, slug);
+        if (!existsSync(cloneDir)) {
+          await new Promise<void>((res, rej) => {
+            execFile('git', ['clone', '--depth', '1', url, cloneDir], { timeout: 60_000 }, (err) => (err ? rej(err) : res()));
+          }).catch(() => {
+            throw new HttpError(400, 'Impossibile scaricare il plugin dal link fornito');
+          });
+        }
+        targetDir = cloneDir;
+      } else {
+        throw new HttpError(400, 'Link plugin non riconosciuto');
+      }
+    }
+
+    const spec = specFromManifest(targetDir);
+    this.requirePlan(spec.id);
+    this.specs.set(spec.id, spec);
+    this.external[spec.id] = { id: spec.id, dir: targetDir, url };
+    this.state[spec.id] = { installed: true, enabled: true, installedAt: Date.now() };
+    this.save();
+  }
+
   async uninstall(id: string): Promise<void> {
     const spec = this.spec(id);
     await spec.uninstall?.().catch(() => {});
-    this.state[id] = { installed: false, enabled: false };
+    if (spec.source === 'external') {
+      // Un plugin esterno disinstallato sparisce dal catalogo finche' non viene reinstallato col link
+      this.specs.delete(id);
+      delete this.external[id];
+      delete this.state[id];
+    } else {
+      this.state[id] = { installed: false, enabled: false };
+    }
     this.save();
   }
 
@@ -141,6 +247,11 @@ export class Plugins {
       return next();
     });
     app.get('/api/plugins', async (c) => c.json(await this.list(parseAccept(c.req.header('accept-language')) ?? 'it')));
+    app.post('/api/plugins/install-link', async (c) => {
+      const body = (await c.req.json().catch(() => ({}))) as { url?: unknown };
+      await this.installFromLink(String(body.url ?? ''));
+      return c.json(await this.list(parseAccept(c.req.header('accept-language')) ?? 'it'));
+    });
     app.post('/api/plugins/:id/install', async (c) => {
       await this.install(c.req.param('id'));
       return c.json(await this.list(parseAccept(c.req.header('accept-language')) ?? 'it'));
@@ -166,5 +277,8 @@ export class Plugins {
     const tmp = `${STATE_FILE}.tmp`;
     writeFileSync(tmp, JSON.stringify(this.state, null, 2));
     renameSync(tmp, STATE_FILE);
+    const extTmp = `${EXTERNAL_FILE}.tmp`;
+    writeFileSync(extTmp, JSON.stringify(this.external, null, 2));
+    renameSync(extTmp, EXTERNAL_FILE);
   }
 }

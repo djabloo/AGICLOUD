@@ -16,6 +16,10 @@ export default {
   confermaDisinstalla: 'Disinstallare {nome}? La sua sezione sparisce; potrai reinstallarlo quando vuoi.',
   installatoEAttivo: '{nome} installato e attivo',
   disinstallato: '{nome} disinstallato',
+  installaDaLinkTitolo: 'Installa plugin privato da link',
+  installaDaLinkDesc: "Inserisci il link del plugin (es. agicloud://plugin/accessibility o URL Git). Non apparirà nel catalogo predefinito.",
+  installaDaLinkBtn: 'Installa da link',
+  installatoDaLink: 'Plugin installato con successo dal link',
   attivato: '{nome} attivato',
   disattivato: '{nome} disattivato',
 } satisfies Record<string, string>;

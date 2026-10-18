@@ -44,14 +44,14 @@ const sessions = new Map<string, AgySession>(Object.entries(loadState()));
 const mcpEnv = new Map<string, Record<string, string>>();
 /** Server gia' registrati in agy in questo processo */
 const registered = new Set<string>();
-/** Solo i server di AgiCloud che senza il loro token non fanno nulla (il Browser no: agy ha il suo) */
-const MCP_FOR_AGY = new Set(['agicloud', 'verdict']);
+/** Tutti i server MCP stdio passati da AgiCloud (inclusi Accessibilita', Video e server personalizzati), tranne il Browser che agy ha gia' */
+const MCP_SKIP_FOR_AGY = new Set(['browser']);
 
 /** Registra i server MCP in agy (configurazione globale, senza env) e ricorda l'env per la sessione */
 async function useMcp(sessionId: string, servers: acp.McpServer[] | undefined): Promise<void> {
   const env: Record<string, string> = {};
   for (const srv of servers ?? []) {
-    if (!('command' in srv) || !MCP_FOR_AGY.has(srv.name)) continue;
+    if (!('command' in srv) || MCP_SKIP_FOR_AGY.has(srv.name)) continue;
     for (const e of srv.env ?? []) env[e.name] = e.value;
     const key = `${srv.name} ${srv.command} ${srv.args.join(' ')}`;
     if (registered.has(key)) continue;

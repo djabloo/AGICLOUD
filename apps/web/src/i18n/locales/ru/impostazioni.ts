@@ -5,6 +5,8 @@ export default {
   nonInstallato: "Не установлен",
   voceAgenti: "Агенты",
   voceAgentiDesc: "Вход, состояние и значения по умолчанию",
+  voceMcp: "Серверы MCP",
+  voceMcpDesc: "Встроенные и пользовательские серверы MCP для агентов",
   voceChiavi: "Ключи",
   voceChiaviDesc: "Хранилище ключей для процессов и терминалов",
   voceNotifiche: "Уведомления и приложение",

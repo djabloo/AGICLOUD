@@ -587,8 +587,51 @@ export const api = {
   cloudBuildStatus: () => request<CloudBuildJob | null>('GET', '/cloud/build'),
   plugins: () => request<PluginInfo[]>('GET', '/plugins'),
   installPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/install`),
+  installPluginLink: (url: string) => request<PluginInfo[]>('POST', '/plugins/install-link', { url }),
   uninstallPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/uninstall`),
   setPluginEnabled: (id: string, enabled: boolean) => request<PluginInfo[]>('POST', `/plugins/${id}/enabled`, { enabled }),
+  mcp: {
+    list: () =>
+      request<{
+        builtin: { name: string; label: string; enabled: boolean }[];
+        custom: {
+          name: string;
+          type: 'stdio' | 'http' | 'sse';
+          command?: string;
+          args?: string[];
+          env?: Record<string, string>;
+          url?: string;
+          headers?: Record<string, string>;
+          enabled: boolean;
+        }[];
+      }>('GET', '/mcp'),
+    save: (body: {
+      name: string;
+      type: 'stdio' | 'http' | 'sse';
+      command?: string;
+      args?: string[] | string;
+      env?: Record<string, string>;
+      url?: string;
+      headers?: Record<string, string>;
+      enabled?: boolean;
+    }) => request<any>('POST', '/mcp', body),
+    setEnabled: (name: string, enabled: boolean) => request<any>('POST', `/mcp/${encodeURIComponent(name)}/enabled`, { enabled }),
+    remove: (name: string) => request<any>('DELETE', `/mcp/${encodeURIComponent(name)}`),
+  },
+  accessibility: {
+    audit: (body: { url: string; mode: 'full' | 'wcag-pro' | 'wcag-standard' | 'cogaguard'; companyName?: string }) =>
+      request<{ wcag: any; cogaguard: any; report: any }>('POST', '/accessibility/audit', body),
+    vision: (body: { image_url?: string; image_base64?: string; context?: string }) =>
+      request<any>('POST', '/accessibility/vision', body),
+    simplify: (body: { text: string }) => request<any>('POST', '/accessibility/simplify', body),
+    pdfToMd: (body: { pdf_base64: string; fileName?: string; pageCount?: number }) =>
+      request<any>('POST', '/accessibility/pdf-to-md', body),
+    reports: () => request<{ reports: any[] }>('GET', '/accessibility/reports'),
+    skill: () => request<{ skill: string }>('GET', '/accessibility/skill'),
+    reportUrl: (id: string, format: 'pdf' | 'html' | 'md', download = false): string =>
+      `/api/accessibility/reports/${encodeURIComponent(id)}/${format}?${download ? 'download=1&' : ''}${memoryToken ? `token=${encodeURIComponent(memoryToken)}` : ''}`,
+  },
+  browserScreenshot: async (): Promise<Blob> => (await apiFetch('/browser/screenshot')).blob(),
   designCatalog: () => request<DesignCatalog>('GET', '/design/catalog'),
   /** URL di anteprima (sandbox, scade dopo qualche ora) per una cartella di progetto o un elemento del catalogo */
   designPreview: (target: { dir: string } | { system: string } | { skill: string }) =>

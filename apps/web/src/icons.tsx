@@ -24,6 +24,7 @@ const paths = {
   design: 'M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-1.2-1-1.4-1-2.4 0-.9.7-1.5 1.6-1.5H17a4 4 0 0 0 4-4c0-4.7-4-8.5-9-8.5zM7.5 11h.01M10 7.5h.01M14.5 7.5h.01',
   video: 'M4 6h16v12H4zM4 10l6 3-6 3zM16 10l4-2v8l-4-2',
   notebook: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5V4.5A2.5 2.5 0 0 1 6.5 2M9 7h7M9 11h5',
+  accessibility: 'M12 4a2 2 0 1 0 0 4 2 2 0 1 0 0-4M5 9l7 1 7-1M12 10v5M12 15l-3 6M12 15l3 6',
 } as const;
 
 export type IconName = keyof typeof paths;

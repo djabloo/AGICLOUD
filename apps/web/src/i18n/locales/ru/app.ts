@@ -10,6 +10,7 @@ export default {
   sezioneVideo: "Video",
   sezioneNotebook: "Notebook",
   sezioneCloud: "Облако",
+  sezioneAccessibility: "Доступность",
   sezioneImpostazioni: "Настройки",
   erroreTokenNonValido: "Недействительный токен",
   erroreServer: "Сервер недоступен",

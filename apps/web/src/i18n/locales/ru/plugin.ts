@@ -16,6 +16,10 @@ export default {
   confermaDisinstalla: "Удалить {nome}? Его раздел пропадёт; вы сможете установить плагин снова в любой момент.",
   installatoEAttivo: "{nome} установлен и включён",
   disinstallato: "{nome} удалён",
+  installaDaLinkTitolo: "Установить приватный плагин по ссылке",
+  installaDaLinkDesc: "Введите ссылку на плагин (например, agicloud://plugin/accessibility или Git URL). В стандартном каталоге он не появится.",
+  installaDaLinkBtn: "Установить по ссылке",
+  installatoDaLink: "Плагин успешно установлен по ссылке",
   attivato: "{nome} включён",
   disattivato: "{nome} выключен",
 } satisfies Record<string, string | Record<string, string>>;

@@ -5,6 +5,8 @@ export default {
   nonInstallato: "Nenainstalováno",
   voceAgenti: "Agenti",
   voceAgentiDesc: "Přihlášení, stav a výchozí volby",
+  voceMcp: "MCP servery",
+  voceMcpDesc: "Integrované a vlastní MCP servery pro agenty",
   voceChiavi: "Klíče",
   voceChiaviDesc: "Úložiště klíčů pro procesy a terminály",
   voceNotifiche: "Oznámení a aplikace",

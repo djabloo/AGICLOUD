@@ -16,6 +16,10 @@ export default {
   confermaDisinstalla: "Uninstall {nome}? Its section disappears; you can reinstall it whenever you like.",
   installatoEAttivo: "{nome} installed and on",
   disinstallato: "{nome} uninstalled",
-  attivato: "{nome} turned on",
-  disattivato: "{nome} turned off",
+  installaDaLinkTitolo: "Install private plugin from link",
+  installaDaLinkDesc: "Enter the plugin link (e.g. agicloud://plugin/accessibility or Git URL). It will not appear in the default catalog.",
+  installaDaLinkBtn: "Install from link",
+  installatoDaLink: "Plugin installed successfully from link",
+  attivato: "{nome} enabled",
+  disattivato: "{nome} disabled",
 } satisfies Record<string, string | Record<string, string>>;

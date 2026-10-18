@@ -1,5 +1,5 @@
-// Impostazioni → Plugin: installa, attiva/disattiva, disinstalla.
-import { useEffect, useId, useState } from 'react';
+// Impostazioni → Plugin: installa da catalogo o da link privato, attiva/disattiva, disinstalla.
+import { useEffect, useId, useState, type FormEvent } from 'react';
 import { api, type PluginInfo } from './api';
 import { useT } from './i18n';
 
@@ -7,6 +7,7 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
   const id = useId();
   const [list, setList] = useState<PluginInfo[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [linkUrl, setLinkUrl] = useState('');
   const [error, setError] = useState('');
   const t = useT();
   const [announce, setAnnounce] = useState('');
@@ -43,6 +44,25 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
     }
   };
 
+  const installFromLink = async (e: FormEvent) => {
+    e.preventDefault();
+    const url = linkUrl.trim();
+    if (!url) return;
+    setBusy('__link__');
+    setError('');
+    try {
+      const next = await api.installPluginLink(url);
+      setList(next);
+      onChanged(next);
+      setLinkUrl('');
+      setAnnounce(t('plugin.installatoDaLink'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <section aria-labelledby={`${id}-title`} className="settings-group">
       <h2 id={`${id}-title`} tabIndex={-1}>
@@ -51,6 +71,29 @@ export function PluginsSection({ onChanged, features }: { onChanged: (list: Plug
       <p className="hint">
         {t('plugin.introduzione')}
       </p>
+
+      <form className="agent-card" onSubmit={(e) => void installFromLink(e)} style={{ marginBottom: 16 }}>
+        <label htmlFor={`${id}-link`} style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>
+          {t('plugin.installaDaLinkTitolo')}
+        </label>
+        <p className="hint" style={{ marginBottom: 8 }}>
+          {t('plugin.installaDaLinkDesc')}
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input
+            id={`${id}-link`}
+            type="text"
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            placeholder="agicloud://plugin/accessibility"
+            style={{ flex: '1 1 260px' }}
+          />
+          <button type="submit" className="btn small-btn primary" disabled={busy !== null || !linkUrl.trim()}>
+            {busy === '__link__' ? t('plugin.installazione') : t('plugin.installaDaLinkBtn')}
+          </button>
+        </div>
+      </form>
+
       {error && (
         <p className="form-error" role="alert">
           {error}
