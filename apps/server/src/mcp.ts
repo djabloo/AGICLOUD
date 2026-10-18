@@ -32,8 +32,9 @@ export class McpStore {
     }
   }
 
+  /** Elenco per la UI: env e header (spesso token) mai in chiaro, solo le ultime 4 cifre */
   listCustom(): CustomMcpServer[] {
-    return Object.values(this.servers);
+    return Object.values(this.servers).map((s) => ({ ...s, env: maskValues(s.env), headers: maskValues(s.headers) }));
   }
 
   upsert(raw: Record<string, unknown>): CustomMcpServer {
@@ -49,18 +50,9 @@ export class McpStore {
       : typeof raw.args === 'string' && raw.args.trim()
         ? raw.args.trim().split(/\s+/)
         : [];
-    const env: Record<string, string> = {};
-    if (raw.env && typeof raw.env === 'object') {
-      for (const [k, v] of Object.entries(raw.env as Record<string, unknown>)) {
-        if (k.trim()) env[k.trim()] = String(v ?? '');
-      }
-    }
-    const headers: Record<string, string> = {};
-    if (raw.headers && typeof raw.headers === 'object') {
-      for (const [k, v] of Object.entries(raw.headers as Record<string, unknown>)) {
-        if (k.trim()) headers[k.trim()] = String(v ?? '');
-      }
-    }
+    const prev = this.servers[name];
+    const env = unmaskValues(raw.env, prev?.env);
+    const headers = unmaskValues(raw.headers, prev?.headers);
     const entry: CustomMcpServer = {
       name,
       type,
@@ -114,9 +106,29 @@ export class McpStore {
 
   private save(): void {
     const tmp = `${MCP_FILE}.tmp`;
-    writeFileSync(tmp, JSON.stringify(this.servers, null, 2));
+    writeFileSync(tmp, JSON.stringify(this.servers, null, 2), { mode: 0o600 });
     renameSync(tmp, MCP_FILE);
   }
+}
+
+const MASK = '••••';
+
+function maskValues(values?: Record<string, string>): Record<string, string> | undefined {
+  if (!values) return undefined;
+  return Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v ? MASK + v.slice(-4) : '']));
+}
+
+/** Valori dal form: quelli ancora mascherati (rimandati com'erano) tengono il valore salvato */
+function unmaskValues(raw: unknown, prev?: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const key = k.trim();
+    if (!key) continue;
+    const value = String(v ?? '');
+    out[key] = value.startsWith(MASK) && prev?.[key] !== undefined ? prev[key] : value;
+  }
+  return out;
 }
 
 export function registerMcp(app: Hono<any>, store: McpStore, plugins: Plugins): void {
