@@ -13,15 +13,17 @@
 
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import * as acp from '@agentclientprotocol/sdk';
 
-// AGY_BIN non impostato: su Linux/VPS il binario e' nel PATH solo nelle shell di login, quindi
-// serve il percorso assoluto; su Windows l'installer lo mette nel PATH di sistema ed e' "agy.exe".
-const AGY = process.env.AGY_BIN || (process.platform === 'win32' ? 'agy.exe' : '/home/tino/.local/bin/agy');
+// AGY_BIN non impostato: l'installer ufficiale mette agy in ~/.local/bin, che spesso e' nel PATH solo nelle shell
+// di login, quindi si prova prima li'; su Windows l'installer lo mette nel PATH di sistema ed e' "agy.exe".
+const AGY =
+  process.env.AGY_BIN ||
+  (process.platform === 'win32' ? 'agy.exe' : existsSync(join(homedir(), '.local', 'bin', 'agy')) ? join(homedir(), '.local', 'bin', 'agy') : 'agy');
 const STATE_FILE = join(homedir(), '.local', 'state', 'agicloud', 'agy-sessions.json');
 
 interface AgySession {

@@ -41,6 +41,8 @@ export default {
   gestisciLogin: "Управление входом",
   serveSoloBrowser: "Нужен только браузер",
   apreTerminaleCon: "Открывает терминал с командой",
+  installa: "Установить",
+  installaHint: "Откроет терминал с официальным установщиком; затем вернитесь сюда и обновите статус:",
   chiaveSalvata: "Ключ сохранён",
   chiaveRimossa: "Ключ удалён",
   impostata: "задан",

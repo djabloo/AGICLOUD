@@ -17,7 +17,7 @@ import { Push } from './push.js';
 import { createEntry, deleteEntry, listDir, rawFile, readText, renameEntry, uploadInto, writeText } from './files.js';
 import { createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
-import { LOGIN_COMMANDS, Settings } from './settings.js';
+import { INSTALL_COMMANDS, LOGIN_COMMANDS, Settings } from './settings.js';
 import { GuidedLogins } from './logins.js';
 import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
@@ -416,13 +416,24 @@ app.delete('/api/settings/agents/:id/login/guided', (c) => {
   return c.body(null, 204);
 });
 
+/** Terminale per login e installazione: nella home dell'utente se e' tra le cartelle consentite */
+const agentTerminalCwd = () => {
+  const home = homedir();
+  return config.projectRoots.some((r) => home === r || home.startsWith(r + '/')) ? home : config.projectRoots[0]!;
+};
+
 // Login interattivo dell'agente: si apre un terminale col comando giusto
 app.post('/api/settings/agents/:id/login', (c) => {
   const command = LOGIN_COMMANDS[c.req.param('id')];
   if (!command) throw new HttpError(400, 'Questo agente non ha un login da terminale');
-  const home = homedir();
-  const cwd = config.projectRoots.some((r) => home === r || home.startsWith(r + '/')) ? home : config.projectRoots[0]!;
-  return c.json(terminals.create(cwd, command).summary(), 201);
+  return c.json(terminals.create(agentTerminalCwd(), command).summary(), 201);
+});
+
+// Installazione dell'agente con l'installer ufficiale, in un terminale (si vede cosa fa)
+app.post('/api/settings/agents/:id/install', (c) => {
+  const command = INSTALL_COMMANDS[c.req.param('id')];
+  if (!command) throw new HttpError(400, 'Questo agente non si installa da qui');
+  return c.json(terminals.create(agentTerminalCwd(), command).summary(), 201);
 });
 
 // ── File ─────────────────────────────────────────────────────────────────────

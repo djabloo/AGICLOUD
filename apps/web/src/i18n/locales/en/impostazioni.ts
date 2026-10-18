@@ -41,6 +41,8 @@ export default {
   gestisciLogin: "Manage sign-in",
   serveSoloBrowser: "You only need the browser",
   apreTerminaleCon: "Opens a terminal with",
+  installa: "Install",
+  installaHint: "Opens a terminal with the official installer; then come back and refresh the status:",
   chiaveSalvata: "Key saved",
   chiaveRimossa: "Key removed",
   impostata: "set",

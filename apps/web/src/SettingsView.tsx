@@ -262,6 +262,15 @@ function AgentCard({
     }
   };
 
+  const install = async () => {
+    setError('');
+    try {
+      onOpenTerminal(await api.agentInstall(agent.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   return (
     <article className="agent-card" aria-labelledby={`${id}-name`}>
       <div className="agent-card-head">
@@ -278,6 +287,17 @@ function AgentCard({
       </p>
       {agent.note && <p className="hint">{agent.note}</p>}
 
+      {!agent.installed && agent.installCommand && (
+        <div className="agent-actions">
+          <button type="button" className="btn small-btn primary" onClick={() => void install()}>
+            <Icon name="download" />
+            <span>{t('impostazioni.installa')}</span>
+          </button>
+          <span className="hint">
+            {t('impostazioni.installaHint')} <code>{agent.installCommand}</code>
+          </span>
+        </div>
+      )}
       {agent.loginCommand && agent.installed && !guided && (
         <div className="agent-actions">
           {agent.guidedLogin && (

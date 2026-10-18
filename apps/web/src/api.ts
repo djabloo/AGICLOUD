@@ -150,6 +150,8 @@ export interface AgentStatus {
   version: string | null;
   login: { state: 'ok' | 'missing' | 'unknown'; detail: string };
   loginCommand: string | null;
+  /** Installer ufficiale (agenti non presenti nell'immagine) */
+  installCommand: string | null;
   /** Login dal browser (link + codice), senza terminale */
   guidedLogin: boolean;
   env: { name: string; label: string; set: boolean }[];
@@ -644,6 +646,7 @@ export const api = {
     request<VaultKey[]>('POST', '/settings/vault', k),
   deleteVaultKey: (name: string) => request<VaultKey[]>('DELETE', `/settings/vault/${encodeURIComponent(name)}`),
   agentLogin: (agentId: string) => request<TerminalSummary>('POST', `/settings/agents/${agentId}/login`),
+  agentInstall: (id: string) => request<TerminalSummary>('POST', `/settings/agents/${id}/install`),
   startGuidedLogin: (agentId: string) => request<GuidedLogin>('POST', `/settings/agents/${agentId}/login/guided`),
   guidedLoginStatus: (agentId: string) => request<GuidedLogin | null>('GET', `/settings/agents/${agentId}/login/guided`),
   sendGuidedLoginCode: (agentId: string, code: string) =>

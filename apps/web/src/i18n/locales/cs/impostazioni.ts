@@ -41,6 +41,8 @@ export default {
   gestisciLogin: "Spravovat přihlášení",
   serveSoloBrowser: "Stačí ti prohlížeč",
   apreTerminaleCon: "Otevře terminál s příkazem",
+  installa: "Nainstalovat",
+  installaHint: "Otevře terminál s oficiálním instalátorem; pak se sem vrať a obnov stav:",
   chiaveSalvata: "Klíč uložen",
   chiaveRimossa: "Klíč odebrán",
   impostata: "nastaven",

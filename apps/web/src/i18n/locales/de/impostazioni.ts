@@ -41,6 +41,8 @@ export default {
   gestisciLogin: "Anmeldung verwalten",
   serveSoloBrowser: "Du brauchst nur den Browser",
   apreTerminaleCon: "Öffnet ein Terminal mit",
+  installa: "Installieren",
+  installaHint: "Öffnet ein Terminal mit dem offiziellen Installer; danach hierher zurückkehren und den Status aktualisieren:",
   chiaveSalvata: "Schlüssel gespeichert",
   chiaveRimossa: "Schlüssel entfernt",
   impostata: "gesetzt",

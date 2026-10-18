@@ -21,7 +21,7 @@ import type { Hono } from 'hono';
 import { config } from './config.js';
 import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
-import { AGY_BIN, type Settings } from './settings.js';
+import { agyBin, type Settings } from './settings.js';
 import { excludeFromGit, readAttachment, resolveAttachment } from './uploads.js';
 import type { PluginSpec } from './plugins.js';
 
@@ -61,7 +61,7 @@ function tsStamp(): string {
 }
 
 // ── ambiente: gli script python trovano edge_tts e ffmpeg/ffprobe; agy trova i
-// suoi binari. Stessa logica del plugin originale, con AGY_BIN di AgiCloud.
+// suoi binari. Stessa logica del plugin originale, con l'agy trovato da agyBin().
 function ttsPath(): string {
   return [...TTS_EXTRA_PATHS, process.env.PATH || ''].filter(Boolean).join(delimiter);
 }
@@ -101,9 +101,9 @@ function runAgy(prompt: string, { cwd, conversationId }: { cwd: string; conversa
 
     let child: ChildProcess;
     try {
-      child = spawn(AGY_BIN, args, { cwd, env: agyEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
+      child = spawn(agyBin(), args, { cwd, env: agyEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (err) {
-      return resolveP({ error: `Impossibile avviare ${AGY_BIN}: ${err instanceof Error ? err.message : String(err)}` });
+      return resolveP({ error: `Impossibile avviare ${agyBin()}: ${err instanceof Error ? err.message : String(err)}` });
     }
 
     let response = '';
@@ -452,11 +452,11 @@ Salva il JSON ESATTAMENTE nel file "${jsonAbs}" (sovrascrivilo se esiste). Non m
 // ── Plugin spec ──────────────────────────────────────────────────────────────
 async function health(): Promise<{ ok: boolean; detail: string }> {
   try {
-    const out = await execFileAsync(AGY_BIN, ['--version'], agyEnv(), 5000);
+    const out = await execFileAsync(agyBin(), ['--version'], agyEnv(), 5000);
     const ver = out.trim().split('\n')[0] || '';
     return { ok: true, detail: 'motore agy attivo (' + ver + ')' };
   } catch {
-    return { ok: false, detail: 'agy non trovato in ' + AGY_BIN };
+    return { ok: false, detail: 'agy non installato: installalo da Impostazioni → Agenti' };
   }
 }
 

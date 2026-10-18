@@ -23,7 +23,7 @@ import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
 import { excludeFromGit, readAttachment, resolveAttachment } from './uploads.js';
 import { installKit, kitPrompt, type DesignChoice } from '@agicloud/design';
-import { AGY_BIN, type Settings } from './settings.js';
+import { agyBin, type Settings } from './settings.js';
 import type { Notice } from './push.js';
 import type { WorktreeInfo } from './worktrees.js';
 import type { LeadManager } from './lead.js';
@@ -179,7 +179,7 @@ export class Thread {
           /* ignore */
         }
       }
-      return conversationId ? `${AGY_BIN} --conversation ${conversationId}` : AGY_BIN;
+      return conversationId ? `${agyBin()} --conversation ${conversationId}` : agyBin();
     }
     if (agentId === 'claude') {
       return acpSessionId ? `claude --resume ${acpSessionId}` : 'claude';

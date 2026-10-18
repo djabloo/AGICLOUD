@@ -3,6 +3,7 @@
 
 import { execFile } from 'node:child_process';
 import { chmodSync, existsSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type * as acp from '@agentclientprotocol/sdk';
 import { AGENTS } from '@agicloud/bridge';
@@ -35,8 +36,21 @@ export const AGENT_ENV_BLOCK: Record<string, string[]> = {
   claude: ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'],
 };
 
-/** agy e' installato da tino: lo si usa da li' (con il login dell'utente che lo lancia) */
-export const AGY_BIN = process.env.AGY_BIN || '/home/tino/.local/bin/agy';
+/**
+ * agy: AGY_BIN se impostato, poi ~/.local/bin/agy dell'utente che esegue AgiCloud (dove lo mette l'installer
+ * ufficiale), altrimenti dal PATH. Si ricalcola a ogni uso: dopo "Installa" funziona senza riavviare.
+ */
+export function agyBin(): string {
+  if (process.env.AGY_BIN) return process.env.AGY_BIN;
+  const local = join(homedir(), '.local', 'bin', 'agy');
+  return existsSync(local) ? local : 'agy';
+}
+
+/** Installer ufficiali degli agenti che non sono nell'immagine: mettono il programma in ~/.local/bin e si aggiornano da soli */
+export const INSTALL_COMMANDS: Record<string, string> = {
+  cursor: 'curl -fsS https://cursor.com/install | bash',
+  agy: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
+};
 
 /** Strumenti con login ma non ancora usabili in chat */
 const TOOLS: { id: string; label: string; note?: string }[] = [];
@@ -49,7 +63,9 @@ export const LOGIN_COMMANDS: Record<string, string> = {
   // Niente browser sul server: stampa il link da aprire sul telefono/PC
   cursor: 'NO_OPEN_BROWSER=1 cursor-agent login',
   // agy non ha un comando di login: al primo avvio interattivo chiede l'accesso Google
-  agy: AGY_BIN,
+  get agy() {
+    return agyBin();
+  },
 };
 
 const settingsFile = join(config.threadsDir, '..', 'settings.json');
@@ -255,6 +271,7 @@ export class Settings {
           chat: a.chat,
           ...status.value,
           loginCommand: LOGIN_COMMANDS[a.id] ?? null,
+          installCommand: INSTALL_COMMANDS[a.id] ?? null,
           guidedLogin: a.id in GUIDED_LOGINS,
           env: (AGENT_ENV[a.id] ?? []).map((v) => ({ ...v, set: Boolean(this.secrets[a.id]?.[v.name] || process.env[v.name]) })),
           defaults: this.data.agentDefaults[a.id] ?? {},
@@ -340,10 +357,11 @@ export class Settings {
         };
       }
       case 'agy': {
-        const version = await run(AGY_BIN, ['--version'], env);
-        if (version === null) return { installed: false, version: null, login: { state: 'unknown', detail: `agy non trovato in ${AGY_BIN}` } };
+        const bin = agyBin();
+        const version = await run(bin, ['--version'], env);
+        if (version === null) return { installed: false, version: null, login: { state: 'unknown', detail: 'agy non installato' } };
         // Senza login agy resta in attesa: se in 20 secondi elenca i modelli, il login c'e'
-        const models = await run(AGY_BIN, ['models'], env, 20_000);
+        const models = await run(bin, ['models'], env, 20_000);
         const ok = models !== null && models.trim().length > 0 && !/login|sign in|authenticat/i.test(models);
         return {
           installed: true,

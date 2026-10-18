@@ -41,6 +41,8 @@ export default {
   gestisciLogin: 'Gestisci login',
   serveSoloBrowser: 'Ti serve solo il browser',
   apreTerminaleCon: 'Apre un terminale con',
+  installa: "Installa",
+  installaHint: "Apre un terminale con l'installer ufficiale; poi torna qui e aggiorna lo stato:",
   chiaveSalvata: 'Chiave salvata',
   chiaveRimossa: 'Chiave rimossa',
   impostata: 'impostata',
