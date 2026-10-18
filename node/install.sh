@@ -83,11 +83,12 @@ log "Dipendenze di AgiCloud"
 sudo -u agicloud -H bash -lc 'cd /opt/agicloud && npm ci --no-audit --no-fund'
 
 log "Agenti"
-npm install -g --no-audit --no-fund opencode-ai
+npm install -g --no-audit --no-fund opencode-ai @openai/codex
 sudo -u agicloud -H bash -lc 'curl -fsSL https://claude.ai/install.sh | bash'
 sudo -u agicloud -H bash -lc 'curl -fsS https://cursor.com/install | bash'
-# Adattatore ACP di Claude Code: nella cache di npm, cosi' la prima chat non lo scarica
-sudo -u agicloud -H bash -lc 'npm cache add @agentclientprotocol/claude-agent-acp@0.86.0 >/dev/null'
+sudo -u agicloud -H bash -lc 'curl -fsSL https://antigravity.google/cli/install.sh | bash'
+# Adattatori ACP di Claude Code e Codex: nella cache di npm, cosi' la prima chat non li scarica
+sudo -u agicloud -H bash -lc 'npm cache add @agentclientprotocol/claude-agent-acp@0.86.0 @agentclientprotocol/codex-acp@2.2.2 >/dev/null'
 log "Strumenti video (MoviePy e Pillow, accanto a ffmpeg)"
 python3 -m venv /opt/video-tools
 /opt/video-tools/bin/pip install --no-cache-dir moviepy pillow

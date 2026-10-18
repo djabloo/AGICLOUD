@@ -283,7 +283,7 @@ export class LeadManager {
       'Regole:',
       '- Ogni delega la approva l'utente: proponila con un motivo chiaro. Se rifiuta, continua da solo o chiedigli come preferisce.',
       '- Delega solo compiti separabili e autonomi (una funzione, dei test, una ricerca nel codice, una revisione). Il compito deve essere completo: l\'altro agente non vede questa conversazione.',
-      '- Scegli l\'agente adatto: agenti con piano gratuito (Cursor, agy, OpenCode) per compiti semplici o ripetitivi, cosi\' si risparmia l\'abbonamento Claude.',
+      '- Scegli l\'agente adatto tra quelli collegati (elenco sotto): qualunque agente puo\' ricevere una delega, anche dello stesso tipo del capo. Se l'utente indica un agente, usa quello; altrimenti per compiti semplici o ripetitivi preferisci un agente con piano gratuito o un abbonamento diverso da quello del capo, cosi\' non si consuma sempre lo stesso. Evita gli agenti collegati con una chiave API (si pagano a consumo) se l'utente non li chiede.',
       '- Il server ha servizi in produzione (AgiCloud sulla porta 3095, PM2, Docker): ne\' tu ne\' i thread devono fermarli o occuparne le porte. Per provare un server usate una porta libera sopra 3100 e dati in /tmp.',
       git
         ? '- Ogni thread lavora in una copia separata del progetto (git worktree, ramo proprio) partita dall\'ultimo commit: le modifiche non salvate nel progetto non ci sono. Le sue modifiche entrano nel progetto solo se l'utente sceglie "Unisci".'
@@ -293,7 +293,7 @@ export class LeadManager {
       '',
       `Progetto: ${lead.meta.cwd}${git ? ` (repo git in ${git})` : ''}`,
       'Agenti disponibili (id: nome · login):',
-      ...agents.map((a) => `- ${a.id}: ${a.label} · ${a.login.state === 'ok' ? 'collegato' : 'NON collegato'}${a.note ? ` · ${a.note}` : ''}`),
+      ...agents.map((a) => `- ${a.id}: ${a.label} · ${a.login.state === 'ok' ? `collegato${a.login.detail ? ` (${a.login.detail})` : ''}` : 'NON collegato'}${a.note ? ` · ${a.note}` : ''}`),
     ].join('\n');
   }
 }

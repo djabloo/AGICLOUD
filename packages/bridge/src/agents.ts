@@ -58,18 +58,15 @@ export const AGENTS: Record<string, AgentSpec> = {
   },
 };
 
-// Codex: tolto dalla chat (2026-10-07). Sul server e' collegato con la chiave API usata da n8n,
-// quindi costerebbe a consumo. Riattivabile con AGICLOUD_CODEX=1 se si usa un account ChatGPT.
-if (process.env.AGICLOUD_CODEX === '1') {
-  AGENTS.codex = {
-    id: 'codex',
-    label: 'Codex',
-    command: 'npx',
-    args: ['-y', '@zed-industries/codex-acp@0.16.0'],
-    native: false,
-    note: 'Usa il login di codex (account ChatGPT o chiave API)',
-  };
-}
+// Codex: per chi ha un abbonamento ChatGPT (o una chiave API, a consumo). Usa il login di `codex login`.
+AGENTS.codex = {
+  id: 'codex',
+  label: 'Codex',
+  command: 'npx',
+  args: ['-y', '@agentclientprotocol/codex-acp@2.2.2'],
+  native: false,
+  note: 'Usa il tuo account ChatGPT (con una chiave API si paga a consumo)',
+};
 
 // Agente finto (demo-agent.ts): opzioni, comandi, permessi, ripresa. Per prove e test UI.
 if (process.env.AGICLOUD_DEMO_AGENT === '1') {

@@ -59,7 +59,8 @@ const TOOLS: { id: string; label: string; note?: string }[] = [];
 export const LOGIN_COMMANDS: Record<string, string> = {
   claude: 'claude auth login --claudeai',
   opencode: 'opencode auth login',
-  codex: 'codex login',
+  // Niente browser sul server: link e codice da aprire sul telefono/PC
+  codex: 'codex login --device-auth',
   // Niente browser sul server: stampa il link da aprire sul telefono/PC
   cursor: 'NO_OPEN_BROWSER=1 cursor-agent login',
   // agy non ha un comando di login: al primo avvio interattivo chiede l'accesso Google

@@ -19,7 +19,7 @@ ARG UID=1001
 # Strumenti per foto e video che gli agenti usano da shell: ffmpeg, caratteri, Pillow e MoviePy (in un ambiente a parte, /opt/video-tools)
 RUN apt-get update && apt-get install -y --no-install-recommends bash git curl ca-certificates openssh-client python3 python3-venv procps ffmpeg fonts-dejavu-core fonts-liberation && rm -rf /var/lib/apt/lists/* \
  && python3 -m venv /opt/video-tools && /opt/video-tools/bin/pip install --no-cache-dir moviepy pillow \
- && npm install -g --no-audit --no-fund @anthropic-ai/claude-code opencode-ai \
+ && npm install -g --no-audit --no-fund @anthropic-ai/claude-code opencode-ai @openai/codex \
  && (userdel -r node 2>/dev/null; useradd -m -d /data/home -u ${UID} -s /bin/bash agicloud)
 WORKDIR /opt/agicloud
 COPY --from=build /opt/agicloud /opt/agicloud
