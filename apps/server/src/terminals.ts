@@ -35,6 +35,7 @@ interface TerminalMeta {
   cwd: string;
   title: string;
   createdAt: number;
+  threadId?: string;
 }
 
 export class Terminal {
@@ -73,8 +74,8 @@ export class Terminal {
   }
 
   summary() {
-    const { id, cwd, title, createdAt } = this.meta;
-    return { id, cwd, project: basename(cwd), title, createdAt, exited: this.exitCode !== null };
+    const { id, cwd, title, createdAt, threadId } = this.meta;
+    return { id, cwd, project: basename(cwd), title, createdAt, exited: this.exitCode !== null, threadId: threadId ?? null };
   }
 
   /** Avvia il custode (staccato dal server: `setsid -f` lo affida a init, PM2 non lo chiude) */
@@ -267,12 +268,16 @@ export class TerminalStore {
     return t;
   }
 
-  create(cwd: string, command?: string): Terminal {
+  findByThread(threadId: string): Terminal | undefined {
+    return [...this.terminals.values()].find((t) => t.meta.threadId === threadId && t.exitCode === null);
+  }
+
+  create(cwd: string, command?: string, customTitle?: string, threadId?: string): Terminal {
     const alive = [...this.terminals.values()].filter((t) => t.exitCode === null).length;
     if (alive >= MAX_TERMINALS) throw new HttpError(429, `Troppi terminali aperti (max ${MAX_TERMINALS}): chiudine uno`);
     const real = resolveProject(cwd);
-    const title = command ? `${commandLabel(command)} · ${basename(real)}` : basename(real);
-    const t = new Terminal({ id: randomUUID(), cwd: real, title, createdAt: Date.now() }, false, command, this.extraEnv());
+    const title = customTitle || (command ? `${commandLabel(command)} · ${basename(real)}` : basename(real));
+    const t = new Terminal({ id: randomUUID(), cwd: real, title, createdAt: Date.now(), threadId }, false, command, this.extraEnv());
     this.terminals.set(t.id, t);
     this.save();
     return t;

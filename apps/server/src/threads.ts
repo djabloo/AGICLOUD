@@ -13,6 +13,7 @@ import {
   writeFileSync,
   type WriteStream,
 } from 'node:fs';
+import { homedir } from 'node:os';
 import { basename, extname, join } from 'node:path';
 import { EventType, type BaseEvent } from '@ag-ui/core';
 import type * as acp from '@agentclientprotocol/sdk';
@@ -22,7 +23,7 @@ import { HttpError } from './errors.js';
 import { resolveProject } from './projects.js';
 import { excludeFromGit, readAttachment, resolveAttachment } from './uploads.js';
 import { installKit, kitPrompt, type DesignChoice } from '@agicloud/design';
-import type { Settings } from './settings.js';
+import { AGY_BIN, type Settings } from './settings.js';
 import type { Notice } from './push.js';
 import type { WorktreeInfo } from './worktrees.js';
 import type { LeadManager } from './lead.js';
@@ -160,6 +161,39 @@ export class Thread {
     if (this.status === 'error' || this.status === 'auth_required' || this.meta.lastOutcome === 'error') return 'error';
     if (this.meta.lastOutcome === 'done') return 'done';
     return 'idle';
+  }
+
+  /** Comando shell per riprendere la stessa sessione dell'agente nel terminale interattivo */
+  terminalCommand(): string {
+    const { agentId, acpSessionId } = this.meta;
+    if (agentId === 'agy') {
+      let conversationId: string | null = null;
+      if (acpSessionId) {
+        try {
+          const stateFile = join(homedir(), '.local', 'state', 'agicloud', 'agy-sessions.json');
+          if (existsSync(stateFile)) {
+            const data = JSON.parse(readFileSync(stateFile, 'utf8'));
+            conversationId = data[acpSessionId]?.conversationId ?? null;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      return conversationId ? `${AGY_BIN} --conversation ${conversationId}` : AGY_BIN;
+    }
+    if (agentId === 'claude') {
+      return acpSessionId ? `claude --resume ${acpSessionId}` : 'claude';
+    }
+    if (agentId === 'opencode') {
+      return acpSessionId ? `opencode attach ${acpSessionId}` : 'opencode';
+    }
+    if (agentId === 'cursor') {
+      return 'cursor-agent';
+    }
+    if (agentId === 'codex') {
+      return 'codex';
+    }
+    return '';
   }
 
   /** Thread affidato che passa a un altro capo (passaggio di consegne) */

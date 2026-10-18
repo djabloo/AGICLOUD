@@ -655,9 +655,15 @@ export function App() {
             threads={threads}
             agentLabel={agentLabel(activeThread.agentId)}
             onDelete={() => removeThread(activeThread.id)}
-            onOpenTerminal={() => {
-              setTerminalCwd(activeThread.cwd);
-              setDialog('terminal');
+            onOpenTerminal={async () => {
+              try {
+                const t = await api.threadTerminal(activeThread.id);
+                setTerminals((ts) => [t, ...ts.filter((x) => x.id !== t.id)]);
+                go({ section: 'terminal', id: t.id });
+              } catch {
+                setTerminalCwd(activeThread.cwd);
+                setDialog('terminal');
+              }
             }}
           />
         ) : activeTerminal ? (

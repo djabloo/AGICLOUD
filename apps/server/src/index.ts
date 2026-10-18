@@ -293,6 +293,17 @@ app.post('/api/threads/:id/sleep', async (c) => {
   return c.body(null, 204);
 });
 
+// Terminale collegato alla sessione dell'agente di questo thread
+app.post('/api/threads/:id/terminal', (c) => {
+  const thread = store.get(c.req.param('id'));
+  const existing = terminals.findByThread(thread.id);
+  if (existing) return c.json(existing.summary(), 200);
+  const command = thread.terminalCommand() || undefined;
+  const title = `${thread.meta.title} · Terminale`;
+  const t = terminals.create(thread.meta.cwd, command, title, thread.id);
+  return c.json(t.summary(), 201);
+});
+
 app.delete('/api/threads/:id', async (c) => {
   // Una copia separata ancora aperta se ne va con il thread (le modifiche non unite si perdono)
   await lead.discard(store.get(c.req.param('id'))).catch(() => {});

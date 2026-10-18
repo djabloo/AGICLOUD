@@ -106,6 +106,7 @@ export interface TerminalSummary {
   title: string;
   createdAt: number;
   exited: boolean;
+  threadId?: string | null;
 }
 
 export interface SessionInfo {
@@ -695,6 +696,7 @@ export const api = {
   pushTest: () => request<{ sent: number }>('POST', '/push/test', {}),
   terminals: () => request<TerminalSummary[]>('GET', '/terminals'),
   createTerminal: (cwd: string, command?: 'claude') => request<TerminalSummary>('POST', '/terminals', { cwd, command }),
+  threadTerminal: (threadId: string) => request<TerminalSummary>('POST', `/threads/${encodeURIComponent(threadId)}/terminal`),
   deleteTerminal: (id: string) => request<void>('DELETE', `/terminals/${id}`),
   setConfig: (id: string, configId: string, value: string | boolean) =>
     request<void>('POST', `/threads/${id}/config`, { configId, value }),
