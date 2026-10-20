@@ -406,60 +406,6 @@ export interface ClaudeLimit {  status: 'allowed' | 'allowed_warning' | 'rejecte
   message?: string;
 }
 
-export interface CloudServer {
-  id: number;
-  name: string;
-  status: string;
-  type: string;
-  cores: number;
-  memory: number;
-  disk: number;
-  arch: string;
-  location: string;
-  ipv4: string | null;
-  created: string;
-  backups: boolean;
-  protected: boolean;
-  worker: boolean;
-  monthly: number;
-  image: string | null;
-}
-
-export interface CloudImage {
-  id: number;
-  type: 'snapshot' | 'backup';
-  description: string;
-  sizeGb: number;
-  created: string;
-  from: string | null;
-  nodeImage: boolean;
-  monthly: number;
-  arch: string;
-  /** E' l'immagine da cui nascono le nuove VPS AgiCloud (costruita da qui) */
-  agicloudNode: boolean;
-}
-
-export interface CloudOverview {
-  servers: CloudServer[];
-  images: CloudImage[];
-  volumes: { id: number; name: string; sizeGb: number; server: number | null; monthly: number }[];
-  monthlyTotal: number;
-  serverTypes: { name: string; cores: number; memory: number; disk: number; arch: string; prices: Record<string, number> }[];
-  locations: { name: string; city: string; country: string }[];
-  nodeImage: string;
-  agicloudNodeImage: number | null;
-}
-
-export interface CloudBuildJob {
-  id: string;
-  state: 'running' | 'done' | 'error';
-  log: string[];
-  startedAt: number;
-  finishedAt?: number;
-  imageId?: number;
-  error?: string;
-}
-
 export const api = {
   session: () => request<SessionInfo>('GET', '/session'),
   agents: () => request<AgentInfo[]>('GET', '/agents'),
@@ -578,19 +524,6 @@ export const api = {
   limits: () => request<{ claude: ClaudeLimit | null }>('GET', '/limits'),
   handover: (threadId: string, agentId: string) => request<ThreadSummary>('POST', `/threads/${threadId}/handover`, { agentId }),
   setup: (setup: string) => request<{ token: string }>('POST', '/setup', { setup }),
-  cloud: () => request<CloudOverview>('GET', '/cloud'),
-  cloudPower: (id: number, action: 'on' | 'off' | 'reboot') => request<void>('POST', `/cloud/servers/${id}/power`, { action }),
-  cloudBackups: (id: number, enabled: boolean) => request<void>('POST', `/cloud/servers/${id}/backups`, { enabled }),
-  cloudSnapshot: (id: number) => request<void>('POST', `/cloud/servers/${id}/snapshot`, {}),
-  cloudRebuild: (id: number, image: string) => request<void>('POST', `/cloud/servers/${id}/rebuild`, { image }),
-  cloudDelete: (id: number, confirm: string) => request<void>('DELETE', `/cloud/servers/${id}?confirm=${encodeURIComponent(confirm)}`),
-  cloudDeleteImage: (id: number) => request<void>('DELETE', `/cloud/images/${id}?confirm=elimina`),
-  cloudCreate: (body: { name: string; type: string; location: string; image: string; backups: boolean }) =>
-    request<{ id: number; ipv4: string | null }>('POST', '/cloud/servers', body),
-  cloudCreateAgicloudNode: (body: { name: string; type: string; location: string; backups: boolean }) =>
-    request<{ id: number; ipv4: string | null; activationUrl: string | null }>('POST', '/cloud/servers/agicloud-node', body),
-  cloudBuildStart: () => request<CloudBuildJob>('POST', '/cloud/build', {}),
-  cloudBuildStatus: () => request<CloudBuildJob | null>('GET', '/cloud/build'),
   plugins: () => request<PluginInfo[]>('GET', '/plugins'),
   installPlugin: (id: string) => request<PluginInfo[]>('POST', `/plugins/${id}/install`),
   installPluginLink: (url: string) => request<PluginInfo[]>('POST', '/plugins/install-link', { url }),

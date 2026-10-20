@@ -12,7 +12,7 @@ import { execFile } from 'node:child_process';
 import { createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, extname, isAbsolute, join, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import type * as acp from '@agentclientprotocol/sdk';
 import { Hono } from 'hono';
 import { config } from './config.js';
@@ -32,6 +32,8 @@ interface ExternalInfo {
   mcp?: { command: string; args: string[]; env: Record<string, string>; autoAllow: boolean };
   server?: string;
   web?: string;
+  /** Chiavi del portachiavi che il modulo server puo' leggere (dichiarate nel manifest, nessun'altra) */
+  secrets: string[];
 }
 
 export interface PluginSpec {
@@ -72,6 +74,7 @@ interface LinkEntry {
   url: string;
 }
 
+const APP_DIR = fileURLToPath(new URL('../../..', import.meta.url)).replace(/\/$/, '');
 const STATE_FILE = join(config.dataDir, 'plugins.json');
 const LINKS_FILE = join(config.dataDir, 'external-plugins.json');
 const DOWNLOAD_DIR = join(config.dataDir, 'plugins');
@@ -170,6 +173,7 @@ export function specFromManifest(rawDir: string, origin: ExternalInfo['origin'],
       mcp,
       server: server && existsSync(server) ? server : undefined,
       web: web && existsSync(web) ? web : undefined,
+      secrets: Array.isArray(raw.secrets) ? raw.secrets.filter((k: unknown): k is string => typeof k === 'string' && /^[A-Z][A-Z0-9_]{1,63}$/.test(k)) : [],
     },
   };
 }
@@ -207,6 +211,10 @@ export interface PluginContext {
   pluginDir: string;
   /** Cartella dati del plugin (creata), separata per ogni plugin */
   dataDir: string;
+  /** Cartella di AgiCloud (es. per impacchettare l'app) */
+  appDir: string;
+  /** Valore di una chiave del portachiavi, solo se dichiarata in manifest.secrets */
+  secret: (name: string) => string | undefined;
   HttpError: typeof HttpError;
 }
 
@@ -217,6 +225,8 @@ export class Plugins {
   private links: Record<string, LinkEntry> = {};
   /** Moduli server dei plugin esterni gia' caricati (per id) */
   private readonly servers = new Map<string, Promise<Hono>>();
+  /** Lettura del portachiavi per i plugin esterni (impostata da index.ts) */
+  secretOf: (name: string) => string | undefined = () => undefined;
 
   constructor(specs: PluginSpec[], defaults: Record<string, PluginState> = {}) {
     for (const s of specs) {
@@ -407,7 +417,15 @@ export class Plugins {
         });
         const dataDir = join(PLUGIN_DATA_DIR, spec.id);
         mkdirSync(dataDir, { recursive: true });
-        const ctx: PluginContext = { id: spec.id, pluginDir: spec.external!.dir, dataDir, HttpError };
+        const allowed = new Set(spec.external!.secrets);
+        const ctx: PluginContext = {
+          id: spec.id,
+          pluginDir: spec.external!.dir,
+          dataDir,
+          appDir: APP_DIR,
+          secret: (name) => (allowed.has(name) ? this.secretOf(name) : undefined),
+          HttpError,
+        };
         await mod.register(sub, ctx);
         return sub;
       })();

@@ -3308,59 +3308,6 @@ legend {
   font-size: 1rem;
 }
 
-/* ── Plugin Cloud ────────────────────────────────────────────────────────── */
-.cloud {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.cloud-list,
-.cloud-plain {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.cloud-badge {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-.cloud-server .cloud-badge {
-  margin-left: 0;
-}
-.cloud-badge-prod {
-  background: var(--surface-2);
-  border: 1px solid var(--warn);
-}
-.cloud-danger {
-  padding-top: 8px;
-  border-top: 1px dashed var(--border);
-}
-.cloud-danger select {
-  min-height: 36px;
-}
-.cloud-table-wrap {
-  overflow-x: auto;
-}
-.cloud-table td {
-  vertical-align: top;
-}
-.cloud-actions {
-  white-space: nowrap;
-}
-.cloud-actions .btn + .btn:not(:only-child) {
-  margin-left: 6px;
-}
-.cloud-price {
-  margin: 8px 0;
-}
 .link-btn {
   padding: 0;
   border: 0;
@@ -3377,33 +3324,8 @@ legend {
 .pii-card {
   min-width: 0;
 }
-.cloud-table th,
-.cloud-table td:nth-child(2),
-.cloud-table td:nth-child(3),
-.cloud-table td:nth-child(4) {
-  white-space: nowrap;
-}
-.cloud-table td:first-child {
-  min-width: 220px;
-}
-.cloud-actions {
-  white-space: normal;
-}
-.cloud-actions .btn {
-  margin: 2px 0;
-}
 .pii-card > * {
   min-width: 0;
-}
-.cloud-table-wrap {
-  max-width: 100%;
-}
-/* Le etichette nascoste (posizione assoluta) restano dentro la cornice che scorre */
-.cloud-table-wrap {
-  position: relative;
-}
-.cloud-actions .btn {
-  white-space: nowrap;
 }
 .pii-field select {
   width: 100%;
@@ -3422,18 +3344,6 @@ legend {
   background: var(--surface-2);
   overflow-wrap: anywhere;
   user-select: all;
-}
-.cloud-build-log {
-  max-height: 260px;
-  overflow-y: auto;
-  margin: 8px 0 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  font-family: var(--mono);
-  font-size: 0.82rem;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
 
 /* Scelta della lingua */

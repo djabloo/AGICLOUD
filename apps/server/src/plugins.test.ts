@@ -58,3 +58,9 @@ test('id non valido o manifest assente: errore', () => {
   assert.throws(() => specFromManifest(plugin({ name: 'X' }), 'link'), /id mancante/);
   assert.throws(() => specFromManifest(mkdtempSync(join(tmpdir(), 'vuoto-')), 'link'), /manifest.json non trovato/);
 });
+
+test('segreti: solo nomi di chiave validi dichiarati nel manifest', () => {
+  const s = specFromManifest(plugin({ id: 'chiavi', name: 'Chiavi', secrets: ['HETZNER_API_TOKEN', 'minuscolo', '../X', 42] }), 'link');
+  assert.deepEqual(s.external?.secrets, ['HETZNER_API_TOKEN']);
+  assert.deepEqual(specFromManifest(plugin({ id: 'senza', name: 'Senza' }), 'link').external?.secrets, []);
+});

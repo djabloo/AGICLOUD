@@ -14,7 +14,6 @@ const SECTION_PREFIXES: [string, string][] = [
   ['/api/pii', 'pii'],
   ['/api/verdict', 'verdict'],
   ['/verdict-api', 'verdict'],
-  ['/api/cloud', 'cloud'],
   ['/api/video', 'video'],
   ['/video-api', 'video'],
   ['/api/notebook', 'notebook'],

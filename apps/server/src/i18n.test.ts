@@ -45,7 +45,7 @@ test('traduzione: parti variabili, esatti, lingue sconosciute e Accept-Language'
   assert.equal(tError('Messaggio che non esiste in tabella', 'cs'), 'Messaggio che non esiste in tabella');
   assert.equal(tError('Troppi terminali aperti (max 8): chiudine uno', 'en'), 'Too many terminals open (max 8): close one');
   assert.equal(tError('Design: non incluso nel tuo piano', 'de'), 'Design: nicht in deinem Tarif enthalten');
-  assert.equal(tPlugin('un token Hetzner Cloud nel portachiavi (HETZNER_API_TOKEN)', 'en'), 'a Hetzner Cloud token in the key vault (HETZNER_API_TOKEN)');
+  assert.equal(tPlugin('una chiave OpenRouter nel portachiavi (OPENROUTER_API_KEY)', 'en'), 'an OpenRouter key in the key vault (OPENROUTER_API_KEY)');
   assert.equal(tNotice('Fatto · Il mio progetto', 'de'), 'Fertig · Il mio progetto');
   assert.equal(translate(ERRORS, 'Id non valido', 'cs'), 'Neplatné id');
   assert.equal(parseAccept('de-DE,de;q=0.9,en;q=0.8'), 'de');

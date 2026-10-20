@@ -41,8 +41,6 @@ describe('features', () => {
     assert.equal(sectionOf('/api/pii/engine/analyze'), 'pii');
     assert.equal(sectionOf('/api/verdict/decide'), 'verdict');
     assert.equal(sectionOf('/verdict-api/decide'), 'verdict');
-    assert.equal(sectionOf('/api/cloud'), 'cloud');
-    assert.equal(sectionOf('/api/cloud/servers'), 'cloud');
   });
 
   it('chat, impostazioni e resto non sono limitabili', () => {

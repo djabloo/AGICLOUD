@@ -29,8 +29,6 @@ import { catalog as designCatalog, normalizeChoice } from '@agicloud/design';
 import { Plugins } from './plugins.js';
 import { piiPlugin, registerPii } from './pii.js';
 import { registerVerdict, verdictMcpServer, verdictPlugin } from './verdict.js';
-import { cloudPlugin, registerCloud } from './cloud.js';
-import { NodeImageBuilder, registerNodeImageBuild } from './node-image.js';
 import { browserMcpServer, browserPlugin, browserUpgrade, ensureBrowser, registerBrowserStart } from './browser.js';
 import { registerVideo, videoMcpServer, videoPlugin } from './video.js';
 import { notebookPlugin, registerNotebook } from './notebook.js';
@@ -180,13 +178,13 @@ const plugins = new Plugins(
     piiPlugin,
     browserPlugin,
     verdictPlugin(settings),
-    cloudPlugin(settings),
     videoPlugin,
     notebookPlugin(settings),
   ],
   // Design era gia' in uso prima del sistema dei plugin: resta installato e attivo
   { design: { installed: true, enabled: true } },
 );
+plugins.secretOf = (name) => settings.vaultValue(name);
 plugins.register(app);
 
 const mcpStore = new McpStore();
@@ -213,11 +211,9 @@ registerPii(app);
 registerBrowserStart(app);
 registerVerdict(app, settings);
 registerHandover(app, store, limits);
-registerCloud(app, settings);
 registerVideo(app);
 registerNotebook(app, settings);
 registerMcp(app, mcpStore, plugins);
-registerNodeImageBuild(app, settings, new NodeImageBuilder());
 
 // ── API ──────────────────────────────────────────────────────────────────────
 app.get('/api/session', (c) => c.json({ ok: true, authRequired: Boolean(config.authToken), setupPending: !config.authToken && Boolean(config.setupToken), features: config.featuresList }));
