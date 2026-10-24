@@ -4,6 +4,8 @@
 
 AgiCloud is a web workspace for Claude Code, Codex, agy (Antigravity), Cursor and OpenCode. Chat with a "lead" agent that delegates tasks to other agents, each working in its own git worktree; you approve every delegation and choose what gets merged.
 
+<p align="center"><img src="docs/assets/lead-delegation.gif" alt="On a phone: the lead agent proposes a delegation, the user approves it, the delegated agent works in a separate copy, and the changes are merged into the project" width="300"></p>
+
 - Multi-agent chat with delegation, threads and merge/discard of changes
 - Mobile-first UI with push notifications
 - Terminal, file browser, Git, live shared Browser, Design studio

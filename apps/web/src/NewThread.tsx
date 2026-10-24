@@ -74,7 +74,7 @@ export function NewThreadDialog({ open, agents, error, busy, preset, designEnabl
 
   const selected = agents.find((a) => a.id === agentId);
   /** Capo: agenti che ricevono gli strumenti MCP di AgiCloud */
-  const canLead = ['claude', 'cursor', 'opencode', 'agy'].includes(agentId);
+  const canLead = ['claude', 'codex', 'cursor', 'opencode', 'agy', 'demo'].includes(agentId);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!agentId || !cwd.trim()) return;

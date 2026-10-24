@@ -120,6 +120,8 @@ export class LeadManager {
       if (wt) await discardWorktree(wt.info).catch(() => {});
       throw err;
     }
+    // agy senza finestra non puo' chiedere permessi: la delega l'ha gia' approvata l'utente
+    if (d.agentId === 'agy') await child.setConfig('permissions', 'all').catch(() => {});
     const where = wt
       ? `Lavori in una copia separata del progetto (ramo ${wt.info.branch}): fai tutte le modifiche qui, non serve fare commit. Le modifiche entreranno nel progetto solo se ${user.name} le unisce.`
       : 'Lavori direttamente nella cartella del progetto.';
