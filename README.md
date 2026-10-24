@@ -1,5 +1,21 @@
 # AgiCloud
 
+**All your AI coding agents in one cloud — even from your phone.**
+
+AgiCloud is a web workspace for Claude Code, Codex, agy (Antigravity), Cursor and OpenCode. Chat with a "lead" agent that delegates tasks to other agents, each working in its own git worktree; you approve every delegation and choose what gets merged.
+
+- Multi-agent chat with delegation, threads and merge/discard of changes
+- Mobile-first UI with push notifications
+- Terminal, file browser, Git, live shared Browser, Design studio
+- PII anonymization plugin (runs locally, data stays on your server)
+- Interface in Italian, English, German, Czech and Russian
+- Built on open standards: ACP and AG-UI
+
+**Hosted version:** [agicloud.dev](https://agicloud.dev) — ready in a minute, free 14-day trial, servers in the EU (Germany).
+**Self-host:** see below. Licensed under [AGPL-3.0](LICENSE).
+
+---
+
 Interfaccia web multi-agente per agenti di coding (Claude Code, agy, Cursor, OpenCode, ...), basata sugli standard aperti **ACP** e **AG-UI**.
 
 Stato: in uso quotidiano su app.agicloud.dev (Chat, Terminale, File, Design, Impostazioni, notifiche). Architettura in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

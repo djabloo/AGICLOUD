@@ -487,9 +487,7 @@ const QUICK_LINKS: [string, string][] = [
   ['GitHub', 'https://github.com'],
   ['YouTube', 'https://www.youtube.com'],
   ['Wikipedia', 'https://it.wikipedia.org'],
-  ['ProSEO', 'https://proseo.it'],
   ['AgiCloud', 'https://agicloud.dev'],
-  ['n8n', 'https://n8n.proseo.it'],
 ];
 
 const START_PAGE = `<!doctype html>
