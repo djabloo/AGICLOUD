@@ -40,4 +40,12 @@ export default {
   notaEsempio: "např. fal.ai pro videa",
   salvaChiave: "Uložit klíč",
   salvaPreset: "Uložit {label}",
+  tipoSito: "Přihlášení k webu (adresa + uživatel + heslo)",
+  accessoSito: "Přihlášení k webu",
+  sitoNomeHint: "Agenti dostanou {nome}_URL, {nome}_USER a {nome}_PASSWORD",
+  sitoIndirizzo: "Adresa přihlašovací stránky (nepovinné)",
+  sitoUtente: "Uživatelské jméno nebo e-mail",
+  sitoPassword: "Heslo",
+  sitoNotaEsempio: "např. profil AgiCloud na LinkedIn",
+  salvaAccesso: "Uložit přihlášení",
 } satisfies Record<string, string | Record<string, string>>;

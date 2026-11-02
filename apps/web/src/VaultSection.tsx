@@ -81,15 +81,48 @@ export function VaultSection() {
     }
   };
 
+  // Accessi a siti web: terne PREFISSO_URL / PREFISSO_USER / PREFISSO_PASSWORD
+  const logins = (keys ?? [])
+    .filter((k) => k.name.endsWith('_PASSWORD') && keys?.some((u) => u.name === loginKey(k.name, 'USER')))
+    .map((pw) => {
+      const prefix = pw.name.slice(0, -'_PASSWORD'.length);
+      return { prefix, pw, user: keys!.find((k) => k.name === `${prefix}_USER`)!, url: keys!.find((k) => k.name === `${prefix}_URL`) };
+    });
+  const loginKeyNames = new Set(logins.flatMap((l) => [l.pw.name, l.user.name, ...(l.url ? [l.url.name] : [])]));
+
+  const updateLogin = async (l: (typeof logins)[number], patch: Partial<Pick<VaultKey, 'agents' | 'terminals'>>) => {
+    setError('');
+    try {
+      let list = keys;
+      for (const k of [l.url, l.user, l.pw]) if (k) list = await api.saveVaultKey({ name: k.name, ...patch });
+      setKeys(list);
+      setAnnounce(t('portachiavi.aggiornata', { nome: l.prefix }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const removeLogin = async (l: (typeof logins)[number]) => {
+    if (!confirm(t('portachiavi.confermaEliminaCredenziali', { nome: l.prefix }))) return;
+    try {
+      let list = keys;
+      for (const k of [l.url, l.user, l.pw]) if (k) list = await api.deleteVaultKey(k.name);
+      setKeys(list);
+      setAnnounce(t('portachiavi.eliminata', { nome: l.prefix }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   const presetKeyNames = new Set(PRESETS.flatMap((p) => [p.idKey, p.secretKey]));
-  const standaloneKeys = keys?.filter((k) => !presetKeyNames.has(k.name)) ?? [];
+  const standaloneKeys = keys?.filter((k) => !presetKeyNames.has(k.name) && !loginKeyNames.has(k.name)) ?? [];
   const configuredPresets = PRESETS.map((p) => {
     const idEntry = keys?.find((k) => k.name === p.idKey);
     const secretEntry = keys?.find((k) => k.name === p.secretKey);
     return { ...p, idEntry, secretEntry, active: Boolean(idEntry || secretEntry) };
   }).filter((p) => p.active);
 
-  const totalItems = (standaloneKeys?.length ?? 0) + configuredPresets.length;
+  const totalItems = (standaloneKeys?.length ?? 0) + configuredPresets.length + logins.length;
 
   return (
     <section aria-labelledby={`${id}-title`} className="settings-group">
@@ -133,6 +166,42 @@ export function VaultSection() {
               <div className="vault-actions">
                 <button type="button" className="btn small-btn" onClick={() => void removePreset(p)}>
                   {t('portachiavi.elimina')}<span className="visually-hidden"> {p.label}</span>
+                </button>
+              </div>
+            </li>
+          ))}
+
+          {logins.map((l) => (
+            <li key={l.prefix} className="vault-item">
+              <div className="vault-head">
+                <span className="vault-name" style={{ fontWeight: 600 }}>{l.prefix}</span>
+                <span className="hint">{t('portachiavi.accessoSito')}</span>
+              </div>
+              {l.pw.note && <p className="hint vault-note">{l.pw.note}</p>}
+              <div style={{ display: 'grid', gap: '4px', margin: '4px 0', fontSize: '0.85rem' }}>
+                {l.url && (
+                  <span className="hint">
+                    <code>${l.url.name}</code>
+                  </span>
+                )}
+                <span className="hint">
+                  <code>${l.user.name}</code>: ••••{l.user.last4}
+                </span>
+                <span className="hint">
+                  <code>${l.pw.name}</code>: ••••
+                </span>
+              </div>
+              <div className="vault-actions">
+                <label className="check-row">
+                  <input type="checkbox" checked={l.pw.agents} onChange={(e) => void updateLogin(l, { agents: e.target.checked })} />
+                  <span>{t('portachiavi.agentiChat')}</span>
+                </label>
+                <label className="check-row">
+                  <input type="checkbox" checked={l.pw.terminals} onChange={(e) => void updateLogin(l, { terminals: e.target.checked })} />
+                  <span>{t('portachiavi.terminali')}</span>
+                </label>
+                <button type="button" className="btn small-btn" onClick={() => void removeLogin(l)}>
+                  {t('portachiavi.elimina')}<span className="visually-hidden"> {l.prefix}</span>
                 </button>
               </div>
             </li>
@@ -187,10 +256,16 @@ export function VaultSection() {
   );
 }
 
+function loginKey(passwordName: string, part: 'USER' | 'URL'): string {
+  return `${passwordName.slice(0, -'_PASSWORD'.length)}_${part}`;
+}
+
 function AddKey({ onSaved }: { onSaved: (keys: VaultKey[], name: string) => void }) {
   const t = useT();
   const id = useId();
-  const [kind, setKind] = useState<'custom' | 'google_oauth' | 'github_oauth'>('custom');
+  const [kind, setKind] = useState<'custom' | 'login' | 'google_oauth' | 'github_oauth'>('custom');
+  const [site, setSite] = useState('');
+  const [user, setUser] = useState('');
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
   const [clientId, setClientId] = useState('');
@@ -224,6 +299,16 @@ function AddKey({ onSaved }: { onSaved: (keys: VaultKey[], name: string) => void
         setClientId('');
         setClientSecret('');
         setNote('');
+      } else if (kind === 'login') {
+        const n = name.trim().toUpperCase();
+        if (site.trim()) await api.saveVaultKey({ name: `${n}_URL`, value: site.trim(), note });
+        await api.saveVaultKey({ name: `${n}_USER`, value: user.trim(), note });
+        onSaved(await api.saveVaultKey({ name: `${n}_PASSWORD`, value, note }), n);
+        setName('');
+        setSite('');
+        setUser('');
+        setValue('');
+        setNote('');
       } else {
         const n = name.trim().toUpperCase();
         onSaved(await api.saveVaultKey({ name: n, value, note }), n);
@@ -256,6 +341,7 @@ function AddKey({ onSaved }: { onSaved: (keys: VaultKey[], name: string) => void
           style={{ width: '100%', marginTop: 4, padding: '6px 8px' }}
         >
           <option value="custom">{t('portachiavi.tipoSingola')}</option>
+          <option value="login">{t('portachiavi.tipoSito')}</option>
           <option value="google_oauth">{t('portachiavi.tipoGoogle')}</option>
           <option value="github_oauth">{t('portachiavi.tipoGithub')}</option>
         </select>
@@ -298,6 +384,43 @@ function AddKey({ onSaved }: { onSaved: (keys: VaultKey[], name: string) => void
               placeholder={t('portachiavi.notaPlaceholder', { label: selectedPreset.label })}
               maxLength={200}
             />
+          </div>
+        </div>
+      ) : kind === 'login' ? (
+        <div className="add-key-grid">
+          <div>
+            <label htmlFor={`${id}-n`}>{t('portachiavi.nome')}</label>
+            <input
+              id={`${id}-n`}
+              className="mono-input"
+              value={name}
+              onChange={(e) => setName(e.target.value.toUpperCase())}
+              placeholder="LINKEDIN"
+              autoComplete="off"
+              spellCheck={false}
+              pattern="[A-Z][A-Z0-9_]{1,50}"
+              aria-describedby={`${id}-nh`}
+              required
+            />
+            <p id={`${id}-nh`} className="hint">
+              {t('portachiavi.sitoNomeHint', { nome: name.trim() || 'LINKEDIN' })}
+            </p>
+          </div>
+          <div>
+            <label htmlFor={`${id}-s`}>{t('portachiavi.sitoIndirizzo')}</label>
+            <input id={`${id}-s`} type="url" value={site} onChange={(e) => setSite(e.target.value)} placeholder="https://www.linkedin.com/login" autoComplete="off" spellCheck={false} />
+          </div>
+          <div>
+            <label htmlFor={`${id}-u`}>{t('portachiavi.sitoUtente')}</label>
+            <input id={`${id}-u`} value={user} onChange={(e) => setUser(e.target.value)} autoComplete="off" spellCheck={false} required />
+          </div>
+          <div>
+            <label htmlFor={`${id}-v`}>{t('portachiavi.sitoPassword')}</label>
+            <input id={`${id}-v`} type="password" value={value} onChange={(e) => setValue(e.target.value)} autoComplete="new-password" spellCheck={false} required />
+          </div>
+          <div className="add-key-note">
+            <label htmlFor={`${id}-o`}>{t('portachiavi.notaFacoltativa')}</label>
+            <input id={`${id}-o`} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('portachiavi.sitoNotaEsempio')} maxLength={200} />
           </div>
         </div>
       ) : (
@@ -348,9 +471,16 @@ function AddKey({ onSaved }: { onSaved: (keys: VaultKey[], name: string) => void
         <button
           type="submit"
           className="btn primary"
-          disabled={busy || (selectedPreset ? !clientId.trim() || !clientSecret.trim() : !name.trim() || !value)}
+          disabled={
+            busy ||
+            (selectedPreset ? !clientId.trim() || !clientSecret.trim() : !name.trim() || !value || (kind === 'login' && !user.trim()))
+          }
         >
-          {selectedPreset ? t('portachiavi.salvaPreset', { label: selectedPreset.label }) : t('portachiavi.salvaChiave')}
+          {selectedPreset
+            ? t('portachiavi.salvaPreset', { label: selectedPreset.label })
+            : kind === 'login'
+              ? t('portachiavi.salvaAccesso')
+              : t('portachiavi.salvaChiave')}
         </button>
       </div>
     </form>

@@ -40,4 +40,12 @@ export default {
   notaEsempio: "e.g. fal.ai for videos",
   salvaChiave: "Save key",
   salvaPreset: "Save {label}",
+  tipoSito: "Website login (address + user + password)",
+  accessoSito: "Website login",
+  sitoNomeHint: "Agents get {nome}_URL, {nome}_USER and {nome}_PASSWORD",
+  sitoIndirizzo: "Login page address (optional)",
+  sitoUtente: "Username or email",
+  sitoPassword: "Password",
+  sitoNotaEsempio: "e.g. AgiCloud LinkedIn profile",
+  salvaAccesso: "Save login",
 } satisfies Record<string, string | Record<string, string>>;

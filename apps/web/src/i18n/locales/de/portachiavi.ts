@@ -40,4 +40,12 @@ export default {
   notaEsempio: "z. B. fal.ai für Videos",
   salvaChiave: "Schlüssel speichern",
   salvaPreset: "{label} speichern",
+  tipoSito: "Website-Zugang (Adresse + Benutzer + Passwort)",
+  accessoSito: "Website-Zugang",
+  sitoNomeHint: "Agenten erhalten {nome}_URL, {nome}_USER und {nome}_PASSWORD",
+  sitoIndirizzo: "Adresse der Anmeldeseite (optional)",
+  sitoUtente: "Benutzername oder E-Mail",
+  sitoPassword: "Passwort",
+  sitoNotaEsempio: "z. B. LinkedIn-Profil von AgiCloud",
+  salvaAccesso: "Zugang speichern",
 } satisfies Record<string, string | Record<string, string>>;
