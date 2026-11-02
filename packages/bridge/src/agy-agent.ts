@@ -18,6 +18,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import * as acp from '@agentclientprotocol/sdk';
+import { agyErroreRecuperato } from './agy-errors.js';
 
 // AGY_BIN non impostato: l'installer ufficiale mette agy in ~/.local/bin, che spesso e' nel PATH solo nelle shell
 // di login, quindi si prova prima li'; su Windows l'installer lo mette nel PATH di sistema ed e' "agy.exe".
@@ -309,8 +310,7 @@ acp
       });
     }
     if (!r || r.status === 'ERROR') {
-      const isTransient503 = typeof r?.error === 'string' && r.error.includes('UNAVAILABLE (code 503)');
-      if (hasMessage && isTransient503) {
+      if (hasMessage && agyErroreRecuperato(r?.error)) {
         return { stopReason: 'end_turn' as const };
       }
       throw new Error(r?.error || stderr.trim().split('\n').pop() || `agy terminato con codice ${exit.code}`);
