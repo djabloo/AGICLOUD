@@ -140,6 +140,25 @@ export interface GuidedLogin {
   error: string | null;
 }
 
+export interface AgentUsageBar {
+  kind?: 'session' | 'week' | 'fiveHour';
+  label?: string;
+  /** 0-100: usata o rimanente, secondo "mode" */
+  percent: number;
+  mode: 'used' | 'remaining';
+  resetsAt: number | null;
+}
+
+export interface AgentUsage {
+  agentId: string;
+  state: 'ok' | 'unavailable';
+  reason?: 'no-login' | 'expired' | 'network';
+  groups: { title?: string; bars: AgentUsageBar[] }[];
+  credit?: { usedDollars: number; limitDollars: number };
+  aiCredits?: number;
+  at: number;
+}
+
 export interface AgentStatus {
   id: string;
   label: string;
@@ -578,6 +597,8 @@ export const api = {
   saveVaultKey: (k: { name: string; value?: string; note?: string; agents?: boolean; terminals?: boolean }) =>
     request<VaultKey[]>('POST', '/settings/vault', k),
   deleteVaultKey: (name: string) => request<VaultKey[]>('DELETE', `/settings/vault/${encodeURIComponent(name)}`),
+  agentUsage: (agentId: string, refresh = false) =>
+    request<AgentUsage | null>('GET', `/settings/agents/${agentId}/usage${refresh ? '?refresh=1' : ''}`),
   agentLogin: (agentId: string) => request<TerminalSummary>('POST', `/settings/agents/${agentId}/login`),
   agentInstall: (id: string) => request<TerminalSummary>('POST', `/settings/agents/${id}/install`),
   startGuidedLogin: (agentId: string) => request<GuidedLogin>('POST', `/settings/agents/${agentId}/login/guided`),

@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { api, setToken, type AgentStatus, type GeneralSettings, type PluginInfo, type TerminalSummary } from './api';
+import { api, setToken, type AgentStatus, type AgentUsage, type AgentUsageBar, type GeneralSettings, type PluginInfo, type TerminalSummary } from './api';
 import type { ConfigOption } from './transcript';
 import { Icon } from './icons';
 import { VaultSection } from './VaultSection';
@@ -10,7 +10,7 @@ import { LanguagePicker } from './i18n/LanguagePicker';
 import { PluginsSection } from './PluginsSection';
 import { McpSection } from './McpSection';
 import { getTheme, setTheme, type ThemeChoice } from './theme';
-import { useT } from './i18n';
+import { fmtDateTime, fmtNumber, useT } from './i18n';
 
 function getLoginText(t: ReturnType<typeof useT>): Record<AgentStatus['login']['state'], string> {
   return {
@@ -330,6 +330,8 @@ function AgentCard({
         <SecretField key={v.name} agentId={agent.id} name={v.name} label={v.label} isSet={v.set} onChanged={onChanged} />
       ))}
 
+      {(agent.id === 'claude' || agent.id === 'agy') && agent.installed && agent.login.state === 'ok' && <UsagePanel agentId={agent.id} />}
+
       {agent.chat && <Defaults agent={agent} />}
 
       {error && (
@@ -340,6 +342,68 @@ function AgentCard({
     </article>
   );
 }
+
+function UsagePanel({ agentId }: { agentId: string }) {
+  const t = useT();
+  const [usage, setUsage] = useState<AgentUsage | null>(null);
+  const [loading, setLoading] = useState(true);
+  const load = (refresh: boolean) => {
+    setLoading(true);
+    api
+      .agentUsage(agentId, refresh)
+      .then(setUsage)
+      .catch(() => setUsage(null))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => load(false), [agentId]);
+  if (!usage) return loading ? <p className="hint">{t('impostazioni.usoCaricamento')}</p> : null;
+  if (usage.state !== 'ok') {
+    const msg = { 'no-login': t('impostazioni.usoNoLogin'), expired: t('impostazioni.usoScaduto'), network: t('impostazioni.usoRete') }[usage.reason ?? 'network'];
+    return <p className="hint">{msg}</p>;
+  }
+  const kindLabel = { session: t('impostazioni.usoSessione'), week: t('impostazioni.usoSettimana'), fiveHour: t('impostazioni.usoCinqueOre') };
+  const row = (b: AgentUsageBar, i: number) => {
+    const label = b.kind ? kindLabel[b.kind] : (b.label ?? '');
+    const perc = Math.round(b.percent);
+    // Rosso quando resta poco: oltre il 90% usato o sotto il 10% rimanente
+    const high = b.mode === 'used' ? b.percent >= 90 : b.percent <= 10;
+    return (
+      <div className="usage-row" key={i}>
+        <div className="usage-row-head">
+          <span>{label}</span>
+          <span>{t(b.mode === 'used' ? 'impostazioni.usoUsato' : 'impostazioni.usoRimasto', { perc: fmtNumber(perc) })}</span>
+        </div>
+        <div className="usage-bar" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={perc}>
+          <div className={`usage-bar-fill${high ? ' high' : ''}`} style={{ width: `${b.percent}%` }} />
+        </div>
+        {b.resetsAt && <span className="hint">{t('impostazioni.usoAzzera', { quando: fmtDateTime(b.resetsAt, { weekday: 'short', hour: '2-digit', minute: '2-digit' }) })}</span>}
+      </div>
+    );
+  };
+  return (
+    <div className="usage-panel">
+      <div className="usage-row-head">
+        <strong>{t('impostazioni.usoTitolo')}</strong>
+        <button type="button" className="btn small-btn" disabled={loading} onClick={() => load(true)}>
+          {t('impostazioni.usoAggiorna')}
+        </button>
+      </div>
+      {usage.groups.map((g, i) => (
+        <div className="usage-group" key={i}>
+          {g.title && <span className="usage-group-title">{g.title}</span>}
+          {g.bars.map(row)}
+        </div>
+      ))}
+      {usage.credit && (
+        <p className="hint">
+          {t('impostazioni.usoCredito')}: {t('impostazioni.usoCreditoVal', { usato: fmtNumber(usage.credit.usedDollars, { maximumFractionDigits: 2 }), limite: fmtNumber(usage.credit.limitDollars) })}
+        </p>
+      )}
+      {usage.aiCredits !== undefined && <p className="hint">{t('impostazioni.usoCreditiAi', { n: fmtNumber(usage.aiCredits) })}</p>}
+    </div>
+  );
+}
+
 
 function SecretField({
   agentId,

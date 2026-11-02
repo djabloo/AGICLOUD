@@ -19,6 +19,7 @@ import { createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
 import { INSTALL_COMMANDS, LOGIN_COMMANDS, Settings } from './settings.js';
 import { GuidedLogins } from './logins.js';
+import { agentUsage } from './usage.js';
 import { homedir } from 'node:os';
 import { HttpError, ThreadStore } from './threads.js';
 import { attachTerminalSockets, clientIp as wsClientIp } from './terminal-socket.js';
@@ -362,6 +363,10 @@ app.get('/api/threads/:id/events', (c) => {
 // ── Impostazioni ─────────────────────────────────────────────────────────────
 app.get('/api/settings', async (c) =>
   c.json({ general: settings.general(), agents: await settings.agents(c.req.query('refresh') === '1') }),
+);
+
+app.get('/api/settings/agents/:id/usage', async (c) =>
+  c.json(await agentUsage(c.req.param('id'), c.req.query('refresh') === '1')),
 );
 
 app.post('/api/settings/general', async (c) => {

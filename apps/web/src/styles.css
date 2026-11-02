@@ -3604,3 +3604,12 @@ legend {
   border: 0;
   background: var(--bg);
 }
+
+.usage-panel { display: flex; flex-direction: column; gap: 0.6rem; }
+.usage-row { display: flex; flex-direction: column; gap: 0.25rem; }
+.usage-row-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
+.usage-bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.usage-bar-fill { height: 100%; background: var(--accent); }
+.usage-bar-fill.high { background: var(--danger, #d9534f); }
+.usage-group { display: flex; flex-direction: column; gap: 0.5rem; }
+.usage-group-title { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
