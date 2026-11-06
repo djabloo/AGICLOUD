@@ -90,7 +90,7 @@ export class LeadManager {
     );
   }
 
-  /** Decisione di l'utente su una proposta di delega */
+  /** Decisione dell'utente su una proposta di delega */
   async decide(leadId: string, delegationId: string, approve: boolean, note = ''): Promise<{ childId?: string }> {
     const d = this.delegations.get(delegationId);
     if (!d || d.leadId !== leadId) throw new HttpError(404, 'Proposta non trovata: forse e\' scaduta o il server e\' stato riavviato');

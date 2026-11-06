@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { parseFeatures } from './features.js';
 
@@ -37,7 +38,7 @@ export const config = {
   /** Cartella per i progetti nuovi creati dall'interfaccia */
   workspacesRoot,
   /** Dove si possono aprire progetti (separate da ":"); le cartelle fuori sono rifiutate */
-  projectRoots: (env.PROJECT_ROOTS || `${workspacesRoot}:/home/user:/opt:/var/www`)
+  projectRoots: (env.PROJECT_ROOTS || `${workspacesRoot}:${homedir()}:/opt:/var/www`)
     .split(':')
     .filter(Boolean)
     .flatMap((p) => {
@@ -57,7 +58,7 @@ export const config = {
   features,
   /** Elenco per l'interfaccia (GET /api/session): null = tutto */
   featuresList: features ? [...features] : null,
-  /** Nome della persona che usa AgiCloud, come lo leggono gli agenti (es. "l'utente"). Vuoto = "l'utente" */
+  /** Nome della persona che usa AgiCloud, come lo leggono gli agenti (es. "Marco"). Vuoto = "l'utente" */
   userName: (env.AGICLOUD_USER_NAME || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 60),
   /** Dati dei plugin esterni (plugin-data/<id>) e plugin scaricati da link (plugins/<slug>) */
   dataDir,

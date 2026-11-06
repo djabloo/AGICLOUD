@@ -3,19 +3,19 @@
 import { config } from './config.js';
 
 export const user = {
-  /** Soggetto o complemento: "l'utente" / "l'utente" */
+  /** Soggetto o complemento: "Marco" / "l'utente" */
   get name(): string {
     return config.userName || "l'utente";
   },
-  /** Inizio di frase: "l'utente" / "L'utente" */
+  /** Inizio di frase: "Marco" / "L'utente" */
   get Name(): string {
     return config.userName || "L'utente";
   },
-  /** "a l'utente" / "all'utente" */
+  /** "a Marco" / "all'utente" */
   get a(): string {
     return config.userName ? `a ${config.userName}` : "all'utente";
   },
-  /** "di l'utente" / "dell'utente" */
+  /** "di Marco" / "dell'utente" */
   get di(): string {
     return config.userName ? `di ${config.userName}` : "dell'utente";
   },

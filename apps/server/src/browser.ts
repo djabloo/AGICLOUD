@@ -1,7 +1,7 @@
 // Plugin Browser: un Chromium vero sul server, condiviso tra l'utente e l'agente.
 // - Il browser gira staccato dal server (setsid -f, come i terminali), con un profilo salvato
 //   in data/browser-profile: login e schede restano anche dopo un riavvio di AgiCloud.
-// - l'utente lo vede e lo usa da AgiCloud: schermo in diretta (CDP Page.startScreencast) e
+// - L'utente lo vede e lo usa da AgiCloud: schermo in diretta (CDP Page.startScreencast) e
 //   clic/tasti/rotella inoltrati con Input.dispatch* (WebSocket /api/browser/ws).
 // - Gli agenti lo pilotano con Playwright MCP collegato allo stesso browser (--cdp-endpoint):
 //   stesse schede, stessi login.
@@ -115,7 +115,7 @@ export async function stopBrowser(): Promise<void> {
   }
 }
 
-/** Ultima scheda guardata da l'utente: e' quella che finisce nello screenshot */
+/** Ultima scheda guardata dall'utente: e' quella che finisce nello screenshot */
 let lastViewed: string | null = null;
 
 /** Screenshot PNG della scheda che si sta guardando (per allegarlo in chat) */
@@ -240,7 +240,7 @@ const KEYS: Record<string, { code: number; text?: string }> = {
   PageDown: { code: 34 },
 };
 
-/** Una vista (un browser di l'utente collegato): segue una scheda e inoltra input e fotogrammi */
+/** Una vista (un browser dell'utente collegato): segue una scheda e inoltra input e fotogrammi */
 class Viewer {
   private link: PageLink | null = null;
   private targetId: string | null = null;
@@ -302,7 +302,7 @@ class Viewer {
     this.send({ type: 'tabs', active: this.targetId, tabs: tabs.map((t) => ({ id: t.id, title: t.title, url: t.url })) });
   }
 
-  /** Misura della vista di l'utente (pixel CSS) e densita' dello schermo: la pagina prende quella misura */
+  /** Misura della vista dell'utente (pixel CSS) e densita' dello schermo: la pagina prende quella misura */
   private viewport: { width: number; height: number; dpr: number; mobile: boolean } | null = null;
   /** User agent da telefono gia' impostato su questa scheda */
   private mobileUa = false;

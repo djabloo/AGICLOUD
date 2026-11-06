@@ -166,7 +166,7 @@ export function SettingsView({
                 {t('impostazioni.accesso')}
               </h2>
               <p className="hint">
-                {t('impostazioni.accessoHintPrima')} <code>/home/user/.secrets/agicloud-app.env</code>. {t('impostazioni.accessoHintDopo')}
+                {t('impostazioni.accessoHintPrima')} <code>~/.secrets/agicloud-app.env</code>. {t('impostazioni.accessoHintDopo')}
               </p>
               <button
                 type="button"

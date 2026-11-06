@@ -105,7 +105,7 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<st
   let res: { text: string };
   switch (name) {
     case 'delega': {
-      // La proposta resta in attesa della decisione di l'utente: si controlla ogni 2 secondi
+      // La proposta resta in attesa della decisione dell'utente: si controlla ogni 2 secondi
       // (una sola richiesta lunga verrebbe chiusa dal timeout di fetch dopo 5 minuti)
       const { id: pid } = (await call('POST', '/delegate', args)) as { id: string };
       for (;;) {

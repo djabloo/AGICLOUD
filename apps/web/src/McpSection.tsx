@@ -197,7 +197,7 @@ export function McpSection() {
           <button
             type="button"
             className="btn small-btn"
-            onClick={() => applyTemplate('filesystem', 'stdio', 'npx', '-y @modelcontextprotocol/server-filesystem /home/user')}
+            onClick={() => applyTemplate('filesystem', 'stdio', 'npx', '-y @modelcontextprotocol/server-filesystem /var/www')}
           >
             + Filesystem
           </button>
