@@ -1,6 +1,6 @@
 # Foto, video e presentazioni: strumenti per gli agenti
 
-Ogni ambiente AgiCloud (container degli utenti e VPS dei nodi) ha gli stessi strumenti da shell, così Claude, OpenCode, Cursor e agy possono montare e modificare materiale senza installare nulla:
+Ogni ambiente AgiCloud ha gli stessi strumenti da shell, così Claude, OpenCode, Cursor e agy possono montare e modificare materiale senza installare nulla:
 
 | Strumento | A cosa serve |
 |---|---|
