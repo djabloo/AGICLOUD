@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, ApiError, getToken, setToken, type AgentInfo, type DesignChoice, type PluginInfo, type TerminalSummary, type ThreadSummary } from './api';
+import { api, ApiError, getToken, setToken, tokenWasRejected, type AgentInfo, type DesignChoice, type PluginInfo, type TerminalSummary, type ThreadSummary } from './api';
 import { Chat } from './Chat';
 import { Login } from './Login';
 import { NewThreadDialog } from './NewThread';
@@ -153,7 +153,7 @@ export function App() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setAuth('needed');
-        if (getToken()) setAuthError(t('app.erroreTokenNonValido'));
+        if (getToken() || tokenWasRejected()) setAuthError(t('app.erroreTokenNonValido'));
       } else if (err instanceof ApiError && err.status === 429) {
         setAuth('needed');
         setAuthError(err.message);

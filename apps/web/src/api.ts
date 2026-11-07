@@ -225,9 +225,23 @@ export function setToken(token: string): void {
     /* storage non disponibile: il token vale solo per questa pagina */
   }
   memoryToken = token;
+  if (token) rejectedToken = '';
 }
 
 let memoryToken = getToken();
+
+// Token rifiutato (es. ambiente ricreato): si smette di mandarlo, altrimenti ogni richiesta conta come tentativo sbagliato
+let rejectedToken = '';
+function forgetRejectedToken(status: number): void {
+  if (status !== 401 || !memoryToken) return;
+  rejectedToken = memoryToken;
+  setToken('');
+}
+
+/** True se il token salvato e' appena stato rifiutato dal server */
+export function tokenWasRejected(): boolean {
+  return Boolean(rejectedToken);
+}
 
 export class ApiError extends Error {
   constructor(
@@ -249,6 +263,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
+    forgetRejectedToken(res.status);
     const data = await res.json().catch(() => ({}));
     throw new ApiError(res.status, data.error ?? `Errore ${res.status}`);
   }
@@ -262,6 +277,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     headers: { ...(memoryToken ? { authorization: `Bearer ${memoryToken}` } : {}), 'accept-language': getLang(), ...(init.headers as Record<string, string> | undefined) },
   });
   if (!res.ok) {
+    forgetRejectedToken(res.status);
     const data = await res.json().catch(() => ({}));
     throw new ApiError(res.status, data.error ?? data.detail ?? `Errore ${res.status}`);
   }

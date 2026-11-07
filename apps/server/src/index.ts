@@ -79,7 +79,9 @@ app.use('*', async (c, next) => {
 // ── Accesso: token Bearer, con blocco dopo troppi tentativi sbagliati ────────
 const FAIL_LIMIT = 5;
 const FAIL_WINDOW_MS = 15 * 60_000;
-const failures = new Map<string, { count: number; until: number }>();
+// tried: token sbagliati gia' contati. La pagina manda piu' richieste insieme e un browser puo' avere ancora il token
+// di un ambiente ricreato: lo stesso token ripetuto e' un tentativo solo, chi prova a indovinare ne cambia uno a volta.
+const failures = new Map<string, { count: number; until: number; tried?: Set<string> }>();
 
 function clientIp(c: Context<{ Bindings: HttpBindings }>): string {
   if (process.env.TRUST_PROXY === '1') {
@@ -106,8 +108,11 @@ function checkAccess(ip: string, given: string): Access {
   if (!given) return 'missing';
   if (!tokenOk(given)) {
     // Contano solo i token sbagliati: le richieste senza token (pagina appena aperta) no
-    const count = f && f.until > Date.now() ? f.count + 1 : 1;
-    failures.set(ip, { count, until: Date.now() + FAIL_WINDOW_MS });
+    const live = f && f.until > Date.now() ? f : undefined;
+    const tried = live?.tried ?? new Set<string>();
+    const count = tried.has(given) ? live!.count : (live?.count ?? 0) + 1;
+    tried.add(given);
+    failures.set(ip, { count, until: Date.now() + FAIL_WINDOW_MS, tried });
     return 'denied';
   }
   failures.delete(ip);
